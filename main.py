@@ -576,7 +576,6 @@ def run_bot(*, interactive: bool = True, death_log_callback: Optional[Callable[[
 def launch_gui() -> None:
     import queue
     import tkinter as tk
-    from tkinter import ttk
     from tkinter.scrolledtext import ScrolledText
 
     class GuiConsoleWriter:
@@ -613,19 +612,65 @@ def launch_gui() -> None:
             self.death_queue: "queue.Queue[str]" = queue.Queue()
             self.bot_thread: Optional[threading.Thread] = None
 
+            self._themes = {
+                "light": {
+                    "bg": "#f0f0f0",
+                    "section_bg": "#ffffff",
+                    "section_border": "#d9d9d9",
+                    "title_fg": "#0f0f0f",
+                    "text_bg": "#ffffff",
+                    "text_fg": "#111111",
+                    "desc_fg": "#3a3a3a",
+                    "control_fg": "#111111",
+                    "control_select": "#dcdcdc",
+                },
+                "dark": {
+                    "bg": "#1e1e1e",
+                    "section_bg": "#2b2b2b",
+                    "section_border": "#3f3f3f",
+                    "title_fg": "#f5f5f5",
+                    "text_bg": "#121212",
+                    "text_fg": "#f5f5f5",
+                    "desc_fg": "#d0d0d0",
+                    "control_fg": "#f5f5f5",
+                    "control_select": "#3c3c3c",
+                },
+            }
+
+            self._dark_mode = tk.BooleanVar(value=False)
+            self._sections = []
+
             self._build_layout()
             self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+            self._apply_theme()
             self._poll_logs()
 
         def _build_layout(self) -> None:
-            container = ttk.Frame(self.root, padding=10)
-            container.pack(fill=tk.BOTH, expand=True)
+            self._container = tk.Frame(self.root, borderwidth=0)
+            self._container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-            container.columnconfigure(0, weight=1)
-            container.columnconfigure(1, weight=1)
+            self._controls = tk.Frame(self._container, borderwidth=0)
+            self._controls.pack(fill=tk.X, side=tk.TOP)
+
+            self._dark_toggle = tk.Checkbutton(
+                self._controls,
+                text="Enable dark mode",
+                variable=self._dark_mode,
+                command=self._apply_theme,
+                anchor="e",
+                justify="left",
+                padx=10,
+            )
+            self._dark_toggle.pack(anchor="e")
+
+            self._content = tk.Frame(self._container, borderwidth=0)
+            self._content.pack(fill=tk.BOTH, expand=True)
+
+            self._content.columnconfigure(0, weight=1)
+            self._content.columnconfigure(1, weight=1)
 
             self._main_text = self._create_section(
-                container,
+                self._content,
                 column=0,
                 title="Life and Death Bot",
                 description=(
@@ -635,7 +680,7 @@ def launch_gui() -> None:
                 ),
             )
             self._death_text = self._create_section(
-                container,
+                self._content,
                 column=1,
                 title="DayZ Death Watcher",
                 description=(
@@ -646,19 +691,60 @@ def launch_gui() -> None:
             )
 
         def _create_section(self, parent, *, column: int, title: str, description: str):
-            frame = ttk.Frame(parent, padding=(0, 0, 5, 0))
+            frame = tk.Frame(parent, borderwidth=1, relief=tk.FLAT)
             frame.grid(row=0, column=column, sticky="nsew", padx=(0 if column == 0 else 5, 0))
             parent.grid_rowconfigure(0, weight=1)
 
-            title_label = ttk.Label(frame, text=title, font=("Segoe UI", 12, "bold"))
-            title_label.pack(anchor="w")
-            desc_label = ttk.Label(frame, text=description, wraplength=400, justify="left")
-            desc_label.pack(anchor="w", pady=(0, 6))
+            title_label = tk.Label(frame, text=title, font=("Segoe UI", 12, "bold"), anchor="w")
+            title_label.pack(anchor="w", padx=8, pady=(8, 0))
+            desc_label = tk.Label(frame, text=description, wraplength=400, justify="left", anchor="w")
+            desc_label.pack(anchor="w", padx=8, pady=(0, 6))
 
-            text_widget = ScrolledText(frame, wrap=tk.WORD, height=30, font=("Consolas", 10))
-            text_widget.pack(fill=tk.BOTH, expand=True)
+            text_widget = ScrolledText(frame, wrap=tk.WORD, height=30, font=("Consolas", 10), borderwidth=0)
+            text_widget.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
             text_widget.configure(state="disabled")
+
+            self._sections.append({
+                "frame": frame,
+                "title": title_label,
+                "desc": desc_label,
+                "text": text_widget,
+            })
+
             return text_widget
+
+        def _apply_theme(self) -> None:
+            theme = self._themes["dark" if self._dark_mode.get() else "light"]
+
+            self.root.configure(bg=theme["bg"])
+            self._container.configure(bg=theme["bg"])
+            self._controls.configure(bg=theme["bg"])
+            self._content.configure(bg=theme["bg"])
+
+            self._dark_toggle.configure(
+                bg=theme["bg"],
+                fg=theme["control_fg"],
+                selectcolor=theme["control_select"],
+                activebackground=theme["bg"],
+                activeforeground=theme["control_fg"],
+            )
+
+            for section in self._sections:
+                frame = section["frame"]
+                title = section["title"]
+                desc = section["desc"]
+                text_widget = section["text"]
+
+                frame.configure(bg=theme["section_bg"], highlightbackground=theme["section_border"], highlightcolor=theme["section_border"], highlightthickness=1)
+                title.configure(bg=theme["section_bg"], fg=theme["title_fg"])
+                desc.configure(bg=theme["section_bg"], fg=theme["desc_fg"])
+                text_widget.configure(
+                    bg=theme["text_bg"],
+                    fg=theme["text_fg"],
+                    insertbackground=theme["text_fg"],
+                    highlightbackground=theme["section_border"],
+                    highlightcolor=theme["section_border"],
+                )
 
         def append_main_log(self, message: str) -> None:
             self.main_queue.put(message)
