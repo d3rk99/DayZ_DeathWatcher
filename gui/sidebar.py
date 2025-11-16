@@ -106,20 +106,23 @@ class DeadPlayersPanel(tk.Frame):
         self._theme = theme
         self.configure(bg=theme.panel_bg)
         style = ttk.Style(self)
+        tree_style = "Sidebar.Treeview"
+        heading_style = f"{tree_style}.Heading"
         style.configure(
-            "Treeview",
+            tree_style,
             background=theme.panel_bg,
             fieldbackground=theme.panel_bg,
             foreground=theme.fg,
             rowheight=24,
+            borderwidth=0,
         )
-        style.configure("Treeview.Heading", background=theme.bg, foreground=theme.fg)
         style.map(
-            "Treeview",
+            tree_style,
             background=[("selected", theme.accent)],
             foreground=[("selected", theme.console_fg)],
         )
-        self._tree.configure(style="Treeview")
+        style.configure(heading_style, background=theme.panel_bg, foreground=theme.fg)
+        self._tree.configure(style=tree_style)
 
 
 class ListViewerPanel(tk.Frame):
@@ -135,13 +138,19 @@ class ListViewerPanel(tk.Frame):
 
         self._button_frame = tk.Frame(self)
         self._button_frame.pack(fill=tk.X, padx=6, pady=(0, 6))
-        tk.Button(self._button_frame, text="Reload", command=self.reload).pack(side=tk.LEFT)
-        tk.Button(self._button_frame, text="Open File", command=self._open).pack(
-            side=tk.LEFT, padx=(6, 0)
+        self._buttons: list[tk.Button] = []
+        self._buttons.append(
+            tk.Button(self._button_frame, text="Reload", command=self.reload)
         )
-        tk.Button(self._button_frame, text="Force Sync", command=self._force_sync).pack(
-            side=tk.LEFT, padx=(6, 0)
+        self._buttons[-1].pack(side=tk.LEFT)
+        self._buttons.append(
+            tk.Button(self._button_frame, text="Open File", command=self._open)
         )
+        self._buttons[-1].pack(side=tk.LEFT, padx=(6, 0))
+        self._buttons.append(
+            tk.Button(self._button_frame, text="Force Sync", command=self._force_sync)
+        )
+        self._buttons[-1].pack(side=tk.LEFT, padx=(6, 0))
 
         self.reload()
 
@@ -168,12 +177,26 @@ class ListViewerPanel(tk.Frame):
         self.configure(bg=theme.panel_bg)
         self._label.configure(bg=theme.panel_bg, fg=theme.fg)
         self._button_frame.configure(bg=theme.panel_bg)
+        for btn in getattr(self, "_buttons", []):
+            btn.configure(
+                bg=theme.button_bg,
+                fg=theme.button_fg,
+                activebackground=theme.accent,
+                activeforeground=theme.console_fg,
+                highlightbackground=theme.panel_bg,
+                borderwidth=1,
+                relief=tk.FLAT,
+            )
         self._listbox.configure(
             bg=theme.console_bg,
             fg=theme.console_fg,
             selectbackground=theme.accent,
             selectforeground=theme.console_fg,
             highlightbackground=theme.panel_bg,
+            highlightcolor=theme.panel_bg,
+            insertbackground=theme.console_fg,
+            relief=tk.FLAT,
+            borderwidth=1,
         )
 
 
@@ -185,7 +208,10 @@ class SidebarPane(tk.Frame):
         self._build_ui()
 
     def _build_ui(self) -> None:
-        self._notebook = ttk.Notebook(self, style="Sidebar.TNotebook")
+        self._container = tk.Frame(self, bg=self._theme.panel_bg)
+        self._container.pack(fill=tk.BOTH, expand=True)
+
+        self._notebook = ttk.Notebook(self._container, style="Sidebar.TNotebook")
         self._notebook.pack(fill=tk.BOTH, expand=True)
 
         self._dead_panel = DeadPlayersPanel(
@@ -220,35 +246,55 @@ class SidebarPane(tk.Frame):
 
     def apply_theme(self, theme: ThemePalette) -> None:
         self._theme = theme
-        self.configure(bg=theme.bg)
+        self.configure(bg=theme.panel_bg)
         style = ttk.Style(self)
-        style.configure("Sidebar.TNotebook", background=theme.bg, borderwidth=0)
+        try:
+            style.theme_use("clam")
+        except tk.TclError:
+            pass
+        style.configure(
+            "Sidebar.TNotebook",
+            background=theme.panel_bg,
+            borderwidth=0,
+            tabmargins=(0, 2, 0, 0),
+            padding=0,
+        )
         style.configure(
             "Sidebar.TNotebook.Tab",
             background=theme.panel_bg,
             foreground=theme.fg,
             padding=(12, 6),
+            borderwidth=0,
         )
         style.map(
             "Sidebar.TNotebook.Tab",
-            background=[("selected", theme.panel_bg)],
+            background=[("selected", theme.bg)],
             foreground=[("selected", theme.fg)],
         )
-        style.configure("Sidebar.SubNotebook.TNotebook", background=theme.bg, borderwidth=0)
+        style.configure(
+            "Sidebar.SubNotebook.TNotebook",
+            background=theme.panel_bg,
+            borderwidth=0,
+            tabmargins=(0, 2, 0, 0),
+            padding=0,
+        )
         style.configure(
             "Sidebar.SubNotebook.Tab",
             background=theme.panel_bg,
             foreground=theme.fg,
             padding=(10, 4),
+            borderwidth=0,
         )
         style.map(
             "Sidebar.SubNotebook.Tab",
-            background=[("selected", theme.panel_bg)],
+            background=[("selected", theme.bg)],
             foreground=[("selected", theme.fg)],
         )
 
         if hasattr(self, "_notebook"):
             self._notebook.configure(style="Sidebar.TNotebook")
+        if hasattr(self, "_container"):
+            self._container.configure(bg=theme.panel_bg)
         if hasattr(self, "_lists_notebook"):
             self._lists_notebook.configure(style="Sidebar.SubNotebook.TNotebook")
         if hasattr(self, "_dead_panel"):
