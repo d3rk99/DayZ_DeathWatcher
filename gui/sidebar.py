@@ -51,9 +51,18 @@ class DeadPlayersPanel(tk.Frame):
 
     def _build_menu(self) -> tk.Menu:
         menu = tk.Menu(self, tearoff=0)
-        menu.add_command(label="Force Revive", command=lambda: self._act(userdata_service.force_revive))
-        menu.add_command(label="Force Mark Dead", command=lambda: self._act(userdata_service.force_mark_dead))
-        menu.add_command(label="Remove from DB", command=lambda: self._act(userdata_service.remove_user))
+        menu.add_command(
+            label="Force Revive",
+            command=lambda: self._act(bot_control_service.force_revive_user),
+        )
+        menu.add_command(
+            label="Force Mark Dead",
+            command=lambda: self._act(bot_control_service.force_mark_dead),
+        )
+        menu.add_command(
+            label="Remove from DB",
+            command=lambda: self._act(bot_control_service.remove_user_from_database),
+        )
         menu.add_separator()
         menu.add_command(label="View death details", command=self._view_details)
         return menu
@@ -68,13 +77,18 @@ class DeadPlayersPanel(tk.Frame):
         if not selection:
             return
         discord_id = selection[0]
-        if fn(self.userdata_path, discord_id):
+        try:
+            success = fn(self.userdata_path, discord_id)
+        except Exception as exc:
+            messagebox.showerror("Action failed", str(exc))
+            return
+        if success:
             self.refresh()
         else:
             messagebox.showwarning("Action failed", "Unable to modify that entry.")
 
     def _revive_selected(self) -> None:
-        self._act(userdata_service.force_revive)
+        self._act(bot_control_service.force_revive_user)
 
     def _view_details(self) -> None:
         selection = self._tree.selection()
@@ -341,6 +355,11 @@ class DeathCounterPanel(tk.Frame):
                 highlightcolor=theme.panel_bg,
                 relief=tk.FLAT,
             )
+
+    def apply_live_update(self, count: int, last_reset: int) -> None:
+        self._count_var.set(str(count))
+        self._since_var.set(self._format_since_text(last_reset))
+        self._status_var.set("Counter auto-refreshed from the latest event.")
 
 
 class AdminManagerPanel(tk.Frame):
@@ -757,6 +776,10 @@ class SidebarPane(tk.Frame):
             userdata_path=self.config_data.get("userdata_db_path", "userdata_db.json"),
         )
         self._notebook.add(self._danger_panel, text="Danger")
+
+    def update_death_counter(self, count: int, last_reset: int) -> None:
+        if hasattr(self, "_counter_panel"):
+            self._counter_panel.apply_live_update(count, last_reset)
 
     def reload_paths(self, config: dict) -> None:
         self.config_data = config

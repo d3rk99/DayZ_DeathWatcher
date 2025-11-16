@@ -31,6 +31,7 @@ client: Optional[Bot] = None
 config: dict = {}
 death_counter_state: dict = {"count": 0, "last_reset": int(time.time())}
 death_counter_lock: Optional[asyncio.Lock] = None
+death_counter_observers: list[Callable[[int, int], None]] = []
 
 
 class MissingConfigPaths(Exception):
@@ -175,6 +176,25 @@ def get_death_counter_lock() -> asyncio.Lock:
     return death_counter_lock
 
 
+def register_death_counter_observer(callback: Callable[[int, int], None]) -> None:
+    if callback in death_counter_observers:
+        return
+    death_counter_observers.append(callback)
+
+
+def unregister_death_counter_observer(callback: Callable[[int, int], None]) -> None:
+    if callback in death_counter_observers:
+        death_counter_observers.remove(callback)
+
+
+def _notify_death_counter_observers(count: int, last_reset: int) -> None:
+    for callback in list(death_counter_observers):
+        try:
+            callback(count, last_reset)
+        except Exception:
+            pass
+
+
 def _format_day_suffix(day: int) -> str:
     if 10 <= day % 100 <= 20:
         return "th"
@@ -235,6 +255,7 @@ async def reset_death_counter() -> tuple[int, int]:
         last_reset = death_counter_state["last_reset"]
 
     await update_bot_activity(count=count, last_reset=last_reset)
+    _notify_death_counter_observers(count, last_reset)
     return count, last_reset
 
 
@@ -259,6 +280,7 @@ async def set_death_counter_value(count: int) -> tuple[int, int]:
         last_reset = int(death_counter_state.get("last_reset", int(time.time())))
 
     await update_bot_activity(count=current, last_reset=last_reset)
+    _notify_death_counter_observers(current, last_reset)
     return current, last_reset
 
 
@@ -277,6 +299,7 @@ async def adjust_death_counter(delta: int) -> tuple[int, int]:
         last_reset = int(death_counter_state.get("last_reset", int(time.time())))
 
     await update_bot_activity(count=current, last_reset=last_reset)
+    _notify_death_counter_observers(current, last_reset)
     return current, last_reset
             
 
@@ -763,11 +786,13 @@ def launch_gui() -> None:
     app: GuiApplication
 
     def shutdown() -> None:
+        unregister_death_counter_observer(app.handle_death_counter_update)
         stop_bot()
         if app.bot_thread and app.bot_thread.is_alive():
             app.bot_thread.join(timeout=5)
 
     app = GuiApplication(on_close=shutdown)
+    register_death_counter_observer(app.handle_death_counter_update)
 
     original_stdout = sys.stdout
     original_stderr = sys.stderr

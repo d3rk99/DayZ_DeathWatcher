@@ -95,11 +95,14 @@ def force_mark_dead(path: str, discord_id: str) -> bool:
 
 def remove_user(path: str, discord_id: str) -> bool:
     data = _read_json(Path(path))
-    if discord_id in data.get("userdata", {}):
-        data["userdata"].pop(discord_id)
-        _save_userdata(Path(path), data)
-        return True
-    return False
+    if discord_id not in data.get("userdata", {}):
+        return False
+    data["userdata"].pop(discord_id, None)
+    season_deaths = data.get("season_deaths")
+    if isinstance(season_deaths, list) and discord_id in season_deaths:
+        season_deaths.remove(discord_id)
+    _save_userdata(Path(path), data)
+    return True
 
 
 def wipe_database(path: str) -> bool:
