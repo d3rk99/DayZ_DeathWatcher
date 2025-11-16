@@ -15,12 +15,16 @@ from nextcord.member import Member
 import nextcord
 from nextcord import Webhook
 from dayz_dev_tools import guid as GUID
+from death_watcher.new_dayz_death_watcher import DeathWatcher
+
+death_watcher_instance = None
 
 os.system("title " + "Life and Death Bot")
 
 def main():
     global client
     global config
+    global death_watcher_instance
     
     if (not os.path.isfile("config.json")):
         sys.exit("'config.json' not found!")
@@ -64,6 +68,15 @@ def main():
     if (watch_death_watcher_bans and not os.path.isfile(config["death_watcher_death_path"])):
         print(f"Failed to find death watcher deaths file. ({config['death_watcher_death_path']}) Continuing without watching for deaths")
         watch_death_watcher_bans = False
+
+    if (watch_death_watcher_bans):
+        try:
+            death_watcher_instance = DeathWatcher()
+            death_watcher_instance.start_in_background()
+            print("\nEmbedded death watcher started.")
+        except Exception as e:
+            print(f"Failed to start embedded death watcher. Continuing without log monitoring. Error: {e}")
+            watch_death_watcher_bans = False
     
     vc_check.start()
     check_if_users_can_revive.start()

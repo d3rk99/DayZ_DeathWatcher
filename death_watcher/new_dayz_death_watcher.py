@@ -1,278 +1,272 @@
-import time
-import sys
-import os
-import json
+"""Death Watcher module.
+
+Originally this script was a stand-alone utility. It now exposes a
+``DeathWatcher`` class that can be embedded in the Discord bot so both pieces
+can run from the same process. The watcher tails the newest DayZ ``.adm`` log
+inside the configured directory, looks for death cues and appends the matching
+GUID to the ``deaths.txt`` file that the bot consumes.
+"""
+from __future__ import annotations
+
 import glob
+import json
+import os
+import threading
+import time
+from typing import Dict, List, Tuple
+
+DEFAULT_CONFIG: Dict[str, object] = {
+    "path_to_logs_directory": "../../profiles",
+    "path_to_bans": "./deaths.txt",
+    "path_to_cache": "./death_watcher_cache.json",
+    "death_cues": [
+        "killed by",
+        "committed suicide",
+        "bled out",
+        "died.",
+        "(DEAD)",
+        "was brutally murdered by that psycho Timmy",
+    ],
+    "ban_delay": 5,
+    "search_logs_interval": 1,
+    "verbose_logs": 1,
+}
+
+DEFAULT_CACHE = {
+    "prev_log_read": {"line": ""},
+    "log_label": "2022-01-01 at 00:00:00",
+}
 
 
-os.system("title " + "DayZ Death Watcher")
+class DeathWatcher:
+    """Tail DayZ server logs and write deaths to a ban file."""
 
-try:
-    with open("./config.json", "r") as json_file:
-        config = json.load(json_file)
-except FileNotFoundError:
-    print("Generating default config file: (config.json)")
-    with open("./config.json", "w") as json_file:
-        json_file.write("""{
-    "path_to_logs" : "../profiles/DayZServer_x64.ADM",
-    "path_to_bans" : "./deaths.txt",
-    "path_to_cache" : "./death_watcher_cache.json",
-    "death_cues" : ["killed by", "committed suicide", "bled out", "died.", "(DEAD)", "was brutally murdered by that psycho Timmy"],
-    "ban_delay" : 5,
-    "search_logs_interval" : 1,
-    "verbose_logs" : 1
-}""")
+    def __init__(self, config_path: str | None = None) -> None:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.config_path = config_path or os.path.join(base_dir, "config.json")
+        self.base_dir = os.path.dirname(os.path.abspath(self.config_path))
+        self.players_to_ban: List[Tuple[str, float]] = []
+        self.stop_event = threading.Event()
+        self.current_cache: Dict[str, Dict[str, str]] = DEFAULT_CACHE.copy()
 
-with open("./config.json", "r") as json_file:
-    config = json.load(json_file)
+        self._ensure_config_file()
+        self.config = self._load_json(self.config_path)
+        self._hydrate_paths_from_config()
+        self._ensure_cache_file()
+        self.current_cache = self._load_json(self.path_to_cache)
+        self.verbose_logs = int(self.config.get("verbose_logs", 0))
+        self.search_logs_interval = float(self.config.get("search_logs_interval", 1))
+        self.ban_delay = float(self.config.get("ban_delay", 5))
 
+    def start_in_background(self) -> threading.Thread:
+        """Start the watcher on a daemon thread and return it."""
+        thread = threading.Thread(target=self.run, daemon=True)
+        thread.start()
+        return thread
 
-# create last read log file if it doesn't exist
-if (not os.path.isfile(config["path_to_cache"])):
-    print(f"Failed to find cache file: {config['path_to_cache']}\nCreating it now.")
-    with open(config["path_to_cache"], "w") as file:
-        file.write("""{
-	"prev_log_read" : {"line" : ""},
-	"log_label" : "2022-01-01 at 00:00:00"
-}""")
+    def stop(self) -> None:
+        """Signal the watcher to stop."""
+        self.stop_event.set()
 
-with open(config["path_to_cache"], "r") as json_file:
-    current_cache = json.load(json_file)
+    # ------------------------------------------------------------------
+    # File helpers
+    def _ensure_config_file(self) -> None:
+        os.makedirs(self.base_dir, exist_ok=True)
+        if not os.path.isfile(self.config_path):
+            with open(self.config_path, "w", encoding="utf-8") as file:
+                json.dump(DEFAULT_CONFIG, file, indent=2)
 
+    def _ensure_cache_file(self) -> None:
+        cache_dir = os.path.dirname(self.path_to_cache)
+        os.makedirs(cache_dir, exist_ok=True)
+        if not os.path.isfile(self.path_to_cache):
+            with open(self.path_to_cache, "w", encoding="utf-8") as file:
+                json.dump(DEFAULT_CACHE, file, indent=2)
 
+    def _load_json(self, path: str) -> Dict:
+        with open(path, "r", encoding="utf-8") as json_file:
+            return json.load(json_file)
 
-try:
-    #path_to_logs = config["path_to_logs"]
-    path_to_bans = config["path_to_bans"]
-    path_to_cache = config["path_to_cache"]
-    death_cues = config["death_cues"]
-    search_logs_interval = int(config["search_logs_interval"])
-    verbose_logs = int(config["verbose_logs"])
+    def _resolve_path(self, configured_path: str) -> str:
+        if os.path.isabs(configured_path):
+            return configured_path
+        return os.path.abspath(os.path.join(self.base_dir, configured_path))
 
-except Exception as e:
-    print(f"Ran into unexpected error loading variables from config:\n{e}")
-    input("Press enter to close this window.")
-    sys.exit(0)
+    def _hydrate_paths_from_config(self) -> None:
+        self.path_to_logs_directory = self._resolve_path(
+            self.config["path_to_logs_directory"]
+        )
+        self.path_to_bans = self._resolve_path(self.config["path_to_bans"])
+        self.path_to_cache = self._resolve_path(self.config["path_to_cache"])
+        self.death_cues = self.config.get("death_cues", [])
 
+    # ------------------------------------------------------------------
+    # Core functionality
+    def run(self) -> None:
+        """Continuously monitor logs for deaths."""
+        print("Starting embedded DayZ death watcher...")
+        if not os.path.isfile(self.path_to_bans):
+            raise FileNotFoundError(
+                f"Failed to find ban file: '{self.path_to_bans}'."
+            )
 
-players_to_ban = []
+        self.current_cache = self._load_json(self.path_to_cache)
+        if self.current_cache.get("prev_log_read", {}).get("line") == "\n":
+            self.current_cache["prev_log_read"]["line"] = ""
 
-
-def try_to_ban_players():    
-    current_seconds = time.time()
-    
-    for player in players_to_ban:
-        if (current_seconds >= player[1]):
-            ban_player(player[0])
-            players_to_ban.remove(player)
-        else:
-            break
-
-
-def ban_player(player_id):
-    success = False
-    tries = 0
-    
-    while not success and tries < 10:
         try:
-            with open(path_to_bans, "a+") as file:
-                file.seek(0)
-                ids = [name.strip() for name in file]
-                if not player_id in ids:
-                    file.write(f'{player_id}\n')
-            success = True
-        except Exception as e:
-            print(f"Failed to ban player: '{e}' Try: {tries + 1}")
-            tries += 1
-            time.sleep(0.25)
-    
-    if success:
-        if (verbose_logs):
-            print(f"Added player with id: {player_id} to ban file: {path_to_bans}")
-    else:
-        print(f"Player: {player_id} could not be added to the ban file: {path_to_bans}")
-    
+            latest_file = self.get_latest_file()
+        except FileNotFoundError as exc:
+            print(exc)
+            latest_file = None
+        if latest_file:
+            print(f"Started searching for new logs. ({latest_file})")
 
-def get_latest_file():
-    directory=config["path_to_logs_directory"]
-    # Find all .adm files in the directory
-    adm_files = glob.glob(os.path.join(directory, "*.adm"))
+        while not self.stop_event.is_set():
+            try:
+                latest_file = self.get_latest_file()
+                logs = self._read_log_file(latest_file)
+            except FileNotFoundError as exc:
+                print(exc)
+                self._sleep_with_stop(10)
+                continue
 
-    if not adm_files:
-        print("No .adm files found.")
-        return
+            log_label = " ".join(logs[1].split(" ")[3:]) if len(logs) > 1 else ""
+            if log_label != self.current_cache.get("log_label"):
+                self.current_cache["log_label"] = log_label
 
-    # Get the latest file by modification time
-    latest_file = max(adm_files, key=os.path.getmtime)
-    return latest_file
+            new_lines = self.read_new_lines(logs)
+            if self.verbose_logs and new_lines:
+                print(f"Found {len(new_lines)} new logs")
 
-def read_new_lines():
-    try:
-        latest_file=get_latest_file()
-        with open(latest_file, "r") as file:
+            for line in new_lines:
+                self._process_line(line)
+                self.current_cache["prev_log_read"]["line"] = line
+                self.update_cache()
+
+            if self.verbose_logs and new_lines:
+                print()
+            self.try_to_ban_players()
+            self._sleep_with_stop(self.search_logs_interval)
+
+    def _process_line(self, line: str) -> None:
+        if self.verbose_logs:
+            print(line)
+        if self.is_death_log(line):
+            player_id = self.get_id_from_line(line)
+            if self.verbose_logs:
+                print(f"Found death log: {line} Victim id: {player_id}")
+            if player_id and not self.player_is_queued_for_ban(player_id):
+                time_to_ban_player = time.time() + self.ban_delay
+                if (
+                    self.players_to_ban
+                    and time_to_ban_player < self.players_to_ban[-1][1] + 2
+                ):
+                    time_to_ban_player = self.players_to_ban[-1][1] + 2
+                self.players_to_ban.append((player_id, time_to_ban_player))
+                print(f"    Queued ban for player id: {player_id}.")
+                if self.verbose_logs:
+                    print(
+                        f"    This player will be banned in {time_to_ban_player - time.time()} seconds."
+                    )
+
+    def try_to_ban_players(self) -> None:
+        current_seconds = time.time()
+        for player in list(self.players_to_ban):
+            if current_seconds >= player[1]:
+                self.ban_player(player[0])
+                self.players_to_ban.remove(player)
+            else:
+                break
+
+    def ban_player(self, player_id: str) -> None:
+        tries = 0
+        while tries < 10:
+            try:
+                os.makedirs(os.path.dirname(self.path_to_bans), exist_ok=True)
+                with open(self.path_to_bans, "a+", encoding="utf-8") as file:
+                    file.seek(0)
+                    ids = [name.strip() for name in file]
+                    if player_id not in ids:
+                        file.write(f"{player_id}\n")
+                if self.verbose_logs:
+                    print(
+                        f"Added player with id: {player_id} to ban file: {self.path_to_bans}"
+                    )
+                return
+            except Exception as exc:  # pragma: no cover - best effort logging
+                print(f"Failed to ban player: '{exc}' Try: {tries + 1}")
+                tries += 1
+                time.sleep(0.25)
+        print(
+            f"Player: {player_id} could not be added to the ban file: {self.path_to_bans}"
+        )
+
+    def get_latest_file(self) -> str:
+        adm_files = glob.glob(os.path.join(self.path_to_logs_directory, "*.adm"))
+        if not adm_files:
+            raise FileNotFoundError(
+                f"No .adm files found in {self.path_to_logs_directory}."
+            )
+        return max(adm_files, key=os.path.getmtime)
+
+    def _read_log_file(self, latest_file: str) -> List[str]:
+        with open(latest_file, "r", encoding="utf-8") as file:
             lines = file.read().split("\n")
-    except Exception as e:
-        time.sleep(10)
-        return []
-    
-    while ("" in lines):
-        lines.remove("")
-    
-    lines.reverse()
-    
-    new_lines = []
-    for line in lines:
-        if (line == current_cache["prev_log_read"]["line"]):
-            break
-        new_lines.insert(0, line)
-    
-    return new_lines
+        return [line for line in lines if line]
 
+    def read_new_lines(self, lines: List[str]) -> List[str]:
+        reversed_lines = list(reversed(lines))
+        new_lines: List[str] = []
+        for line in reversed_lines:
+            if line == self.current_cache["prev_log_read"].get("line"):
+                break
+            new_lines.insert(0, line)
+        return new_lines
 
-def is_death_log(line):
-    for death in death_cues:
-        if (death in line and not f'"{death}' in line and not f"'{death}" in line):
-            return True
+    def is_death_log(self, line: str) -> bool:
+        for death in self.death_cues:
+            if death in line and f'"{death}' not in line and f"'{death}" not in line:
+                return True
+        return False
 
-    return False
+    def get_id_from_line(self, line: str) -> str:
+        index = line.find("(id=")
+        start_index = index + 4
+        if index == -1 or len(line) < (start_index + 44):
+            return ""
+        player_id = line[start_index : start_index + 44]
+        if "Unknown" in player_id:
+            return ""
+        return player_id
 
+    def update_cache(self) -> None:
+        with open(self.path_to_cache, "w", encoding="utf-8") as json_file:
+            json.dump(self.current_cache, json_file, indent=4)
+        if self.verbose_logs:
+            print(f"Updated cache file: {self.current_cache}")
 
-def get_id_from_line(line):
-    index = line.find("(id=")
-    start_index = index + 4
-    
-    if (index == -1 or len(line) < (start_index + 44)):
-        return ""
-    
-    player_id = ""
-    player_id = line[start_index:start_index + 44]
-    
-    if ("Unknown" in player_id):
-        return ""
-    
-    return player_id
+    def player_is_queued_for_ban(self, player_id: str) -> bool:
+        return any(player[0] == player_id for player in self.players_to_ban)
 
-
-def update_cache():
-    with open(config["path_to_cache"], "w") as json_file:
-        json.dump(current_cache, json_file, indent = 4)
-    if (verbose_logs):
-        print(f"Updated cache file:\n    {current_cache}")
-    
-    
-def load_cache():
-    with open(config["path_to_cache"], "r") as json_file:
-        return json.load(json_file)
-
-
-def player_is_queued_for_ban(player_id):
-    for player in players_to_ban:
-        if (player[0] == player_id):
-            return True
-    return False
-
-
-
-def __main__():
-    global current_cache
-    print("Starting script...")
-    
-    # verify core files are found
-    #if (not os.path.isfile(path_to_logs)):
-       #print(f"Failed to find log file: \"{path_to_logs}\"")
-        #input("Press enter to close this window.")
-       # sys.exit(0)
-    if (not os.path.isfile(path_to_bans)):
-        print(f"Failed to find ban file: \"{path_to_bans}\"")
-        input("Press enter to close this window.")
-        sys.exit(0)
-    
-    
-    current_cache = load_cache()
-    if (current_cache["prev_log_read"]["line"] == "\n"):
-        current_cache["prev_log_read"]["line"] = ""
-    log_number = 0
-    
-    
-    if (current_cache["prev_log_read"]["line"] != ""):
-        print(f"Last log read: {current_cache['prev_log_read']['line']}")
-    
-    time.sleep(1)
-    latest_file = get_latest_file()
-    print(f"Started searching for new logs. ({latest_file})\n")
-    time.sleep(1)
-    
-    
-    while(True):
-        
-        try:
-            latest_file=get_latest_file()
-            with open(latest_file, "r") as log_file:
-                logs = log_file.read().split('\n')
-            while("" in logs) :
-                logs.remove("")
-        
-            log_label = ' '.join(logs[1].split(' ')[3:])
-            if (log_label != current_cache["log_label"]):
-                pass
-            current_cache["log_label"] = log_label
-        
-        except Exception as e:
-            time.sleep(10)
-            continue
-        
-        # Read new log messages
-        new_lines = read_new_lines()
-        if (verbose_logs and len(new_lines) > 0):
-            print(f"Found {len(new_lines)} new logs")
-            
-        # Search each new log message for death messages
-        for line in new_lines:
-            if (verbose_logs):
-                print(f"[{log_number}] {line}")
-            
-            # If current log message is a death message, get their id, and ban them
-            if (is_death_log(line)):
-                player_id = get_id_from_line(line)
-                if (verbose_logs):
-                    print(f"Found death log:\n    {line} Victim id: {player_id}")
-                    
-                if (player_id and not player_is_queued_for_ban(player_id)):
-                    time_to_ban_player = time.time() + float(config["ban_delay"])
-                    if (len(players_to_ban) > 0 and time_to_ban_player < players_to_ban[len(players_to_ban) - 1][1] + 2):
-                        time_to_ban_player = players_to_ban[len(players_to_ban) - 1][1] + 2
-                    players_to_ban.append((player_id, time_to_ban_player));
-                    print(f"    Banning player with id: {player_id}.")
-                    if (verbose_logs):
-                        print(f"    This player will be banned in {time_to_ban_player - time.time()} seconds.")
-                if (verbose_logs):
-                    print()
-                
-            # Update last log message to know where we already searched for death messages
-            current_cache["prev_log_read"]["line"] = line
-            update_cache()
-            
-            log_number += 1
-        
-        if (verbose_logs and len(new_lines) > 0):
-            print()
-        try_to_ban_players()
-        
-        # time.sleep loop to cut out faster on interrupts
-        sleep_amount = search_logs_interval
-        while(sleep_amount > 0):
-            sleep_inc = min(0.25, sleep_amount)
+    def _sleep_with_stop(self, seconds: float) -> None:
+        remaining = seconds
+        while remaining > 0 and not self.stop_event.is_set():
+            sleep_inc = min(0.25, remaining)
             time.sleep(sleep_inc)
-            sleep_amount -= sleep_inc
-    
+            remaining -= sleep_inc
 
-try:
-    __main__()
-    
-except KeyboardInterrupt:
-    print("Closing program...")
-    time.sleep(1.0)
-    
-except Exception as e:
-    print(f"Ran into an unexpected exception. Error: {e}")
-    input("Press enter to close this window.")
+
+def main() -> None:
+    watcher = DeathWatcher()
+    try:
+        watcher.run()
+    except KeyboardInterrupt:
+        watcher.stop()
+        print("Closing program...")
+    except Exception as exc:  # pragma: no cover - CLI helper
+        print(f"Ran into an unexpected exception. Error: {exc}")
+
+
+if __name__ == "__main__":
+    main()
