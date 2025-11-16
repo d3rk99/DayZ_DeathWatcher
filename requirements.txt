@@ -11,6 +11,7 @@ jsonschema>=4.19.1
 jsonschema-specifications>=2023.7.1
 multidict>=6.0.4
 nextcord>=2.6.0
+matplotlib>=3.8.0
 referencing>=0.30.2
 rpds-py>=0.10.6
 tomli>=2.0.1
