@@ -59,3 +59,13 @@ def adjust_counter(path_str: str, delta: int) -> Tuple[int, int]:
         state["last_reset"] = int(time.time())
     _write_state(path, state)
     return state["count"], state["last_reset"]
+
+
+def wipe_counter(path_str: str) -> Tuple[int, int]:
+    """Force the counter back to zero and stamp a new last_reset timestamp."""
+    path = Path(path_str)
+    state = _load_state(path)
+    state["count"] = 0
+    state["last_reset"] = int(time.time())
+    _write_state(path, state)
+    return state["count"], state["last_reset"]

@@ -71,6 +71,17 @@ def adjust_death_counter(path: str, delta: int) -> Tuple[int, int, bool]:
     return count, last_reset, False
 
 
+def wipe_death_counter(path: str) -> Tuple[int, int, bool]:
+    module = _get_main_module()
+    coro = getattr(module, "reset_death_counter", None)
+    loop = _get_bot_loop()
+    if coro and loop:
+        count, last_reset = _run_in_loop(coro)
+        return count, last_reset, True
+    count, last_reset = death_counter_service.wipe_counter(path)
+    return count, last_reset, False
+
+
 def refresh_activity() -> None:
     module = _get_main_module()
     coro = getattr(module, "update_bot_activity", None)

@@ -206,6 +206,13 @@ class DeathCounterPanel(tk.Frame):
         )
         self._activity_button.pack(side=tk.LEFT, padx=(6, 0))
         self._buttons.append(self._activity_button)
+        self._wipe_button = tk.Button(
+            action_row,
+            text="Wipe Counter",
+            command=self._wipe_counter,
+        )
+        self._wipe_button.pack(side=tk.LEFT, padx=(6, 0))
+        self._buttons.append(self._wipe_button)
 
         adjust_label = tk.Label(self, text="Set counter to:")
         adjust_label.pack(anchor="w", padx=10)
@@ -254,7 +261,12 @@ class DeathCounterPanel(tk.Frame):
     def _adjust(self, delta: int) -> None:
         self._update_counter(lambda: bot_control_service.adjust_death_counter(self.death_counter_path, delta))
 
-    def _update_counter(self, updater: Callable[[], tuple[int, int, bool]]) -> None:
+    def _update_counter(
+        self,
+        updater: Callable[[], tuple[int, int, bool]],
+        *,
+        success_messages: tuple[str, str] | None = None,
+    ) -> None:
         try:
             count, last_reset, synced = updater()
         except Exception as exc:
@@ -262,7 +274,9 @@ class DeathCounterPanel(tk.Frame):
             return
         self._count_var.set(str(count))
         self._since_var.set(self._format_since_text(last_reset))
-        if synced:
+        if success_messages:
+            self._status_var.set(success_messages[0] if synced else success_messages[1])
+        elif synced:
             self._status_var.set("Updated live counter and bot activity.")
         else:
             self._status_var.set("Bot offline. Saved update to disk only.")
@@ -273,6 +287,21 @@ class DeathCounterPanel(tk.Frame):
             messagebox.showinfo("Bot Activity", "Presence updated with the latest counter value.")
         except Exception as exc:
             messagebox.showerror("Bot Activity", str(exc))
+
+    def _wipe_counter(self) -> None:
+        confirm = messagebox.askyesno(
+            "Death Counter",
+            "Wipe the counter and stamp a new wipe date?",
+        )
+        if not confirm:
+            return
+        self._update_counter(
+            lambda: bot_control_service.wipe_death_counter(self.death_counter_path),
+            success_messages=(
+                "Counter wiped and bot activity refreshed.",
+                "Bot offline. Counter wiped and saved to disk.",
+            ),
+        )
 
     def _format_since_text(self, timestamp: int) -> str:
         if not timestamp:
