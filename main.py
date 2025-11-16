@@ -6,6 +6,9 @@ import aiohttp
 import asyncio
 import json
 import time
+import traceback
+import threading
+from typing import Callable, Optional
 
 from nextcord import Interaction, SlashOption, ChannelType
 from nextcord.abc import GuildChannel
@@ -16,37 +19,55 @@ import nextcord
 from nextcord import Webhook
 from dayz_dev_tools import guid as GUID
 
+# Ensure the script runs relative to its own directory so double-click
+# launches behave the same as running from a terminal.
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+os.chdir(SCRIPT_DIR)
+
 os.system("title " + "Life and Death Bot")
 
-def main():
+client: Optional[Bot] = None
+config: dict = {}
+
+
+def main(*, interactive: bool = True, death_log_callback: Optional[Callable[[str], None]] = None):
     global client
     global config
-    
+
     if (not os.path.isfile("config.json")):
-        sys.exit("'config.json' not found!")
-    else:
-        print("Loading config...")
-        with open("config.json") as file:
-            config = json.load(file)
-    
+        message = "'config.json' not found!"
+        if interactive:
+            sys.exit(message)
+        raise FileNotFoundError(message)
+
+    print("Loading config...")
+    with open("config.json") as file:
+        config = json.load(file)
+
     # create userdata db (json) file if it does not exist
     if (not os.path.isfile(config["userdata_db_path"])):
         print(f"Userdata db file ({config['userdata_db_path']}) not found. Creating it now.")
         with open(config["userdata_db_path"], "w") as file:
             file.write("{\"userdata\": {}}")
-    
+
     # verify whitelist file path is valid
     if (not os.path.isfile(config["whitelist_path"])):
-        print(f"Whitelist file ({config['whitelist_path']}) not found. Please verify the path to the whitelist file in the config file.")
-        input("Press enter to close this window.")
-        sys.exit(0)
-        
+        message = f"Whitelist file ({config['whitelist_path']}) not found. Please verify the path to the whitelist file in the config file."
+        print(message)
+        if interactive:
+            input("Press enter to close this window.")
+            sys.exit(0)
+        raise FileNotFoundError(message)
+
     # verify blacklist file path is valid
     if (not os.path.isfile(config["blacklist_path"])):
-        print(f"Blacklist_path file ({config['blacklist_path']}) not found. Please verify the path to the blacklist file in the config file.")
-        input("Press enter to close this window.")
-        sys.exit(0)
-    
+        message = f"Blacklist_path file ({config['blacklist_path']}) not found. Please verify the path to the blacklist file in the config file."
+        print(message)
+        if interactive:
+            input("Press enter to close this window.")
+            sys.exit(0)
+        raise FileNotFoundError(message)
+
     if (not os.path.isfile(config["steam_ids_to_unban_path"])):
         print(f"Steam ids to unban file ({config['steam_ids_to_unban_path']}) not found. Creating it now.")
         with open(config["steam_ids_to_unban_path"], "w") as file:
@@ -55,6 +76,10 @@ def main():
     intents = nextcord.Intents.all()
 
     client = Bot(command_prefix=config["prefix"], intents=intents)
+
+    # expose config to cogs so optional components can read shared settings
+    client.config = config
+    client.death_watcher_logger = death_log_callback
 
     client.remove_command("help")
     
@@ -79,10 +104,22 @@ def main():
 
 def load_cogs():
     print("Loading cogs...")
+
+    disabled_cogs = set()
+    if int(config.get("run_death_watcher_cog", 0)) == 0:
+        disabled_cogs.add("death_watcher")
+
     for fn in os.listdir("./cogs"):
-        if (fn.endswith(".py")):
-            print(f"\t{fn}...")
-            client.load_extension(f"cogs.{fn[:-3]}")
+        if (not fn.endswith(".py")):
+            continue
+
+        cog_name = fn[:-3]
+        if cog_name in disabled_cogs:
+            print(f"\t{fn}... (disabled via config)")
+            continue
+
+        print(f"\t{fn}...")
+        client.load_extension(f"cogs.{cog_name}")
             
 
 @tasks.loop(seconds = 2)
@@ -501,13 +538,346 @@ async def get_user_id_from_name(username : str):
             ID = ""
     except:
         ID = ""
-    
-    return ID
-        
 
+    return ID
+
+
+
+
+def stop_bot() -> None:
+    global client
+    if client is None:
+        return
+
+    loop = getattr(client, "loop", None)
+    if loop and loop.is_running():
+        asyncio.run_coroutine_threadsafe(client.close(), loop)
+
+
+def run_bot(*, interactive: bool = True, death_log_callback: Optional[Callable[[str], None]] = None) -> None:
+    print("Starting script...")
+    try:
+        main(interactive=interactive, death_log_callback=death_log_callback)
+        if client is None:
+            raise RuntimeError("Failed to initialize Discord client.")
+        client.run(config["token"])
+    except KeyboardInterrupt:
+        print("Closing program...")
+    except Exception as exc:
+        print("Encountered an unexpected error. Printing traceback below:\n")
+        traceback.print_exc()
+        print(f"\nError: {exc}")
+        if interactive:
+            input("Press enter to close this window.")
+        else:
+            raise
+
+
+def launch_gui() -> None:
+    import queue
+    import tkinter as tk
+    from tkinter import ttk
+
+    class GuiConsoleWriter:
+        def __init__(self, emit: Callable[[str], None], fallback):
+            self.emit = emit
+            self.fallback = fallback
+            self._buffer = ""
+
+        def write(self, data: str) -> None:
+            text = str(data)
+            if not text:
+                return
+            if self.fallback:
+                self.fallback.write(text)
+            self._buffer += text
+            while "\n" in self._buffer:
+                line, self._buffer = self._buffer.split("\n", 1)
+                self.emit(line + "\n")
+
+        def flush(self) -> None:
+            if self.fallback:
+                self.fallback.flush()
+            if self._buffer:
+                self.emit(self._buffer)
+                self._buffer = ""
+
+    class GuiApplication:
+        def __init__(self) -> None:
+            self.root = tk.Tk()
+            self.root.title("Life and Death Bot Console")
+            self.root.minsize(960, 540)
+
+            self.main_queue: "queue.Queue[str]" = queue.Queue()
+            self.death_queue: "queue.Queue[str]" = queue.Queue()
+            self.bot_thread: Optional[threading.Thread] = None
+            self._style = ttk.Style(self.root)
+            try:
+                self._style.theme_use("clam")
+            except tk.TclError:
+                pass
+
+            self._themes = {
+                "light": {
+                    "bg": "#f0f0f0",
+                    "section_bg": "#ffffff",
+                    "section_border": "#d9d9d9",
+                    "title_fg": "#0f0f0f",
+                    "text_bg": "#ffffff",
+                    "text_fg": "#111111",
+                    "desc_fg": "#3a3a3a",
+                    "control_fg": "#111111",
+                    "control_select": "#dcdcdc",
+                    "scroll_trough": "#e6e6e6",
+                    "scroll_thumb": "#c0c0c0",
+                    "scroll_thumb_active": "#a0a0a0",
+                    "scroll_arrow": "#111111",
+                },
+                "dark": {
+                    "bg": "#1e1e1e",
+                    "section_bg": "#2b2b2b",
+                    "section_border": "#3f3f3f",
+                    "title_fg": "#f5f5f5",
+                    "text_bg": "#121212",
+                    "text_fg": "#f5f5f5",
+                    "desc_fg": "#d0d0d0",
+                    "control_fg": "#f5f5f5",
+                    "control_select": "#3c3c3c",
+                    "scroll_trough": "#232323",
+                    "scroll_thumb": "#3f3f3f",
+                    "scroll_thumb_active": "#515151",
+                    "scroll_arrow": "#f5f5f5",
+                },
+            }
+
+            self._dark_mode = tk.BooleanVar(value=False)
+            self._sections = []
+
+            self._build_layout()
+            self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+            self._apply_theme()
+            self._poll_logs()
+
+        def _build_layout(self) -> None:
+            self._container = tk.Frame(self.root, borderwidth=0)
+            self._container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+            self._controls = tk.Frame(self._container, borderwidth=0)
+            self._controls.pack(fill=tk.X, side=tk.TOP)
+
+            self._dark_toggle = tk.Checkbutton(
+                self._controls,
+                text="Enable dark mode",
+                variable=self._dark_mode,
+                command=self._apply_theme,
+                anchor="e",
+                justify="left",
+                padx=10,
+            )
+            self._dark_toggle.pack(anchor="e")
+
+            self._content = tk.Frame(self._container, borderwidth=0)
+            self._content.pack(fill=tk.BOTH, expand=True)
+
+            self._content.columnconfigure(0, weight=1)
+            self._content.columnconfigure(1, weight=1)
+
+            self._main_text = self._create_section(
+                self._content,
+                column=0,
+                title="Life and Death Bot",
+                description=(
+                    "Shows everything the Discord bot is doing, including"
+                    " cog startup, voice channel automation, revive checks,"
+                    " and any unexpected errors."
+                ),
+            )
+            self._death_text = self._create_section(
+                self._content,
+                column=1,
+                title="DayZ Death Watcher",
+                description=(
+                    "Mirrors the watcher thread that scans DayZ server logs for"
+                    " new deaths and queues bans. Use this to verify which"
+                    " players were detected and when bans are written."
+                ),
+            )
+
+        def _create_section(self, parent, *, column: int, title: str, description: str):
+            frame = tk.Frame(parent, borderwidth=1, relief=tk.FLAT)
+            frame.grid(row=0, column=column, sticky="nsew", padx=(0 if column == 0 else 5, 0))
+            parent.grid_rowconfigure(0, weight=1)
+
+            title_label = tk.Label(frame, text=title, font=("Segoe UI", 12, "bold"), anchor="w")
+            title_label.pack(anchor="w", padx=8, pady=(8, 0))
+            desc_label = tk.Label(frame, text=description, wraplength=400, justify="left", anchor="w")
+            desc_label.pack(anchor="w", padx=8, pady=(0, 6))
+
+            text_container = tk.Frame(frame, borderwidth=0)
+            text_container.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
+
+            text_widget = tk.Text(
+                text_container,
+                wrap=tk.WORD,
+                height=30,
+                font=("Consolas", 10),
+                borderwidth=0,
+                relief=tk.FLAT,
+            )
+            text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            text_widget.configure(state="disabled")
+
+            scrollbar = ttk.Scrollbar(text_container, orient=tk.VERTICAL, command=text_widget.yview)
+            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+            text_widget.configure(yscrollcommand=scrollbar.set)
+
+            self._sections.append({
+                "frame": frame,
+                "title": title_label,
+                "desc": desc_label,
+                "text": text_widget,
+                "text_container": text_container,
+                "scrollbar": scrollbar,
+            })
+
+            return text_widget
+
+        def _apply_theme(self) -> None:
+            theme = self._themes["dark" if self._dark_mode.get() else "light"]
+
+            self.root.configure(bg=theme["bg"])
+            self._container.configure(bg=theme["bg"])
+            self._controls.configure(bg=theme["bg"])
+            self._content.configure(bg=theme["bg"])
+
+            self._dark_toggle.configure(
+                bg=theme["bg"],
+                fg=theme["control_fg"],
+                selectcolor=theme["control_select"],
+                activebackground=theme["bg"],
+                activeforeground=theme["control_fg"],
+            )
+
+            for section in self._sections:
+                frame = section["frame"]
+                title = section["title"]
+                desc = section["desc"]
+                text_widget = section["text"]
+                text_container = section["text_container"]
+                scrollbar = section["scrollbar"]
+
+                frame.configure(bg=theme["section_bg"], highlightbackground=theme["section_border"], highlightcolor=theme["section_border"], highlightthickness=1)
+                title.configure(bg=theme["section_bg"], fg=theme["title_fg"])
+                desc.configure(bg=theme["section_bg"], fg=theme["desc_fg"])
+                text_container.configure(bg=theme["section_bg"])
+                text_widget.configure(
+                    bg=theme["text_bg"],
+                    fg=theme["text_fg"],
+                    insertbackground=theme["text_fg"],
+                    highlightbackground=theme["section_border"],
+                    highlightcolor=theme["section_border"],
+                )
+                scrollbar.configure(style="Vertical.TScrollbar")
+
+            self._style.configure(
+                "Vertical.TScrollbar",
+                troughcolor=theme["scroll_trough"],
+                background=theme["scroll_thumb"],
+                bordercolor=theme["section_border"],
+                lightcolor=theme["scroll_thumb"],
+                darkcolor=theme["scroll_thumb"],
+                arrowcolor=theme["scroll_arrow"],
+            )
+            self._style.map(
+                "Vertical.TScrollbar",
+                background=[
+                    ("active", theme["scroll_thumb_active"]),
+                    ("pressed", theme["scroll_thumb_active"]),
+                ],
+                arrowcolor=[
+                    ("active", theme["scroll_arrow"]),
+                    ("pressed", theme["scroll_arrow"]),
+                ],
+            )
+
+            self._apply_title_bar_theme(self._dark_mode.get())
+
+        def _apply_title_bar_theme(self, dark: bool) -> None:
+            if os.name != "nt":
+                return
+            try:
+                import ctypes
+                from ctypes import wintypes
+
+                hwnd = wintypes.HWND(self.root.winfo_id())
+                value = ctypes.c_int(1 if dark else 0)
+                for attr in (20, 19):
+                    result = ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                        hwnd,
+                        attr,
+                        ctypes.byref(value),
+                        ctypes.sizeof(value),
+                    )
+                    if result == 0:
+                        break
+            except Exception:
+                pass
+
+        def append_main_log(self, message: str) -> None:
+            self.main_queue.put(message)
+
+        def append_death_log(self, message: str) -> None:
+            self.death_queue.put(message)
+
+        def _poll_logs(self) -> None:
+            self._drain_queue(self.main_queue, self._main_text)
+            self._drain_queue(self.death_queue, self._death_text)
+            self.root.after(100, self._poll_logs)
+
+        def _drain_queue(self, q: "queue.Queue[str]", widget) -> None:
+            while not q.empty():
+                message = q.get_nowait()
+                if not isinstance(message, str):
+                    message = str(message)
+                widget.configure(state="normal")
+                if not message.endswith("\n"):
+                    message += "\n"
+                widget.insert(tk.END, message)
+                widget.see(tk.END)
+                widget.configure(state="disabled")
+
+        def _on_close(self) -> None:
+            stop_bot()
+            if self.bot_thread and self.bot_thread.is_alive():
+                self.bot_thread.join(timeout=5)
+            self.root.destroy()
+
+        def run(self) -> None:
+            self.root.mainloop()
+
+    app = GuiApplication()
+
+    original_stdout = sys.stdout
+    original_stderr = sys.stderr
+    sys.stdout = GuiConsoleWriter(app.append_main_log, original_stdout)
+    sys.stderr = GuiConsoleWriter(app.append_main_log, original_stderr)
+
+    def bot_runner() -> None:
+        try:
+            run_bot(interactive=False, death_log_callback=app.append_death_log)
+        except Exception:
+            app.append_main_log("Life and Death Bot stopped due to an unexpected error:\n")
+            app.append_main_log(traceback.format_exc())
+
+    bot_thread = threading.Thread(target=bot_runner, daemon=True)
+    bot_thread.start()
+    app.bot_thread = bot_thread
+
+    app.run()
 
 
 if __name__ == "__main__":
-    print("Starting script...")
-    main()
-    client.run(config["token"])
+    if "--no-gui" in sys.argv:
+        run_bot()
+    else:
+        launch_gui()

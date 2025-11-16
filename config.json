@@ -1,6 +1,6 @@
 {
     "prefix" : "*",
-    "token" : "MTM2NDUwNzM4MjE2NzkwMDIwMA.GQJ26X.jVgSC44QEzyzuKCDkN5-u0JB7CNhgX3dYwA6Jw",
+    "token" : "MTM2NDUwNzM4MjE2NzkwMDIwMA.G4OkTQ.3lfFIXzwZ1V7uHpEdk373k2_gw0BTiDR5wmMNk",
     "whitelist_path" : "../whitelist.txt",
     "blacklist_path" : "E:/DayZ MM/servers/MementoMori/ban.txt",
     "userdata_db_path" : "./userdata_db.json",
@@ -15,7 +15,9 @@
     "season_pass_role" : 997382529910837318,
     "watch_death_watcher" : 1,
     "death_watcher_death_path" : "./death_watcher/deaths.txt",
-	"steam_ids_to_unban_path" : "./steam_ids_to_unban.txt",
+    "run_death_watcher_cog" : 1,
+    "death_watcher_config_path" : "./death_watcher/config.json",
+        "steam_ids_to_unban_path" : "./steam_ids_to_unban.txt",
 	"error_dump_channel" : "1008220971985018980",
 	"error_dump_allow_mention" : 1,
 	"error_dump_mention_tag" : "@Derk",
