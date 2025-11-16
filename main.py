@@ -576,7 +576,7 @@ def run_bot(*, interactive: bool = True, death_log_callback: Optional[Callable[[
 def launch_gui() -> None:
     import queue
     import tkinter as tk
-    from tkinter.scrolledtext import ScrolledText
+    from tkinter import ttk
 
     class GuiConsoleWriter:
         def __init__(self, emit: Callable[[str], None], fallback):
@@ -611,6 +611,11 @@ def launch_gui() -> None:
             self.main_queue: "queue.Queue[str]" = queue.Queue()
             self.death_queue: "queue.Queue[str]" = queue.Queue()
             self.bot_thread: Optional[threading.Thread] = None
+            self._style = ttk.Style(self.root)
+            try:
+                self._style.theme_use("clam")
+            except tk.TclError:
+                pass
 
             self._themes = {
                 "light": {
@@ -623,6 +628,10 @@ def launch_gui() -> None:
                     "desc_fg": "#3a3a3a",
                     "control_fg": "#111111",
                     "control_select": "#dcdcdc",
+                    "scroll_trough": "#e6e6e6",
+                    "scroll_thumb": "#c0c0c0",
+                    "scroll_thumb_active": "#a0a0a0",
+                    "scroll_arrow": "#111111",
                 },
                 "dark": {
                     "bg": "#1e1e1e",
@@ -634,6 +643,10 @@ def launch_gui() -> None:
                     "desc_fg": "#d0d0d0",
                     "control_fg": "#f5f5f5",
                     "control_select": "#3c3c3c",
+                    "scroll_trough": "#232323",
+                    "scroll_thumb": "#3f3f3f",
+                    "scroll_thumb_active": "#515151",
+                    "scroll_arrow": "#f5f5f5",
                 },
             }
 
@@ -700,15 +713,31 @@ def launch_gui() -> None:
             desc_label = tk.Label(frame, text=description, wraplength=400, justify="left", anchor="w")
             desc_label.pack(anchor="w", padx=8, pady=(0, 6))
 
-            text_widget = ScrolledText(frame, wrap=tk.WORD, height=30, font=("Consolas", 10), borderwidth=0)
-            text_widget.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
+            text_container = tk.Frame(frame, borderwidth=0)
+            text_container.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
+
+            text_widget = tk.Text(
+                text_container,
+                wrap=tk.WORD,
+                height=30,
+                font=("Consolas", 10),
+                borderwidth=0,
+                relief=tk.FLAT,
+            )
+            text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
             text_widget.configure(state="disabled")
+
+            scrollbar = ttk.Scrollbar(text_container, orient=tk.VERTICAL, command=text_widget.yview)
+            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+            text_widget.configure(yscrollcommand=scrollbar.set)
 
             self._sections.append({
                 "frame": frame,
                 "title": title_label,
                 "desc": desc_label,
                 "text": text_widget,
+                "text_container": text_container,
+                "scrollbar": scrollbar,
             })
 
             return text_widget
@@ -734,10 +763,13 @@ def launch_gui() -> None:
                 title = section["title"]
                 desc = section["desc"]
                 text_widget = section["text"]
+                text_container = section["text_container"]
+                scrollbar = section["scrollbar"]
 
                 frame.configure(bg=theme["section_bg"], highlightbackground=theme["section_border"], highlightcolor=theme["section_border"], highlightthickness=1)
                 title.configure(bg=theme["section_bg"], fg=theme["title_fg"])
                 desc.configure(bg=theme["section_bg"], fg=theme["desc_fg"])
+                text_container.configure(bg=theme["section_bg"])
                 text_widget.configure(
                     bg=theme["text_bg"],
                     fg=theme["text_fg"],
@@ -745,6 +777,51 @@ def launch_gui() -> None:
                     highlightbackground=theme["section_border"],
                     highlightcolor=theme["section_border"],
                 )
+                scrollbar.configure(style="Vertical.TScrollbar")
+
+            self._style.configure(
+                "Vertical.TScrollbar",
+                troughcolor=theme["scroll_trough"],
+                background=theme["scroll_thumb"],
+                bordercolor=theme["section_border"],
+                lightcolor=theme["scroll_thumb"],
+                darkcolor=theme["scroll_thumb"],
+                arrowcolor=theme["scroll_arrow"],
+            )
+            self._style.map(
+                "Vertical.TScrollbar",
+                background=[
+                    ("active", theme["scroll_thumb_active"]),
+                    ("pressed", theme["scroll_thumb_active"]),
+                ],
+                arrowcolor=[
+                    ("active", theme["scroll_arrow"]),
+                    ("pressed", theme["scroll_arrow"]),
+                ],
+            )
+
+            self._apply_title_bar_theme(self._dark_mode.get())
+
+        def _apply_title_bar_theme(self, dark: bool) -> None:
+            if os.name != "nt":
+                return
+            try:
+                import ctypes
+                from ctypes import wintypes
+
+                hwnd = wintypes.HWND(self.root.winfo_id())
+                value = ctypes.c_int(1 if dark else 0)
+                for attr in (20, 19):
+                    result = ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                        hwnd,
+                        attr,
+                        ctypes.byref(value),
+                        ctypes.sizeof(value),
+                    )
+                    if result == 0:
+                        break
+            except Exception:
+                pass
 
         def append_main_log(self, message: str) -> None:
             self.main_queue.put(message)
