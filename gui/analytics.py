@@ -14,6 +14,7 @@ except ImportError:  # pragma: no cover - runtime dependency guard
     Figure = None
     _MATPLOTLIB_AVAILABLE = False
 
+from gui.theme import LIGHT_THEME, ThemePalette
 from services.analytics_service import AnalyticsManager
 
 
@@ -22,12 +23,14 @@ class AnalyticsPane(tk.Frame):
         super().__init__(master)
         self.manager = manager
         self._has_matplotlib = _MATPLOTLIB_AVAILABLE
+        self._theme: ThemePalette = LIGHT_THEME
         if self._has_matplotlib:
             self._figure = Figure(figsize=(6, 5), dpi=100)
             self._timeline_ax = self._figure.add_subplot(211)
             self._pie_ax = self._figure.add_subplot(212)
             self._canvas = FigureCanvasTkAgg(self._figure, master=self)
             self._canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+            self._warning_label = None
         else:
             self._figure = None
             self._timeline_ax = None
@@ -37,14 +40,14 @@ class AnalyticsPane(tk.Frame):
                 "Matplotlib is not installed. Install it (pip install matplotlib) "
                 "to enable analytics charts."
             )
-            tk.Label(self, text=warning, wraplength=480, justify=tk.LEFT).pack(
-                fill=tk.BOTH, expand=True, padx=12, pady=12
-            )
+            self._warning_label = tk.Label(self, text=warning, wraplength=480, justify=tk.LEFT)
+            self._warning_label.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
 
-        button = tk.Button(self, text="Export Analytics", command=self._export_dialog)
-        button.pack(anchor="e", padx=8, pady=6)
+        self._export_button = tk.Button(self, text="Export Analytics", command=self._export_dialog)
+        self._export_button.pack(anchor="e", padx=8, pady=6)
         if self._has_matplotlib:
             self.refresh()
+        self.apply_theme(self._theme)
 
     def refresh(self) -> None:
         if not self._has_matplotlib:
@@ -94,3 +97,28 @@ class AnalyticsPane(tk.Frame):
             messagebox.showinfo("Export complete", f"Analytics saved to {file_path}")
         except Exception as exc:
             messagebox.showerror("Export failed", str(exc))
+
+    def apply_theme(self, theme: ThemePalette) -> None:
+        self._theme = theme
+        self.configure(bg=theme.bg)
+        self._export_button.configure(
+            bg=theme.button_bg,
+            fg=theme.button_fg,
+            activebackground=theme.accent,
+        )
+        if self._warning_label:
+            self._warning_label.configure(bg=theme.bg, fg=theme.fg)
+        if self._has_matplotlib:
+            self._figure.patch.set_facecolor(theme.bg)
+            self._canvas.get_tk_widget().configure(bg=theme.bg)
+            for ax in (self._timeline_ax, self._pie_ax):
+                ax.set_facecolor(theme.canvas_bg)
+                ax.title.set_color(theme.fg)
+                ax.tick_params(colors=theme.fg)
+                if ax.xaxis.label:
+                    ax.xaxis.label.set_color(theme.fg)
+                if ax.yaxis.label:
+                    ax.yaxis.label.set_color(theme.fg)
+                for spine in ax.spines.values():
+                    spine.set_color(theme.fg)
+            self.refresh()

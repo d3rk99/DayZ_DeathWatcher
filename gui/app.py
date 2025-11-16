@@ -10,6 +10,7 @@ from gui.analytics import AnalyticsPane
 from gui.config_editor import ConfigEditor
 from gui.console_pane import ConsolePane
 from gui.sidebar import SidebarPane
+from gui.theme import ThemePalette, get_theme
 from services.analytics_service import AnalyticsManager
 from services.config_manager import ConfigManager
 
@@ -23,6 +24,8 @@ class GuiApplication:
         self.death_queue: "queue.Queue[str]" = queue.Queue()
         self.bot_thread: Optional[threading.Thread] = None
         self._shutdown_callback = on_close
+        self._dark_mode = tk.BooleanVar(value=False)
+        self._theme: ThemePalette = get_theme(False)
 
         self.config_manager = ConfigManager(config_path)
         self.analytics_manager = AnalyticsManager()
@@ -77,6 +80,8 @@ class GuiApplication:
         self._analytics = AnalyticsPane(analytics_tab, self.analytics_manager)
         self._analytics.pack(fill=tk.BOTH, expand=True)
 
+        self._apply_theme()
+
     def _create_menus(self) -> None:
         menubar = tk.Menu(self.root)
         file_menu = tk.Menu(menubar, tearoff=0)
@@ -86,6 +91,14 @@ class GuiApplication:
         edit_menu = tk.Menu(menubar, tearoff=0)
         edit_menu.add_command(label="Config", command=self._open_config_editor)
         menubar.add_cascade(label="Edit", menu=edit_menu)
+
+        view_menu = tk.Menu(menubar, tearoff=0)
+        view_menu.add_checkbutton(
+            label="Dark Mode",
+            variable=self._dark_mode,
+            command=self._apply_theme,
+        )
+        menubar.add_cascade(label="View", menu=view_menu)
         self.root.config(menu=menubar)
 
     # endregion
@@ -113,6 +126,28 @@ class GuiApplication:
             console.append(message)
             if analytics and self.analytics_manager.record_line(message):
                 self._analytics.refresh()
+
+    def _apply_theme(self) -> None:
+        self._theme = get_theme(self._dark_mode.get())
+        palette = self._theme
+        self.root.tk_setPalette(
+            background=palette.bg,
+            foreground=palette.fg,
+            activeBackground=palette.accent,
+            activeForeground=palette.fg,
+            highlightColor=palette.accent,
+            selectBackground=palette.accent,
+            selectForeground=palette.fg,
+        )
+        self.root.configure(bg=palette.bg)
+        if hasattr(self, "_main_console"):
+            self._main_console.apply_theme(palette)
+        if hasattr(self, "_death_console"):
+            self._death_console.apply_theme(palette)
+        if hasattr(self, "_sidebar"):
+            self._sidebar.apply_theme(palette)
+        if hasattr(self, "_analytics"):
+            self._analytics.apply_theme(palette)
 
     def _on_close(self) -> None:
         if self._shutdown_callback:
