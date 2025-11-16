@@ -62,6 +62,9 @@ def main():
 
     client = Bot(command_prefix=config["prefix"], intents=intents)
 
+    # expose config to cogs so optional components can read shared settings
+    client.config = config
+
     client.remove_command("help")
     
     load_cogs()
@@ -85,10 +88,22 @@ def main():
 
 def load_cogs():
     print("Loading cogs...")
+
+    disabled_cogs = set()
+    if int(config.get("run_death_watcher_cog", 0)) == 0:
+        disabled_cogs.add("death_watcher")
+
     for fn in os.listdir("./cogs"):
-        if (fn.endswith(".py")):
-            print(f"\t{fn}...")
-            client.load_extension(f"cogs.{fn[:-3]}")
+        if (not fn.endswith(".py")):
+            continue
+
+        cog_name = fn[:-3]
+        if cog_name in disabled_cogs:
+            print(f"\t{fn}... (disabled via config)")
+            continue
+
+        print(f"\t{fn}...")
+        client.load_extension(f"cogs.{cog_name}")
             
 
 @tasks.loop(seconds = 2)
