@@ -17,6 +17,11 @@ import nextcord
 from nextcord import Webhook
 from dayz_dev_tools import guid as GUID
 
+# Ensure the script runs relative to its own directory so double-click
+# launches behave the same as running from a terminal.
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+os.chdir(SCRIPT_DIR)
+
 os.system("title " + "Life and Death Bot")
 
 def main():

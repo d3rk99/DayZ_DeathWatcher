@@ -6,6 +6,10 @@ import glob
 import traceback
 
 
+# Ensure relative paths resolve even when the script is double-clicked.
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+os.chdir(SCRIPT_DIR)
+
 os.system("title " + "DayZ Death Watcher")
 
 try:
