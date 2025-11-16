@@ -11,10 +11,18 @@ from services import bot_control_service, list_service, userdata_service
 
 
 class DeadPlayersPanel(tk.Frame):
-    def __init__(self, master, *, userdata_path: str, refresh_interval: int = 5_000) -> None:
+    def __init__(
+        self,
+        master,
+        *,
+        userdata_path: str,
+        wait_time_seconds: int | None = None,
+        refresh_interval: int = 5_000,
+    ) -> None:
         super().__init__(master)
         self.userdata_path = userdata_path
         self.refresh_interval = refresh_interval
+        self._default_wait_seconds = self._normalize_wait_time(wait_time_seconds)
         self._theme: ThemePalette = LIGHT_THEME
         self._tree = self._build_tree()
         self._context_menu = self._build_menu()
@@ -41,19 +49,34 @@ class DeadPlayersPanel(tk.Frame):
     def _build_actions(self) -> tk.Frame:
         frame = tk.Frame(self)
         frame.pack(fill=tk.X, pady=(6, 0))
+        self._revive_all_button = tk.Button(
+            frame,
+            text="Revive Everyone",
+            command=self._revive_all,
+        )
+        self._revive_all_button.pack(side=tk.RIGHT, padx=(0, 6))
         self._revive_button = tk.Button(
             frame,
             text="Revive Selected",
             command=self._revive_selected,
         )
-        self._revive_button.pack(side=tk.RIGHT, padx=(0, 6))
+        self._revive_button.pack(side=tk.RIGHT)
         return frame
 
     def _build_menu(self) -> tk.Menu:
         menu = tk.Menu(self, tearoff=0)
-        menu.add_command(label="Force Revive", command=lambda: self._act(userdata_service.force_revive))
-        menu.add_command(label="Force Mark Dead", command=lambda: self._act(userdata_service.force_mark_dead))
-        menu.add_command(label="Remove from DB", command=lambda: self._act(userdata_service.remove_user))
+        menu.add_command(
+            label="Force Revive",
+            command=lambda: self._act(bot_control_service.force_revive_user),
+        )
+        menu.add_command(
+            label="Force Mark Dead",
+            command=lambda: self._act(bot_control_service.force_mark_dead),
+        )
+        menu.add_command(
+            label="Remove from DB",
+            command=lambda: self._act(bot_control_service.remove_user_from_database),
+        )
         menu.add_separator()
         menu.add_command(label="View death details", command=self._view_details)
         return menu
@@ -68,13 +91,41 @@ class DeadPlayersPanel(tk.Frame):
         if not selection:
             return
         discord_id = selection[0]
-        if fn(self.userdata_path, discord_id):
+        try:
+            success = fn(self.userdata_path, discord_id)
+        except Exception as exc:
+            messagebox.showerror("Action failed", str(exc))
+            return
+        if success:
             self.refresh()
         else:
             messagebox.showwarning("Action failed", "Unable to modify that entry.")
 
     def _revive_selected(self) -> None:
-        self._act(userdata_service.force_revive)
+        self._act(bot_control_service.force_revive_user)
+
+    def _revive_all(self) -> None:
+        if not messagebox.askyesno(
+            "Revive Everyone",
+            "Revive all dead players and restore their Discord roles?",
+        ):
+            return
+        try:
+            revived = bot_control_service.force_revive_all_users(self.userdata_path)
+        except Exception as exc:
+            messagebox.showerror("Revive Everyone", str(exc))
+            return
+        if revived == 0:
+            messagebox.showinfo(
+                "Revive Everyone",
+                "No dead players were found in the database.",
+            )
+        else:
+            messagebox.showinfo(
+                "Revive Everyone",
+                f"Successfully revived {revived} player{'s' if revived != 1 else ''}.",
+            )
+        self.refresh()
 
     def _view_details(self) -> None:
         selection = self._tree.selection()
@@ -93,7 +144,9 @@ class DeadPlayersPanel(tk.Frame):
     def refresh(self) -> None:
         for item in self._tree.get_children():
             self._tree.delete(item)
-        for entry in userdata_service.list_dead_players(self.userdata_path):
+        for entry in userdata_service.list_dead_players(
+            self.userdata_path, default_wait_seconds=self._default_wait_seconds
+        ):
             timestamp = entry.get("time_of_death")
             if timestamp:
                 display_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp))
@@ -118,6 +171,15 @@ class DeadPlayersPanel(tk.Frame):
         self.refresh()
         self.after(self.refresh_interval, self._poll)
 
+    def _normalize_wait_time(self, value: int | None) -> int | None:
+        try:
+            seconds = int(value) if value is not None else None
+        except (TypeError, ValueError):
+            return None
+        if seconds and seconds > 0:
+            return seconds
+        return None
+
     def apply_theme(self, theme: ThemePalette) -> None:
         self._theme = theme
         self.configure(bg=theme.panel_bg)
@@ -141,16 +203,17 @@ class DeadPlayersPanel(tk.Frame):
         self._tree.configure(style=tree_style)
         if hasattr(self, "_actions"):
             self._actions.configure(bg=theme.panel_bg)
-        if hasattr(self, "_revive_button"):
-            self._revive_button.configure(
-                bg=theme.button_bg,
-                fg=theme.button_fg,
-                activebackground=theme.accent,
-                activeforeground=theme.console_fg,
-                highlightbackground=theme.panel_bg,
-                borderwidth=1,
-                relief=tk.FLAT,
-            )
+        for button_name in ("_revive_button", "_revive_all_button"):
+            if hasattr(self, button_name):
+                getattr(self, button_name).configure(
+                    bg=theme.button_bg,
+                    fg=theme.button_fg,
+                    activebackground=theme.accent,
+                    activeforeground=theme.console_fg,
+                    highlightbackground=theme.panel_bg,
+                    borderwidth=1,
+                    relief=tk.FLAT,
+                )
 
 
 class DeathCounterPanel(tk.Frame):
@@ -165,6 +228,10 @@ class DeathCounterPanel(tk.Frame):
         self._buttons: list[tk.Button] = []
         self._build_ui()
         self.refresh()
+        # Give the Discord bot a few seconds to finish connecting before
+        # forcing a presence refresh so the status update doesn't race the
+        # client coming online.
+        self.after(5_000, lambda: self._refresh_activity(show_feedback=False))
 
     def _build_ui(self) -> None:
         self._title = tk.Label(self, text="Death Counter", font=("Segoe UI", 12, "bold"))
@@ -281,12 +348,21 @@ class DeathCounterPanel(tk.Frame):
         else:
             self._status_var.set("Bot offline. Saved update to disk only.")
 
-    def _refresh_activity(self) -> None:
+    def _refresh_activity(self, *, show_feedback: bool = True) -> None:
         try:
             bot_control_service.refresh_activity()
-            messagebox.showinfo("Bot Activity", "Presence updated with the latest counter value.")
+            if show_feedback:
+                messagebox.showinfo(
+                    "Bot Activity",
+                    "Presence updated with the latest counter value.",
+                )
+            else:
+                self._status_var.set("Bot activity refreshed using the saved counter value.")
         except Exception as exc:
-            messagebox.showerror("Bot Activity", str(exc))
+            if show_feedback:
+                messagebox.showerror("Bot Activity", str(exc))
+            else:
+                self._status_var.set(f"Unable to refresh bot activity: {exc}")
 
     def _wipe_counter(self) -> None:
         confirm = messagebox.askyesno(
@@ -341,6 +417,11 @@ class DeathCounterPanel(tk.Frame):
                 highlightcolor=theme.panel_bg,
                 relief=tk.FLAT,
             )
+
+    def apply_live_update(self, count: int, last_reset: int) -> None:
+        self._count_var.set(str(count))
+        self._since_var.set(self._format_since_text(last_reset))
+        self._status_var.set("Counter auto-refreshed from the latest event.")
 
 
 class AdminManagerPanel(tk.Frame):
@@ -720,6 +801,7 @@ class SidebarPane(tk.Frame):
         self._dead_panel = DeadPlayersPanel(
             self._notebook,
             userdata_path=self.config_data.get("userdata_db_path", "userdata_db.json"),
+            wait_time_seconds=self.config_data.get("wait_time_new_life_seconds"),
         )
         self._notebook.add(self._dead_panel, text="Currently Dead")
 
@@ -757,6 +839,10 @@ class SidebarPane(tk.Frame):
             userdata_path=self.config_data.get("userdata_db_path", "userdata_db.json"),
         )
         self._notebook.add(self._danger_panel, text="Danger")
+
+    def update_death_counter(self, count: int, last_reset: int) -> None:
+        if hasattr(self, "_counter_panel"):
+            self._counter_panel.apply_live_update(count, last_reset)
 
     def reload_paths(self, config: dict) -> None:
         self.config_data = config

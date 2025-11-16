@@ -1,7 +1,7 @@
 import json
 import time
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 
 def _read_json(path: Path) -> Dict:
@@ -17,7 +17,9 @@ def load_userdata(path: str) -> Dict:
     return _read_json(Path(path))
 
 
-def list_dead_players(path: str) -> List[Dict[str, str]]:
+def list_dead_players(
+    path: str, *, default_wait_seconds: Optional[int] = None
+) -> List[Dict[str, str]]:
     data = load_userdata(path)
     result: List[Dict[str, str]] = []
     for discord_id, info in data.get("userdata", {}).items():
@@ -29,29 +31,34 @@ def list_dead_players(path: str) -> List[Dict[str, str]]:
                     "steam64": info.get("steam_id", ""),
                     "time_of_death": info.get("time_of_death", 0),
                     "alive_status": "Dead" if int(info.get("is_alive", 0)) == 0 else "Alive",
-                    "revival_eta": _calculate_revive_eta(info),
+                    "revival_eta": _calculate_revive_eta(
+                        info, default_wait_seconds=default_wait_seconds
+                    ),
                 }
             )
     return result
 
 
-def _calculate_revive_eta(info: Dict) -> str:
-    wait_seconds = info.get("revive_wait", 0)
-    if not wait_seconds:
+def _calculate_revive_eta(
+    info: Dict, *, default_wait_seconds: Optional[int] = None
+) -> str:
+    wait_seconds_raw = info.get("revive_wait")
+    if wait_seconds_raw in (None, "", 0):
+        wait_seconds_raw = default_wait_seconds
+    try:
+        wait_seconds = int(wait_seconds_raw)
+    except (TypeError, ValueError):
+        return "Unknown"
+    if wait_seconds <= 0:
         return "Unknown"
     time_of_death = int(info.get("time_of_death", 0))
     if not time_of_death:
         return "Unknown"
-    eta = time_of_death + int(wait_seconds)
-    now = int(time.time())
-    remaining = max(0, eta - now)
-    minutes, seconds = divmod(remaining, 60)
-    hours, minutes = divmod(minutes, 60)
-    if hours:
-        return f"{hours}h {minutes}m"
-    if minutes:
-        return f"{minutes}m"
-    return f"{seconds}s"
+    eta = time_of_death + wait_seconds
+    try:
+        return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(eta))
+    except (ValueError, OSError):
+        return "Unknown"
 
 
 def _save_userdata(path: Path, data: Dict) -> None:
@@ -84,6 +91,35 @@ def force_revive(path: str, discord_id: str) -> bool:
     return _modify_user(Path(path), discord_id, updater)[0]
 
 
+def force_revive_all(path: str) -> int:
+    data = _read_json(Path(path))
+    season_deaths = data.get("season_deaths")
+    if not isinstance(season_deaths, list):
+        season_deaths = []
+        data["season_deaths"] = season_deaths
+
+    revived = 0
+    for discord_id, user in data.get("userdata", {}).items():
+        changed = False
+        if int(user.get("is_alive", 1)) != 1:
+            user["is_alive"] = 1
+            changed = True
+        if user.get("time_of_death"):
+            user["time_of_death"] = 0
+            changed = True
+        if int(user.get("revive_wait", 0)) != 0:
+            user["revive_wait"] = 0
+            changed = True
+        if changed:
+            revived += 1
+            if discord_id in season_deaths:
+                season_deaths.remove(discord_id)
+
+    if revived:
+        _save_userdata(Path(path), data)
+    return revived
+
+
 def force_mark_dead(path: str, discord_id: str) -> bool:
     def updater(user: Dict) -> bool:
         user["is_alive"] = 0
@@ -95,11 +131,14 @@ def force_mark_dead(path: str, discord_id: str) -> bool:
 
 def remove_user(path: str, discord_id: str) -> bool:
     data = _read_json(Path(path))
-    if discord_id in data.get("userdata", {}):
-        data["userdata"].pop(discord_id)
-        _save_userdata(Path(path), data)
-        return True
-    return False
+    if discord_id not in data.get("userdata", {}):
+        return False
+    data["userdata"].pop(discord_id, None)
+    season_deaths = data.get("season_deaths")
+    if isinstance(season_deaths, list) and discord_id in season_deaths:
+        season_deaths.remove(discord_id)
+    _save_userdata(Path(path), data)
+    return True
 
 
 def wipe_database(path: str) -> bool:

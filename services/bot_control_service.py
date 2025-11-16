@@ -5,7 +5,7 @@ import asyncio
 import sys
 from typing import Callable, Tuple
 
-from services import death_counter_service
+from services import death_counter_service, userdata_service
 
 _DEFAULT_TIMEOUT = 10.0
 
@@ -88,3 +88,36 @@ def refresh_activity() -> None:
     if coro is None:
         raise RuntimeError("Unable to find the activity updater.")
     _run_in_loop(coro)
+
+
+def force_revive_user(path: str, discord_id: str) -> bool:
+    module = _get_main_module()
+    coro = getattr(module, "unban_user", None)
+    loop = _get_bot_loop()
+    if coro and loop:
+        _run_in_loop(lambda: coro(discord_id))
+        return True
+    return userdata_service.force_revive(path, discord_id)
+
+
+def force_revive_all_users(path: str) -> int:
+    module = _get_main_module()
+    coro = getattr(module, "bulk_revive_dead_users", None)
+    loop = _get_bot_loop()
+    if coro and loop:
+        return _run_in_loop(coro)
+    return userdata_service.force_revive_all(path)
+
+
+def force_mark_dead(path: str, discord_id: str) -> bool:
+    module = _get_main_module()
+    coro = getattr(module, "set_user_as_dead", None)
+    loop = _get_bot_loop()
+    if coro and loop:
+        _run_in_loop(lambda: coro(discord_id))
+        return True
+    return userdata_service.force_mark_dead(path, discord_id)
+
+
+def remove_user_from_database(path: str, discord_id: str) -> bool:
+    return userdata_service.remove_user(path, discord_id)

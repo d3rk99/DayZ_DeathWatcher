@@ -8,6 +8,7 @@ import json
 import time
 import traceback
 import threading
+import ctypes
 from typing import Callable, List, Optional
 
 from nextcord import Interaction, SlashOption, ChannelType
@@ -18,6 +19,7 @@ from nextcord.member import Member
 import nextcord
 from nextcord import Webhook
 from dayz_dev_tools import guid as GUID
+from services import userdata_service
 from services.path_fields import PATH_FIELDS, REQUIRED_PATH_KEYS
 
 # Ensure the script runs relative to its own directory so double-click
@@ -31,6 +33,7 @@ client: Optional[Bot] = None
 config: dict = {}
 death_counter_state: dict = {"count": 0, "last_reset": int(time.time())}
 death_counter_lock: Optional[asyncio.Lock] = None
+death_counter_observers: list[Callable[[int, int], None]] = []
 
 
 class MissingConfigPaths(Exception):
@@ -175,6 +178,25 @@ def get_death_counter_lock() -> asyncio.Lock:
     return death_counter_lock
 
 
+def register_death_counter_observer(callback: Callable[[int, int], None]) -> None:
+    if callback in death_counter_observers:
+        return
+    death_counter_observers.append(callback)
+
+
+def unregister_death_counter_observer(callback: Callable[[int, int], None]) -> None:
+    if callback in death_counter_observers:
+        death_counter_observers.remove(callback)
+
+
+def _notify_death_counter_observers(count: int, last_reset: int) -> None:
+    for callback in list(death_counter_observers):
+        try:
+            callback(count, last_reset)
+        except Exception:
+            pass
+
+
 def _format_day_suffix(day: int) -> str:
     if 10 <= day % 100 <= 20:
         return "th"
@@ -235,6 +257,7 @@ async def reset_death_counter() -> tuple[int, int]:
         last_reset = death_counter_state["last_reset"]
 
     await update_bot_activity(count=count, last_reset=last_reset)
+    _notify_death_counter_observers(count, last_reset)
     return count, last_reset
 
 
@@ -259,6 +282,7 @@ async def set_death_counter_value(count: int) -> tuple[int, int]:
         last_reset = int(death_counter_state.get("last_reset", int(time.time())))
 
     await update_bot_activity(count=current, last_reset=last_reset)
+    _notify_death_counter_observers(current, last_reset)
     return current, last_reset
 
 
@@ -277,6 +301,7 @@ async def adjust_death_counter(delta: int) -> tuple[int, int]:
         last_reset = int(death_counter_state.get("last_reset", int(time.time())))
 
     await update_bot_activity(count=current, last_reset=last_reset)
+    _notify_death_counter_observers(current, last_reset)
     return current, last_reset
             
 
@@ -660,8 +685,32 @@ async def unban_user(user_id):
         text = f"[UnbanUser] \"{e}\"\nIt is advised to restart this script."
         print(text)
         await dump_error_discord(text, "Unexpected error")
-    
-    
+
+
+async def bulk_revive_dead_users() -> int:
+    if not config:
+        return 0
+    path = config.get("userdata_db_path", "userdata_db.json")
+    try:
+        dead_players = userdata_service.list_dead_players(path)
+    except Exception as exc:
+        print(f"[BulkRevive] Failed to load userdata: {exc}")
+        return 0
+
+    revived = 0
+    for entry in dead_players:
+        discord_id = entry.get("discord_id")
+        if not discord_id:
+            continue
+        try:
+            await unban_user(discord_id)
+            revived += 1
+        except Exception as exc:
+            print(f"[BulkRevive] Failed to revive {discord_id}: {exc}")
+
+    print(f"[BulkRevive] Completed request. Revived {revived} players.")
+    return revived
+
 
 async def dump_error_discord(error_message : str, prefix : str = "Error", force_mention_tag : str = ""):
     prefix = "Error" if (prefix == "") else prefix
@@ -763,11 +812,13 @@ def launch_gui() -> None:
     app: GuiApplication
 
     def shutdown() -> None:
+        unregister_death_counter_observer(app.handle_death_counter_update)
         stop_bot()
         if app.bot_thread and app.bot_thread.is_alive():
             app.bot_thread.join(timeout=5)
 
     app = GuiApplication(on_close=shutdown)
+    register_death_counter_observer(app.handle_death_counter_update)
 
     original_stdout = sys.stdout
     original_stderr = sys.stderr
@@ -806,4 +857,12 @@ if __name__ == "__main__":
     if "--no-gui" in sys.argv:
         run_bot()
     else:
+        if platform.system() == "Windows":
+            try:
+                hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+                if hwnd:
+                    ctypes.windll.user32.ShowWindow(hwnd, 0)
+                    ctypes.windll.kernel32.FreeConsole()
+            except Exception:
+                pass
         launch_gui()
