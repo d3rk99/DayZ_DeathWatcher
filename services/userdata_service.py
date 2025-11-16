@@ -100,3 +100,13 @@ def remove_user(path: str, discord_id: str) -> bool:
         _save_userdata(Path(path), data)
         return True
     return False
+
+
+def wipe_database(path: str) -> bool:
+    """Completely reset the userdata database file."""
+    try:
+        payload = {"userdata": {}, "season_deaths": []}
+        _save_userdata(Path(path), payload)
+        return True
+    except OSError:
+        return False

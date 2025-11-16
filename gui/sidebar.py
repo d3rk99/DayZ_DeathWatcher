@@ -17,6 +17,7 @@ class DeadPlayersPanel(tk.Frame):
         self._theme: ThemePalette = LIGHT_THEME
         self._tree = self._build_tree()
         self._context_menu = self._build_menu()
+        self._actions = self._build_actions()
         self._poll()
 
     def _build_tree(self) -> ttk.Treeview:
@@ -35,6 +36,17 @@ class DeadPlayersPanel(tk.Frame):
         tree.pack(fill=tk.BOTH, expand=True)
         tree.bind("<Button-3>", self._show_context_menu)
         return tree
+
+    def _build_actions(self) -> tk.Frame:
+        frame = tk.Frame(self)
+        frame.pack(fill=tk.X, pady=(6, 0))
+        self._revive_button = tk.Button(
+            frame,
+            text="Revive Selected",
+            command=self._revive_selected,
+        )
+        self._revive_button.pack(side=tk.RIGHT, padx=(0, 6))
+        return frame
 
     def _build_menu(self) -> tk.Menu:
         menu = tk.Menu(self, tearoff=0)
@@ -59,6 +71,9 @@ class DeadPlayersPanel(tk.Frame):
             self.refresh()
         else:
             messagebox.showwarning("Action failed", "Unable to modify that entry.")
+
+    def _revive_selected(self) -> None:
+        self._act(userdata_service.force_revive)
 
     def _view_details(self) -> None:
         selection = self._tree.selection()
@@ -123,6 +138,18 @@ class DeadPlayersPanel(tk.Frame):
         )
         style.configure(heading_style, background=theme.panel_bg, foreground=theme.fg)
         self._tree.configure(style=tree_style)
+        if hasattr(self, "_actions"):
+            self._actions.configure(bg=theme.panel_bg)
+        if hasattr(self, "_revive_button"):
+            self._revive_button.configure(
+                bg=theme.button_bg,
+                fg=theme.button_fg,
+                activebackground=theme.accent,
+                activeforeground=theme.console_fg,
+                highlightbackground=theme.panel_bg,
+                borderwidth=1,
+                relief=tk.FLAT,
+            )
 
 
 class ListViewerPanel(tk.Frame):
@@ -199,6 +226,60 @@ class ListViewerPanel(tk.Frame):
         )
 
 
+class DangerPanel(tk.Frame):
+    def __init__(self, master, *, userdata_path: str) -> None:
+        super().__init__(master)
+        self.userdata_path = userdata_path
+        self._theme: ThemePalette = LIGHT_THEME
+        self._build_ui()
+
+    def _build_ui(self) -> None:
+        self._message = tk.Label(
+            self,
+            text="Danger Zone",
+            font=("Segoe UI", 12, "bold"),
+        )
+        self._message.pack(anchor="w", padx=10, pady=(10, 4))
+        self._description = tk.Label(
+            self,
+            text="Completely wipe the userdata database. This cannot be undone.",
+            wraplength=220,
+            justify=tk.LEFT,
+        )
+        self._description.pack(fill=tk.X, padx=10)
+        self._wipe_button = tk.Button(
+            self,
+            text="Wipe Database",
+            command=self._confirm_wipe,
+            bg="#b3261e",
+            fg="#ffffff",
+            activebackground="#ff6659",
+            activeforeground="#ffffff",
+            relief=tk.RAISED,
+            padx=12,
+            pady=6,
+        )
+        self._wipe_button.pack(pady=20)
+
+    def _confirm_wipe(self) -> None:
+        if not messagebox.askyesno(
+            "Wipe Database",
+            "This will delete ALL userdata entries and cannot be undone. Continue?",
+        ):
+            return
+        if userdata_service.wipe_database(self.userdata_path):
+            messagebox.showinfo("Database wiped", "The userdata database has been reset.")
+        else:
+            messagebox.showerror("Database wipe failed", "Unable to modify the userdata file.")
+
+    def apply_theme(self, theme: ThemePalette) -> None:
+        self._theme = theme
+        self.configure(bg=theme.panel_bg)
+        for widget in (self._message, self._description):
+            widget.configure(bg=theme.panel_bg, fg=theme.fg)
+        self._wipe_button.configure(highlightbackground=theme.panel_bg)
+
+
 class SidebarPane(tk.Frame):
     def __init__(self, master, *, config: dict) -> None:
         super().__init__(master)
@@ -235,6 +316,12 @@ class SidebarPane(tk.Frame):
         self._lists_notebook.add(self._whitelist_panel, text="Whitelist")
         self._lists_notebook.add(self._banlist_panel, text="Banlist")
         self._notebook.add(self._lists_notebook, text="Lists")
+
+        self._danger_panel = DangerPanel(
+            self._notebook,
+            userdata_path=self.config_data.get("userdata_db_path", "userdata_db.json"),
+        )
+        self._notebook.add(self._danger_panel, text="Danger")
 
     def reload_paths(self, config: dict) -> None:
         self.config_data = config
@@ -302,3 +389,5 @@ class SidebarPane(tk.Frame):
             self._whitelist_panel.apply_theme(theme)
         if hasattr(self, "_banlist_panel"):
             self._banlist_panel.apply_theme(theme)
+        if hasattr(self, "_danger_panel"):
+            self._danger_panel.apply_theme(theme)
