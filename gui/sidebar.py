@@ -209,7 +209,10 @@ class DeathCounterPanel(tk.Frame):
         self._buttons: list[tk.Button] = []
         self._build_ui()
         self.refresh()
-        self._refresh_activity(show_feedback=False)
+        # Give the Discord bot a few seconds to finish connecting before
+        # forcing a presence refresh so the status update doesn't race the
+        # client coming online.
+        self.after(5_000, lambda: self._refresh_activity(show_feedback=False))
 
     def _build_ui(self) -> None:
         self._title = tk.Label(self, text="Death Counter", font=("Segoe UI", 12, "bold"))
