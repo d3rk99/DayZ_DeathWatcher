@@ -194,7 +194,6 @@ class ListViewerPanel(tk.Frame):
             selectforeground=theme.console_fg,
             highlightbackground=theme.panel_bg,
             highlightcolor=theme.panel_bg,
-            insertbackground=theme.console_fg,
             relief=tk.FLAT,
             borderwidth=1,
         )
