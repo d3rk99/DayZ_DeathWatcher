@@ -130,6 +130,24 @@ def list_admins(path: str) -> List[Dict[str, str]]:
     return admins
 
 
+def list_all_users(path: str) -> List[Dict[str, str]]:
+    """Return lightweight metadata for every user in the database."""
+
+    data = load_userdata(path)
+    entries: List[Dict[str, str]] = []
+    for discord_id, info in data.get("userdata", {}).items():
+        entries.append(
+            {
+                "discord_id": discord_id,
+                "username": info.get("username", "Unknown"),
+                "steam_id": info.get("steam_id", ""),
+                "is_admin": info.get("is_admin", 0),
+            }
+        )
+    entries.sort(key=lambda entry: entry.get("username", "").lower())
+    return entries
+
+
 def set_admin_status(path: str, discord_id: str, is_admin: bool) -> Tuple[bool, str]:
     """Toggle the admin flag for a specific Discord ID."""
 

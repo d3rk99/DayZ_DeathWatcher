@@ -349,8 +349,11 @@ class AdminManagerPanel(tk.Frame):
         self.userdata_path = userdata_path
         self._theme: ThemePalette = LIGHT_THEME
         self._entry_var = tk.StringVar()
+        self._search_var = tk.StringVar()
         self._status_var = tk.StringVar(value="")
         self._buttons: list[tk.Button] = []
+        self._all_users: list[dict[str, str]] = []
+        self._current_suggestions: list[dict[str, str]] = []
         self._build_ui()
         self.refresh()
 
@@ -393,6 +396,19 @@ class AdminManagerPanel(tk.Frame):
         remove_btn.pack(side=tk.LEFT, padx=(6, 0))
         self._buttons.append(remove_btn)
 
+        search_frame = tk.Frame(self)
+        search_frame.pack(fill=tk.X, padx=10, pady=(0, 6))
+        self._search_label = tk.Label(search_frame, text="Search members:")
+        self._search_label.pack(side=tk.LEFT)
+        self._search_entry = tk.Entry(search_frame, textvariable=self._search_var)
+        self._search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(6, 0))
+        self._search_var.trace_add("write", lambda *_: self._update_suggestions())
+
+        self._suggestion_list = tk.Listbox(self, height=5)
+        self._suggestion_list.pack(fill=tk.BOTH, expand=False, padx=10, pady=(0, 6))
+        self._suggestion_list.bind("<<ListboxSelect>>", self._apply_suggestion_to_entry)
+        self._suggestion_list.bind("<Double-Button-1>", self._promote_selected_suggestion)
+
         entry_row = tk.Frame(self)
         entry_row.pack(fill=tk.X, padx=10, pady=(0, 10))
         self._entry_label = tk.Label(entry_row, text="Discord ID:")
@@ -406,6 +422,7 @@ class AdminManagerPanel(tk.Frame):
     def refresh(self) -> None:
         try:
             admins = userdata_service.list_admins(self.userdata_path)
+            self._all_users = userdata_service.list_all_users(self.userdata_path)
         except Exception as exc:
             messagebox.showerror("Admins", str(exc))
             return
@@ -422,11 +439,50 @@ class AdminManagerPanel(tk.Frame):
             self._status_var.set(f"{count} admin{'s' if count != 1 else ''} in the database.")
         else:
             self._status_var.set("No admins found in the database.")
+        self._update_suggestions()
 
     def _sync_entry_from_selection(self, _event=None) -> None:
         selection = self._tree.selection()
         if selection:
             self._entry_var.set(selection[0])
+
+    def _update_suggestions(self) -> None:
+        query = self._search_var.get().strip().lower()
+        if not self._all_users:
+            self._current_suggestions = []
+            self._suggestion_list.delete(0, tk.END)
+            return
+        matches: list[dict[str, str]] = []
+        for entry in self._all_users:
+            haystacks = [
+                entry.get("username", "").lower(),
+                entry.get("discord_id", ""),
+                entry.get("steam_id", ""),
+            ]
+            if not query or any(query in hay for hay in haystacks if hay):
+                matches.append(entry)
+            if len(matches) >= 20:
+                break
+        self._current_suggestions = matches
+        self._suggestion_list.delete(0, tk.END)
+        for entry in matches:
+            username = entry.get("username") or "Unknown"
+            display = f"{username} ({entry.get('discord_id', '')})"
+            self._suggestion_list.insert(tk.END, display)
+
+    def _apply_suggestion_to_entry(self, _event=None) -> None:
+        selection = self._suggestion_list.curselection()
+        if not selection:
+            return
+        entry = self._current_suggestions[selection[0]]
+        discord_id = entry.get("discord_id", "")
+        self._entry_var.set(discord_id)
+
+    def _promote_selected_suggestion(self, _event=None) -> None:
+        self._apply_suggestion_to_entry()
+        discord_id = self._entry_var.get().strip()
+        if discord_id:
+            self._apply_admin_change(discord_id, True)
 
     def _add_admin(self) -> None:
         discord_id = self._entry_var.get().strip()
@@ -458,7 +514,12 @@ class AdminManagerPanel(tk.Frame):
     def apply_theme(self, theme: ThemePalette) -> None:
         self._theme = theme
         self.configure(bg=theme.panel_bg)
-        for widget in (self._title, self._status_label, self._entry_label):
+        for widget in (
+            self._title,
+            self._status_label,
+            self._entry_label,
+            self._search_label,
+        ):
             widget.configure(bg=theme.panel_bg, fg=theme.fg)
         style = ttk.Style(self)
         tree_style = "Sidebar.Admin.Treeview"
@@ -494,6 +555,22 @@ class AdminManagerPanel(tk.Frame):
             insertbackground=theme.console_fg,
             highlightbackground=theme.panel_bg,
             highlightcolor=theme.panel_bg,
+            relief=tk.FLAT,
+        )
+        self._search_entry.configure(
+            bg=theme.console_bg,
+            fg=theme.console_fg,
+            insertbackground=theme.console_fg,
+            highlightbackground=theme.panel_bg,
+            highlightcolor=theme.panel_bg,
+            relief=tk.FLAT,
+        )
+        self._suggestion_list.configure(
+            bg=theme.console_bg,
+            fg=theme.console_fg,
+            selectbackground=theme.accent,
+            selectforeground=theme.console_fg,
+            highlightbackground=theme.panel_bg,
             relief=tk.FLAT,
         )
 
