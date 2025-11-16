@@ -1,0 +1,1677 @@
+{
+    "userdata": {
+        "743935854569062530": {
+            "username": "wildwill5696",
+            "steam_id": "76561198428893770",
+            "guid": "KnkHreHurcjEMJu4ishdtEpusT0Jl-7IFvH9gtyexJA=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "139454543292399616": {
+            "username": "orionkaelin",
+            "steam_id": "76561198008819063",
+            "guid": "6Uo9SLOfgm_nhi2GIkPO_3iEQXEv-uLvEY-530-0tBc=",
+            "is_alive": 1,
+            "time_of_death": 1746771774,
+            "can_revive": 1,
+            "is_admin": 0
+        },
+        "604407998634262569": {
+            "username": "raubvogel_5",
+            "steam_id": "76561197982493362",
+            "guid": "lXf835OPPIjfiOnKEjBb-46_MQ-1Byj4Z5kX20IiaqE=",
+            "is_alive": 1,
+            "time_of_death": 1755562877,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "200056736516669440": {
+            "username": "goose0219",
+            "steam_id": "76561198028893528",
+            "guid": "am3BHcJ0GPHyjSS3jMkCUeP3TN4aqPpTHvBJ4bEL1sI=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "376524661028159490": {
+            "username": "willis007",
+            "steam_id": "76561198076842142",
+            "guid": "LreMpmgPrz9j_BJ9GwNO1SOb1s_5TjDn777XBpeKYeQ=",
+            "is_alive": 0,
+            "time_of_death": 1762913209,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "927668846163288124": {
+            "username": "casanova503.",
+            "steam_id": "76561198254505436",
+            "guid": "LysdF0g8k3x5a1ts6jy641Zy0O0xrV3bBOtgwnTQ8SY=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "138384403519897600": {
+            "username": "yanderekeito",
+            "steam_id": "76561197999682868",
+            "guid": "1wni5BeOSp7_xCBK6FIba7GSjFmQHI2fKXtLNfSWLGM=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "345322666523099158": {
+            "username": "routier028",
+            "steam_id": "76561197994516341",
+            "guid": "Jlr5Bcyu0TSaFoEHZ2ztlN_DRKxsqAs4hF5J1fiqkMU=",
+            "is_alive": 0,
+            "time_of_death": 1763150095,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "637417745281187851": {
+            "username": "rocky8692",
+            "steam_id": "76561199063008099",
+            "guid": "lVGFplrN6pTJBxyal5SkBGfotUiUOF027gSqM94oabg=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "91920253700812800": {
+            "username": "haveblue",
+            "steam_id": "76561198023505920",
+            "guid": "pm4fMPv8MAtIzcKjXkjPGUcN6Qq5IRLDGLSHb7C8LbQ=",
+            "is_alive": 0,
+            "time_of_death": 1749779484,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "192011301726322688": {
+            "username": "dremaster007",
+            "steam_id": "76561198071605233",
+            "guid": "a4nxS-OWjr14nXV-8lVEjpj3TXCwKNBEPxGIYx8FGS8=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "268964480396820480": {
+            "username": "guardian5434",
+            "steam_id": "76561198068077371",
+            "guid": "6OBuqfnCqK-333biIHJ_gKL9dpHClcj_Vncu8FHv2Hw=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "391907241852141569": {
+            "username": "roamdee",
+            "steam_id": "76561199492365848",
+            "guid": "frclhQGSbmussfaaohIfYLsIajOW8_O57j7ATxHZZO0=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "183878727611056128": {
+            "username": "senorblanco8463",
+            "steam_id": "76561198048230539",
+            "guid": "NiUKXsg1bWtTRZf7w_nfo3L3Od_S9Ac-0XALXrG8uZ4=",
+            "is_alive": 1,
+            "time_of_death": 1752962694,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "1159978209010528388": {
+            "username": "jandy009",
+            "steam_id": "76561199662441305",
+            "guid": "AdVjSbvfNV7cr2nLgnHjo7Xd_eWFMayP_56i9wxBEug=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "1310096872450424935": {
+            "username": "lumpy09543",
+            "steam_id": "76561198886783745",
+            "guid": "VzFMA3Re7n_PRb4t6RwQrhGx3a_tRP87-9ZWibfOuN0=",
+            "is_alive": 1,
+            "time_of_death": 1756484904,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "719335780362747915": {
+            "username": "lt_loki",
+            "steam_id": "76561198011363641",
+            "guid": "sUvmWtuA1WOe3vz6wvmUMawO1weGgmOA6EUzmI9zfr0=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "802901630231642143": {
+            "username": "karikozsolt",
+            "steam_id": "76561199205352672",
+            "guid": "6TngKRhkd1sV0Vc3BYijOtGh712jq17V-MMNSyv8xnE=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "748138441828466779": {
+            "username": "misanthr0pus",
+            "steam_id": "76561197967514439",
+            "guid": "5DQSQNTgGoagDsQmytWZ5KW9zumyd9BMl8kRWwotoQk=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "161225821388931072": {
+            "username": "aaxxis",
+            "steam_id": "76561198082207735",
+            "guid": "lEZ2hphlPmm5wW8F7mmDFSfur3XGaLF-lMBByijLH_4=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "283645328790519809": {
+            "username": "isaacatlas",
+            "steam_id": "76561198140838210",
+            "guid": "15t-rQF5llcdzUFkpQ0Usc_tvIT-9MleoU--a58IC0I=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "221675229636722688": {
+            "username": "junttijuuso",
+            "steam_id": "76561197988172549",
+            "guid": "64qrX6d859hk4mrozfz33yY25DgWLsvMNbe36FaSUQs=",
+            "is_alive": 1,
+            "time_of_death": 1760981707,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "545790195145113603": {
+            "username": "rb187",
+            "steam_id": "76561198089885028",
+            "guid": "tgWhjwMoD87yZoYPU2pcbDDLxpFgoJptoH1okBMMHYI=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "177409523181420544": {
+            "username": "abibasiii",
+            "steam_id": "76561198063841453",
+            "guid": "6p8TgbPoGI0kJvc402DFBgQ3RupWAyLe0wgGq68ba1k=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "345198734185070594": {
+            "username": "holym0",
+            "steam_id": "76561198078591368",
+            "guid": "IRmFPOHhN-oTul37tjJ_Nmn2B-yTy-4BepPyATEDKpg=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "192054903370153984": {
+            "username": "derk_fzb",
+            "steam_id": "76561198009232482",
+            "guid": "_7ggrzItdz0qFegVPiYwXRI6VwlsXTizgrPDuuQP6Ss=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 1
+        },
+        "846862229671510016": {
+            "username": "veri.najs",
+            "steam_id": "76561198835748141",
+            "guid": "q4ip2MWL9QgActse2AmfLT6KbP_nb75Vc_F3Mjm7nD0=",
+            "is_alive": 0,
+            "time_of_death": 1763196616,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "284850813136928768": {
+            "username": "ndccw5rickbo0164",
+            "steam_id": "76561198346941466",
+            "guid": "d5kPYADKv0FFBtC69eMWWaCPEGKjysETq3YgCAfA6aA=",
+            "is_alive": 1,
+            "time_of_death": 1750637919,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "253310483765919744": {
+            "username": "lodeussinthori",
+            "steam_id": "76561198065206994",
+            "guid": "QLophUevFK2YmpeDjbQiSSpW2YGhnUSinRcoasGpxL4=",
+            "is_alive": 1,
+            "time_of_death": 1755456220,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "679107039338692621": {
+            "username": "rayden785",
+            "steam_id": "76561198348984823",
+            "guid": "fEj_X6s1p24ZifeBv0udlVvFvb7wupg_3UZjoEQZTsU=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "678989779362119691": {
+            "username": "76dutch",
+            "steam_id": "76561198128817600",
+            "guid": "p__F8mjZpraRG4ifuSnnRXaR8s9m8nIoZ3_v1O4oyJ4=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "385290986764369921": {
+            "username": "jhiant",
+            "steam_id": "76561197984345975",
+            "guid": "X18cw5qHV5NtOOysL4UqXUuPjLRmPQtEr3C6RaFjrkg=",
+            "is_alive": 1,
+            "time_of_death": 1749671501,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "698094826385702962": {
+            "username": "tommysizz",
+            "steam_id": "76561198105659389",
+            "guid": "N-eM9GFT1mocM4cNqJ-8RrLRp_oCDxUJpG3lSVBLWeI=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "430558890556653568": {
+            "username": "theplague1982",
+            "steam_id": "76561198855674098",
+            "guid": "jLswVqM_5I8-NiZdz7QDlJIlMFjdeTsiNhBhdLz6D3M=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "297334524092874762": {
+            "username": "lilyambolito",
+            "steam_id": "76561197986986181",
+            "guid": "ifdAMvS1WdJTfw1ZEf9I3cvZviS1vKmy52V6hsK1Qkc=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "362669442938699788": {
+            "username": "gunnerwolfie",
+            "steam_id": "76561198432886472",
+            "guid": "1XE_yVIILEnldVXsChGtt7M2IfR6tJeAq5FcCM1z5f4=",
+            "is_alive": 1,
+            "time_of_death": 1748553865,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "252427355539111936": {
+            "username": "peetepee",
+            "steam_id": "76561198052039145",
+            "guid": "W9dIqs6UaaC39g3Kgv3LnzZoisjrdltVoYfZ4D8SGbU=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "1338975445726662736": {
+            "username": "legshot_10866",
+            "steam_id": "76561199843482728",
+            "guid": "BQpkL4J9RwRoMfk-joJZkjEfRpUmQSEpi2NiAxerCPU=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "612314720770326749": {
+            "username": "carpeomina",
+            "steam_id": "76561199085558828",
+            "guid": "A6n1bi7-JG2l3Txqz7CcVtZNXWmd6M6ZwUallRMS85Y=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "486309517089570837": {
+            "username": "allegedly8168",
+            "steam_id": "76561198274736308",
+            "guid": "0IYGEkJFhECsMwTuPwhTPgsP8lVy2CvSS27fIofrt7g=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "979049639477137438": {
+            "username": "lancelotoflivonia",
+            "steam_id": "76561198062066046",
+            "guid": "VLjhLh6TEOBIDkq60tvZR4tmbbX7AfA7sYZU5wCfAoE=",
+            "is_alive": 1,
+            "time_of_death": 1749419373,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "802573629241557002": {
+            "username": "samoflange",
+            "steam_id": "76561197973729405",
+            "guid": "B7_dmZXFB3_PJIc2sQJrw6Tnc1j3CG6G05bV_uncljc=",
+            "is_alive": 1,
+            "time_of_death": 1761475233,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "297117932968738818": {
+            "username": "opiebandit",
+            "steam_id": "76561198319365122",
+            "guid": "_cN6NhLLG9LOPGRrPn_RgnAQrNXIu_fZYC6KlYesoNU=",
+            "is_alive": 1,
+            "time_of_death": 1749743784,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "343847963526823937": {
+            "username": "fliparican",
+            "steam_id": "76561198138069804",
+            "guid": "iJ2IFSNk8tXpBY8WshE28okrJDCk1oA-UqyV0xYAhSc=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "344570569141911553": {
+            "username": "deaths7058",
+            "steam_id": "76561197973971762",
+            "guid": "Zhn3JxgJCTqSYq7XLA6zk_n6z7CIORy1aiyVaChLuZs=",
+            "is_alive": 1,
+            "time_of_death": 1749839491,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "494261217678983178": {
+            "username": "friendlyguy2222",
+            "steam_id": "76561197993327355",
+            "guid": "wvDVISk9nCSO6TuqbL2Y4ofWbDurT8WE62YuflOrKKU=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "312967561463463937": {
+            "username": "keiz81",
+            "steam_id": "76561198174402878",
+            "guid": "8lzrMWxMLa4jIi2e8p1R6T-8wIidyQmP8m1kXbai2g4=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "151601631576719360": {
+            "username": "hellafied",
+            "steam_id": "76561198198349851",
+            "guid": "QB4h4Hdtu-sJgkowA15oEiOuiyXnu77PTfYdi0-UGEw=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "931395375250698261": {
+            "username": "vert1go2390",
+            "steam_id": "76561199610341040",
+            "guid": "f9wZ2cD7saUHpGRdEUV2gD-_fIRC7rT46t7_gsj17zs=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "375171497725001739": {
+            "username": "saltytang",
+            "steam_id": "76561198102000822",
+            "guid": "e_GjCbSQA9_eNmvbNOZdzJqQZGx-0elNYDp3a9hjjTU=",
+            "is_alive": 1,
+            "time_of_death": 1749109675,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "383883169776140291": {
+            "username": "wvkd",
+            "steam_id": "76561198448605451",
+            "guid": "9TTM86Obczh_ciK9yDNvzFfMYJ8VaEVo4TuMueeTKJc=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "801137418120069141": {
+            "username": "ivo1011",
+            "steam_id": "76561198070647049",
+            "guid": "oRAgTBUTopkwHVgmPe4AEwH1cqQNR6AgwP6uHHMoktw=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "430463914254270464": {
+            "username": "probl3matik",
+            "steam_id": "76561199107458776",
+            "guid": "IAcRrdTkEgLd-woIB9j-V_oUB-8rJzV78bzNt5joZUQ=",
+            "is_alive": 1,
+            "time_of_death": 1760889592,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "1094086737313153055": {
+            "username": "don776",
+            "steam_id": "76561197963586247",
+            "guid": "WU7eClZ1TleVro6BQyV5BiSvEKqOTgyV081sRbJbQe4=",
+            "is_alive": 1,
+            "time_of_death": 1749252813,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "139243578504249344": {
+            "username": "flipf17",
+            "steam_id": "76561198001495904",
+            "guid": "mAYSBD0rkUbV1zDqoSe_9TiJndlR5d4wfkMW1WvSZ60=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "451707005472735247": {
+            "username": "striking81",
+            "steam_id": "76561198298331506",
+            "guid": "vhmBnKgfKQ485i7xG_WcYqNVu2kdS1P5Su5hr3cGOdU=",
+            "is_alive": 1,
+            "time_of_death": 1749112068,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "972636047869620254": {
+            "username": "goosegoose5215",
+            "steam_id": "76561199233407202",
+            "guid": "3F-K0kEHUH6JnAlR9agL5mp5hugMsgKtCiwnqevdvB4=",
+            "is_alive": 1,
+            "time_of_death": 1749118466,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "1025086887263752262": {
+            "username": "rowdy_rebel.",
+            "steam_id": "76561199582382600",
+            "guid": "WikaVFXuR5MoGJW0Ei_sO6GYatkM6Hf0UMtuqPxJqdA=",
+            "is_alive": 1,
+            "time_of_death": 1760894400,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "693376621859569685": {
+            "username": "brakfirenuts",
+            "steam_id": "76561197993611076",
+            "guid": "-Xu2t_Dz7P7Hhxpvr7hf-xwg8FbAKg7Qkl2YeCM-pls=",
+            "is_alive": 1,
+            "time_of_death": 1758626549,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "161217868518785024": {
+            "username": "sprocket_the_gamer",
+            "steam_id": "76561198026000183",
+            "guid": "HwzXFXR10AZpC3lk_J8zrwaNyDr4aLb6v_vdI8JCQE4=",
+            "is_alive": 1,
+            "time_of_death": 1753199156,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "594627812506206208": {
+            "username": "jackal1148",
+            "steam_id": "76561198380267281",
+            "guid": "5rF4zcudW-sSG0G94H0m2_0OwcwHvEndr6y8ypyTQ3U=",
+            "is_alive": 1,
+            "time_of_death": 1750763393,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "549053547480743936": {
+            "username": "lonewirenut",
+            "steam_id": "76561197981021986",
+            "guid": "ZX2dyvzPyODD_Fcf5RM72fG3sXZN2EvRLvcnzZkTUq4=",
+            "is_alive": 1,
+            "time_of_death": 1762030608,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "1377894203744456776": {
+            "username": "dnw0931",
+            "steam_id": "76561199762565671",
+            "guid": "oGYml9-bD6YnawrrwWV8EqhZj39nEDvtWQb4QIOUPXA=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "215530653016391680": {
+            "username": "havokki",
+            "steam_id": "76561198015860910",
+            "guid": "xpmWAfft6P7MkuMtLObBEuPd51Ux3SixkE3M8RlAA2E=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "723021543114014760": {
+            "username": "rems0001",
+            "steam_id": "76561199148583189",
+            "guid": "7jAmcvuC2HQg-mJyCaEkhnID8OgN5mp_XQqBX66NRUE=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "241952932701011979": {
+            "username": "iamacez",
+            "steam_id": "76561198173402589",
+            "guid": "xAZwsW_sR0-3rYqZ3O9ixdPh_i4hAw6YWtu4feoZDOc=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "398064684034686976": {
+            "username": "reu_05",
+            "steam_id": "76561198240971544",
+            "guid": "KNlAXsnocN7ZAWHW3TwiuKfZDT5n4d8WCG3m5b6wtVE=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "352674522911997952": {
+            "username": "notso5397",
+            "steam_id": "76561198018615290",
+            "guid": "ZP8V8RaEfSeW3LYA5nfXTeySy3KEeqx37wh2e706fds=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "370762156406210571": {
+            "username": "davecave98",
+            "steam_id": "76561198437794313",
+            "guid": "l8ScuIZuMtK0MMRvAW0t1kTTNRYrWBxwVJGVWHPHqOE=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "451150388108853248": {
+            "username": "fnabigman",
+            "steam_id": "76561198123840788",
+            "guid": "Vd7iUu936ngayNqARWfWA2HKesnxAmJU91lPMiV5vwg=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "674277319350943805": {
+            "username": "steelo4454",
+            "steam_id": "76561199155544885",
+            "guid": "IeUoBHIDvA5-PiAdBT6JY5tBSOMzUjaiUO1yV75mmFk=",
+            "is_alive": 1,
+            "time_of_death": 1749694138,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "632986240169541682": {
+            "username": "dukecrumbletree",
+            "steam_id": "76561199085014720",
+            "guid": "1Qq-F3wLwZqap1uj8rCqdGSrhzGKmh_Z4rV_zkFsky0=",
+            "is_alive": 1,
+            "time_of_death": 1749694174,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "713471077300437014": {
+            "username": "trixo_53",
+            "steam_id": "76561198261448118",
+            "guid": "6JD3GJQge-gRjup91D96WGPYFsL3fFiGbe5myIoqKsk=",
+            "is_alive": 1,
+            "time_of_death": 1749693663,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "803089743939239936": {
+            "username": "spart57eth",
+            "steam_id": "76561199123432864",
+            "guid": "ylz1FgnS42KFbXfxEkWOx3Dggw83ScJmjgUHNO9fbT4=",
+            "is_alive": 1,
+            "time_of_death": 1749690659,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "1382711371715575848": {
+            "username": "sirdukey.",
+            "steam_id": "76561199757381005",
+            "guid": "wCr6AZsl3za7oNlSjvu4hZqAydesxv2ZYx7wXoWv_Yk=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "531224414973591552": {
+            "username": "vlapada",
+            "steam_id": "76561198338732132",
+            "guid": "Q6_TB0iwRdW_T_V4Wijxzj1LtezRDoIBSwVzw_f9L2g=",
+            "is_alive": 1,
+            "time_of_death": 1749756449,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "535610829723402250": {
+            "username": ".mautsu",
+            "steam_id": "76561197990261332",
+            "guid": "NZBqpdTLsdcByl62EGmPEVY62FVylUsvpPtb4XVDCy0=",
+            "is_alive": 1,
+            "time_of_death": 1749846699,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "309738387596771328": {
+            "username": "invisibleee_01",
+            "steam_id": "76561199466691023",
+            "guid": "-Gx5Kk5JqrDl99Szh8USgtdUl1iOuk7jsuwDmAPPJvE=",
+            "is_alive": 1,
+            "time_of_death": 1751106749,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "486361949668638722": {
+            "username": "icekvveenkiki",
+            "steam_id": "76561198808884678",
+            "guid": "7Ms7vTCqz6TkFOWlfY0s8rvZ5gNJOOyQ_5YJWUMdDqM=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "98468235917135872": {
+            "username": "idecca",
+            "steam_id": "76561198084477474",
+            "guid": "mqUs9DBy5aIHoXdT67Zkx-0-R2hDrFcjdJ9Whx4IDpY=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "959158736788799578": {
+            "username": "stalkerinthezone",
+            "steam_id": "76561199581275115",
+            "guid": "WotLe_SkbXMgnWikCVGadlbbRmwRcnKlfku8uAzaIfo=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "993593505345708182": {
+            "username": "eamo_irl_",
+            "steam_id": "76561197996561029",
+            "guid": "gGo1Qsw-Iv5xJziQXmruKok3tOuqLbRwhgAPUG25jHU=",
+            "is_alive": 1,
+            "time_of_death": 1754166711,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "139765569229422593": {
+            "username": "supertast",
+            "steam_id": "76561197988559430",
+            "guid": "c-uyiSE-7V-gNypyT5Esv30AdE_zLOShWw-BKQVxoWA=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "512967329907474432": {
+            "username": ".bigaussie",
+            "steam_id": "76561198176062886",
+            "guid": "fmuPcrn3b4pKQHF2ZZiXHGQflHDcq4TG7p4jpwoY1_8=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "266029782863577088": {
+            "username": "oquevocesabeler",
+            "steam_id": "76561198091782490",
+            "guid": "1Mnbms7pSNl8LXlvU6KMfN9hWsMapAwrndWGO3lYB-Y=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "491780074090004510": {
+            "username": "jimmyb9031",
+            "steam_id": "76561198087754443",
+            "guid": "u0WeVUHt6pu9y8b9ST1JbCr3RtkeeT-NHjf6tQ-3--w=",
+            "is_alive": 1,
+            "time_of_death": 1762026590,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "197030977183285248": {
+            "username": "jinnka",
+            "steam_id": "76561198084162031",
+            "guid": "NxIGxCKQrDHPlKDCUZdUEmMMr_T0W809RF8jNTuM3X4=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "654879603457916928": {
+            "username": "mr.rabid.196",
+            "steam_id": "76561197976911724",
+            "guid": "STgDCJfdpx3MuIYK7iuHMKpkWxihtxPZ29YD9I56VOE=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "446689524081229824": {
+            "username": "richmind_set",
+            "steam_id": "76561198229162424",
+            "guid": "kWKvOd3EKtpVLh9WrPXpbUNBGldk5NfBNjcCHdZjTvk=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "206209510212108288": {
+            "username": "nickswift23",
+            "steam_id": "76561198107891474",
+            "guid": "JLT1aWeXxOS1LfV_RpyKqMfDDgNK4xDJt92_MMoJOto=",
+            "is_alive": 1,
+            "time_of_death": 1750713878,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "164816150557884416": {
+            "username": "sodomatron",
+            "steam_id": "76561198036470639",
+            "guid": "7ZDC9sLYSFD6odHFxU5wU5PnfC_u1Y_roVy9SmZ0Hhc=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "1365349917131804777": {
+            "username": "garygetspaid",
+            "steam_id": "76561199845672386",
+            "guid": "-LV-E8h6CKpqS1yq5zHxBwhz-apimEMOSbnuqJ7FyLo=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "771565784475893780": {
+            "username": "fknsauce",
+            "steam_id": "76561199194857204",
+            "guid": "uUIhI_Fp9zfHvZKXzHZhWNOta1lfcefbG3s7S1BitkM=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "184067069980049408": {
+            "username": "croc2fps",
+            "steam_id": "76561198114997655",
+            "guid": "a__1AV8DbrPprapb1mJEb_hvHtQ7uDIXFTrAuLDb5N0=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "395613847676911616": {
+            "username": "acturus.",
+            "steam_id": "76561198139952308",
+            "guid": "x7SQ7z1diaOjvgBHHwS8ALyc-dAPRLACF6V2F3gMSzA=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "210173085096083457": {
+            "username": "thecaptainobvious",
+            "steam_id": "76561198062377597",
+            "guid": "j6QYN_v0PLAoic6UKA53Zu71BaCqMgU4X-WXA7HNHgI=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "329166205263020032": {
+            "username": "austin1010",
+            "steam_id": "76561198144690016",
+            "guid": "NxmrpkbUGf9PV33Jd70s7hOAORPp3T6GfHEMYR1XzVE=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "800162616147705866": {
+            "username": "morgz3030",
+            "steam_id": "76561198951579732",
+            "guid": "v7ku35g7cplc5eFtn1apf0h9x-rWVIB6vneBSdgpIZU=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "1330708281701826676": {
+            "username": "ricoisafakefriend",
+            "steam_id": "76561199242818965",
+            "guid": "LzyStemUfGeguU4Z52hun_eTZqFWCJflbMY0zJj-lxk=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "382370466448277514": {
+            "username": "woohoo544",
+            "steam_id": "76561198860449053",
+            "guid": "TwEJewy98C_j5qnu84Xxstm8R2Qq_sxO1GY7j6yE41o=",
+            "is_alive": 0,
+            "time_of_death": 1751507747,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "272834908492267523": {
+            "username": "macgrubson",
+            "steam_id": "76561198378090107",
+            "guid": "7kwGPcIZIjaMiMq-WHPIy3kxLOThWyT18FH_QYNY_EE=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "628075263904841738": {
+            "username": "lawless503",
+            "steam_id": "76561199247496089",
+            "guid": "fVGhmBn_kgtPEi4DkJ7ZBwpz4vrGasTnlpGbwhcVwj8=",
+            "is_alive": 0,
+            "time_of_death": 1758345160,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "1390968690559811615": {
+            "username": "waffendz",
+            "steam_id": "76561198028549571",
+            "guid": "SpFz28phTDtGayMbflVHUyWJB-d0q-uqBsIGV7kYlZs=",
+            "is_alive": 1,
+            "time_of_death": 1751705874,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "470402483513065482": {
+            "username": "jthart92",
+            "steam_id": "76561198050519510",
+            "guid": "wNzyra3_6Aaj5567T4amu9h1hGI9j4FVKyJm2UK84pw=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "500331116096520193": {
+            "username": "bananacars",
+            "steam_id": "76561198848887138",
+            "guid": "WArWbZKq5hZ2uMn_ayIb_ZTwkv9huNCw9CTuVuO4jZA=",
+            "is_alive": 1,
+            "time_of_death": 1761755699,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "469853321403039746": {
+            "username": "yayyayy",
+            "steam_id": "76561198082813690",
+            "guid": "sdgS08uIPRWVlRRut65vXH4sNnauoRbWVA_-jOTigPE=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "242507931981971458": {
+            "username": "thegaggedman",
+            "steam_id": "76561198059451396",
+            "guid": "o3OkqQjSha8I0qRARkjNF-4DuCYbeuKcVfUoqAaJMa0=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "262022609464590346": {
+            "username": "fishplug",
+            "steam_id": "76561197992492820",
+            "guid": "QeQcyBVKP1wHepw--rCYs1LsgQL2-52g6DIKiZjnpQk=",
+            "is_alive": 1,
+            "time_of_death": 1752377454,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "754359953442996375": {
+            "username": "stallingmoth283",
+            "steam_id": "76561199476148752",
+            "guid": "Q8q6CgZoMX_qQdSmvOLW8ARIt8HInlMzX4VdxP7-ikg=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "137931972348608514": {
+            "username": "t8nuoss",
+            "steam_id": "76561198081844987",
+            "guid": "p0Zt7ctibZLaRGkDipecs7dYtZFwcbs1u1lzLRMpo_o=",
+            "is_alive": 1,
+            "time_of_death": 1754489517,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "338357728172834827": {
+            "username": "nicktzy",
+            "steam_id": "76561198041344782",
+            "guid": "6Bg-_czI2A7Temxs5wAjFd662mqwliUi6myHlYWJguI=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "748953070012071946": {
+            "username": "pascal1994hh",
+            "steam_id": "76561199075487541",
+            "guid": "RMFXwLt5fqJdiDFA5df_Xf8scuax9xKEutj-4K2dZxY=",
+            "is_alive": 1,
+            "time_of_death": 1755007354,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "145864536770084864": {
+            "username": ".vellene",
+            "steam_id": "76561198022494550",
+            "guid": "XvUYo3WwpLMGQjFzbRHD-iJ9ceDyuj6eVA4QT1dh7-c=",
+            "is_alive": 1,
+            "time_of_death": 1753544828,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "147916105682386955": {
+            "username": "gunnyj8753",
+            "steam_id": "76561198138367347",
+            "guid": "VczaLFVOcAH4FxD7JgGMJgfU5f-ORKwrNrXShNXgfg0=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "172353041129799680": {
+            "username": "popkins1",
+            "steam_id": "76561198279568370",
+            "guid": "SarBxhmjRE6KSxHkAkZQTBU1uoy1uUi35C5sjTXkY4M=",
+            "is_alive": 1,
+            "time_of_death": 1753874059,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "1013787866838618182": {
+            "username": "gumby1627",
+            "steam_id": "76561199387088729",
+            "guid": "KKj2xSkTbDR0BYGSpdR3jktLo-dQkLBd2hf88zs54lA=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "140917453302661121": {
+            "username": "niskeh",
+            "steam_id": "76561197982890509",
+            "guid": "OJWTUjpc7c0dDjhOhBJlWU3mmLJvPZOkKTgORvAk0WU=",
+            "is_alive": 1,
+            "time_of_death": 1754060630,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "213873299782893569": {
+            "username": "omega08438",
+            "steam_id": "76561199094850629",
+            "guid": "JiBS9VK2d9ie8k1SXWN88CdovHeAG_smzcZ-Vf8dwJs=",
+            "is_alive": 1,
+            "time_of_death": 1757883377,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "555244356383145985": {
+            "username": "fracturedgoblin",
+            "steam_id": "76561199127370035",
+            "guid": "AZ3jugmc055SWx99i-aiS9IARj7vPBSHB5zjxjZjJn4=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "858629641991749642": {
+            "username": "theodore4117",
+            "steam_id": "76561199230975483",
+            "guid": "dlhDp0_STMYG3LdW8qz3we4mJqsI0At0EWBTAdNNPDc=",
+            "is_alive": 1,
+            "time_of_death": 1760205997,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "313317463112679425": {
+            "username": "__mykel",
+            "steam_id": "76561198004229810",
+            "guid": "64gmDlWgHTfCpVFUDKMqGiIf0t4rcbnOTd8wF7abjTg=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "339890957938065418": {
+            "username": "deepfriedjesus_",
+            "steam_id": "76561197971597630",
+            "guid": "TtO6K_cMJ7mgF5f96hFA0viM-z-NeYBlj1QPqCNflxM=",
+            "is_alive": 1,
+            "time_of_death": 1754843135,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "230010964374847489": {
+            "username": "rchw",
+            "steam_id": "76561198028598498",
+            "guid": "dicxWc33fLA1u_jIqFfAR5Qoc1xZ8cHzsWyaAUHq3GQ=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "273149167176515585": {
+            "username": "dustygizmo",
+            "steam_id": "76561198358707008",
+            "guid": "GxsW7uP7k01Hf8DijndA9GsPKdPaYkQCjjcEwGy--Q4=",
+            "is_alive": 1,
+            "time_of_death": 1754950833,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "376114134304948224": {
+            "username": "the_grey_seal",
+            "steam_id": "76561198066646104",
+            "guid": "tpPHXg4lin96qCNlh2Ffa6sRr-7gqQJhEozpgci3gKo=",
+            "is_alive": 1,
+            "time_of_death": 1755355647,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "332391183558901762": {
+            "username": "freedominthehole",
+            "steam_id": "76561198070141513",
+            "guid": "ASHCJhLFzK3KQqbeGJLWOzEqvXNa5wp4grRenrvlaFg=",
+            "is_alive": 1,
+            "time_of_death": 1756843554,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "924152104300466256": {
+            "username": "policy_manager",
+            "steam_id": "76561198013721184",
+            "guid": "H7EGP_9tUAKym8DBqTWz918fA2MNFBudRag1-hpklcI=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "1116338614255751198": {
+            "username": "hxlix.1",
+            "steam_id": "76561199588710500",
+            "guid": "3R1uJR-_1KC2venXVleTTdnSTNRGDrP1Q9DEcqRL2gY=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "470556674902589452": {
+            "username": "foodhunter47",
+            "steam_id": "76561198818147951",
+            "guid": "wjZXrDU_t_tfvR8rnl_buudeE8Upboif_oFNTEsXi2M=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "683615872853475338": {
+            "username": "bobtehflob",
+            "steam_id": "76561198096870122",
+            "guid": "RQqqvfIOnUdJeEfKkt8Y-dCcBtpGhscuU8JDCt-D4as=",
+            "is_alive": 1,
+            "time_of_death": 1761763773,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "307604704735657985": {
+            "username": "edd1812",
+            "steam_id": "76561197969703167",
+            "guid": "dUlEGQTW9nUbVY1XJCE1kK3i76odezpoq51f2TaSbF4=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "267051464919089163": {
+            "username": "tsvikoff",
+            "steam_id": "76561198155181514",
+            "guid": "2hPY1AdPcLPGiHmHg5e5pYxbIX_mHCG4HVMd-TNNXo0=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "492899112979660801": {
+            "username": "griffinwolf",
+            "steam_id": "76561198058596824",
+            "guid": "YF0OiFS1mrLCFypdLXk92FQrlGLPLQwmx9CaXvH0deM=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "492159693037502474": {
+            "username": "toadster8823",
+            "steam_id": "76561198829948930",
+            "guid": "zhrVXv9ZHEv_WTCA3ID86_WMljISz6OHc6LHrZW_iM0=",
+            "is_alive": 1,
+            "time_of_death": 1756172577,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "402982075562721281": {
+            "username": "imouto0474",
+            "steam_id": "76561198061900294",
+            "guid": "R1IsBi8PSf0oRcn3iY9jyg9JeQWvv6cQ-RBQbYG1Oso=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "339501374431690754": {
+            "username": "iamw4946",
+            "steam_id": "76561198081447987",
+            "guid": "50WeqA4kjv5n5w-IW4UEScFgqTggjNTkFzBvrxAOH-g=",
+            "is_alive": 1,
+            "time_of_death": 1757886006,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "782418728829976586": {
+            "username": "moose_dayz",
+            "steam_id": "76561198098437815",
+            "guid": "o9Y6rlLkiMvpZLnuzE3LNfmgwx94fY6bBPdBTpeqPEs=",
+            "is_alive": 1,
+            "time_of_death": 1756621607,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "396081378602647572": {
+            "username": "anam6780",
+            "steam_id": "76561199581500324",
+            "guid": "YvrU9j045PRPpA9M4Nt0HyIsI9qx_DoVeJGNGQKumeo=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "709512829891510314": {
+            "username": "godblessfk8",
+            "steam_id": "76561199115841435",
+            "guid": "R9ZjgmL5ZKnfUOeGcEmi41_DD1I7KEMtkrS-PguotfU=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "425704899859185664": {
+            "username": "sivick.",
+            "steam_id": "76561197988037356",
+            "guid": "RTB7C-IOPswfGGLP1t6wth1RJFa4C5k0MCXPUYUiXms=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "307353167346139156": {
+            "username": "necroponent",
+            "steam_id": "76561198088556088",
+            "guid": "cDkixgg-BLoL4sJhdMsvFni17iiXX64jfK7Pt79Z34M=",
+            "is_alive": 1,
+            "time_of_death": 1757682586,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "162942954380591104": {
+            "username": "xeniummm",
+            "steam_id": "76561198164473263",
+            "guid": "FmjAdlIwkqMUjAowHC_QlAqqv6F8Oe0PQuS-YFSMQpo=",
+            "is_alive": 1,
+            "time_of_death": 1760877864,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "396509366049701909": {
+            "username": "peelbacks",
+            "steam_id": "76561198163670434",
+            "guid": "HUak6FzegXvxHz7EvBQauuoqR_gNcHm7q0FuGAonDvE=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "1394977041245536266": {
+            "username": "carlhamiltonatx",
+            "steam_id": "76561199225258463",
+            "guid": "HSoiU14Hmr3UVWSOr64bWUbYL98IEsZFuwGAaaNIsuo=",
+            "is_alive": 1,
+            "time_of_death": 1759092349,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "519634602373939229": {
+            "username": "pyrosar",
+            "steam_id": "76561199350281432",
+            "guid": "oAnLH5sfwD5Nnyy9izssEgNxfWgozGVILhmVhwN4eiA=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "698231580623241296": {
+            "username": "stealth_pasty",
+            "steam_id": "76561198109816486",
+            "guid": "l7Ht_t-1Y8eKPDUcOfBTklr2OoDiA3JgrhTJ1dVXmcs=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "1088048081880219658": {
+            "username": "michaelshadetv",
+            "steam_id": "76561198318024808",
+            "guid": "BXkYvHOnMEm6jnk9NMsQN6QBnm9gJ7Un-ORP8zIkmnE=",
+            "is_alive": 1,
+            "time_of_death": 1758673726,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "917939275306242078": {
+            "username": "dirtyernie227",
+            "steam_id": "76561199165652669",
+            "guid": "Dtyw6GLt5AOPWdx1PJ6oMRblElSk-cL_hJpptFTkex0=",
+            "is_alive": 1,
+            "time_of_death": 1759004772,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "1373829418761588908": {
+            "username": "dirtydope306",
+            "steam_id": "76561199856701760",
+            "guid": "pWsnMMCeX3YZQjKCs7xVfKt8Ni3qXeD-1N8NmkUKiG0=",
+            "is_alive": 0,
+            "time_of_death": 1762050703,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "453427925849735188": {
+            "username": "brronz",
+            "steam_id": "76561198329627403",
+            "guid": "1f9737aQqR5dDvPiklwa9luA9tWCycdEfksxKKMfjfs=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "625735122926174223": {
+            "username": "aaronxb95",
+            "steam_id": "76561198400655006",
+            "guid": "RTpsTwY2q-YMVf7Rutq0b0pyCixGq0EAR0wa-IvNOSY=",
+            "is_alive": 1,
+            "time_of_death": 1759058531,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "287308120756060162": {
+            "username": "lynkk96",
+            "steam_id": "76561198277136166",
+            "guid": "IDhIfYTXzYJcT4Myv7HgaukANNLverTgGCT_kWuzPp8=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "205873553034313738": {
+            "username": "that_spud",
+            "steam_id": "76561198222459772",
+            "guid": "nqTHF_RVzbiMIGirys0xhnQqv8_downN5fMJgLN-X3o=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "1389655491524825189": {
+            "username": "snake_24089",
+            "steam_id": "76561199134902815",
+            "guid": "t9eDZMUESdsgmsxNZbVGg1Swr0T5255UBeeyOkd_dkQ=",
+            "is_alive": 0,
+            "time_of_death": 1759264587,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "321494335449333765": {
+            "username": "andretannus",
+            "steam_id": "76561198374618912",
+            "guid": "nyy5m9QK6Q5DZrTFyWxH8UX7K-kAINif6c789kbP5qo=",
+            "is_alive": 1,
+            "time_of_death": 1759554808,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "1015778204000190544": {
+            "username": "jobijuba",
+            "steam_id": "76561199403189001",
+            "guid": "ckANWCkfhkBrI6muhlBsSPI7psrymleTUEij1J5a6sQ=",
+            "is_alive": 1,
+            "time_of_death": 1761478556,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "938949214497570867": {
+            "username": "hsbcracks",
+            "steam_id": "76561199233869331",
+            "guid": "G6BU0vYvR8whlWa-LZaoT05O77E6oMN1R9qfeQO5YYM=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "110001588373835776": {
+            "username": "sergiococorico",
+            "steam_id": "76561198020211912",
+            "guid": "aQe-BAeEPF-IUp657pZPc2JPCnU9YUp83Es5OUfX_T0=",
+            "is_alive": 1,
+            "time_of_death": 1759952450,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "290308457054076938": {
+            "username": "captain_wow",
+            "steam_id": "76561197987243234",
+            "guid": "e7SJtWK2m-x80J_YMD0o6i19DuUPekHjsunBQ6ylfKc=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "266717924444733440": {
+            "username": "inmortuae_is_gone",
+            "steam_id": "76561198262206128",
+            "guid": "O7uehjihsvlsWdNBla4xwT2kiKflvu6EDnxXtoqdzIc=",
+            "is_alive": 1,
+            "time_of_death": 1760888793,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "118513151372296196": {
+            "username": "tastyslug",
+            "steam_id": "76561197965087871",
+            "guid": "JxFIb2q4sy4rsDrRrZgkdU3QpqCJLKIMtgsQx-vxLzs=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "1020441286999801907": {
+            "username": "pac.man_2.0",
+            "steam_id": "76561198149904638",
+            "guid": "Bxlrt5cbak55d55iuj2rBSc-y4h5G6j017PYxydWB7w=",
+            "is_alive": 1,
+            "time_of_death": 1761179349,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "1069374645469450261": {
+            "username": "squatly101",
+            "steam_id": "76561199003830575",
+            "guid": "tAA2SmsWMK1eaxRmvMAtDYhFXNN57w9AS6NQas7ednY=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "236479108748410881": {
+            "username": "kotc8506",
+            "steam_id": "76561198063286790",
+            "guid": "XtIFJRYqbhf5m0Blb4m56pRZKNvxuVuxVAlGx0M6JZw=",
+            "is_alive": 1,
+            "time_of_death": 1761236458,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "672563621980667905": {
+            "username": "blainto",
+            "steam_id": "76561199013855736",
+            "guid": "XDMtsrflak0lvZR68MCxWtQ-j1rZ3mY2MQY8WoKlf5M=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "693911001598263486": {
+            "username": "lotus_princess",
+            "steam_id": "76561198271966060",
+            "guid": "LK2fW85kS0lhIf7iFpY4ZXyu-X0K71fZOtkEugp2bGw=",
+            "is_alive": 1,
+            "time_of_death": 1761701127,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "194323558296584192": {
+            "username": "mangled_mongose",
+            "steam_id": "76561198070283624",
+            "guid": "Pxh0XZxDAXt_w9_gJEArzrTB7QzrT7AE75egq8OivSg=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "220560450826272768": {
+            "username": "socurious.",
+            "steam_id": "76561198016491431",
+            "guid": "dIsrRH9dNipfvYsWaSzbV423mTz28Ket24402Uz1a0Y=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "808027124727939112": {
+            "username": "z3phyrn",
+            "steam_id": "76561198154334775",
+            "guid": "__yD4R1qu8RLM9C0nb3wtEKXV_YjEfV03aJIPleanvc=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "269937687476174848": {
+            "username": "neckbeardactual",
+            "steam_id": "76561198002795727",
+            "guid": "S4XX--LfhWIXiJ2TErGm9XuzsX43NRlc4cwHU_2Blpc=",
+            "is_alive": 0,
+            "time_of_death": 1762566398,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "820084585668411443": {
+            "username": "florre1984",
+            "steam_id": "76561198271304685",
+            "guid": "3ZACS7Hha9GcneRAQ4WC0CrCsBd3h9m-q_cbKCPf9f8=",
+            "is_alive": 0,
+            "time_of_death": 1762532190,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "196619155632291840": {
+            "username": "dukues",
+            "steam_id": "76561198065987054",
+            "guid": "OQmeCeeDwhPM0iR_0j3TV_VcIIaZKSVkVC7XWAYPu2k=",
+            "is_alive": 0,
+            "time_of_death": 1762546895,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "763167925514928138": {
+            "username": "dna_upper162",
+            "steam_id": "76561199001109965",
+            "guid": "rToRdVVPDuBSd-2htPtlfxFAcNN-TuJkZ1-wFNfk8lA=",
+            "is_alive": 0,
+            "time_of_death": 1762818773,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "389601662852923393": {
+            "username": "razor9908",
+            "steam_id": "76561197969741099",
+            "guid": "p6KW3OzDoYr63w7L0QCRj1Nn1IxB4qlnFsBZs_yV8bU=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "423696289348190218": {
+            "username": "robinhood4412",
+            "steam_id": "76561198036023228",
+            "guid": "8isEFU0Q17u-F2O330MyDtZ_1xBMAMTC5paJCwD7Vgo=",
+            "is_alive": 0,
+            "time_of_death": 1763070539,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "821158053297520652": {
+            "username": "giftofhades",
+            "steam_id": "76561199175100732",
+            "guid": "_jeheL6VLKFo2tJgWiSbEBOBytNb5bFq0w655q7HNjw=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "621352738793717780": {
+            "username": "pktj240sx",
+            "steam_id": "76561199104699036",
+            "guid": "LQGdCccGMsYehDH0nuk6FCbHPm3WDPq0KlODCypBjB8=",
+            "is_alive": 0,
+            "time_of_death": 1763147723,
+            "can_revive": 0,
+            "is_admin": 0
+        }
+    },
+    "season_deaths": [
+        "139454543292399616",
+        "362669442938699788",
+        "253310483765919744",
+        "284850813136928768",
+        "375171497725001739",
+        "451707005472735247",
+        "972636047869620254",
+        "846862229671510016",
+        "1094086737313153055",
+        "345322666523099158",
+        "161217868518785024",
+        "1025086887263752262",
+        "693376621859569685",
+        "549053547480743936",
+        "979049639477137438",
+        "594627812506206208",
+        "385290986764369921",
+        "430463914254270464",
+        "803089743939239936",
+        "713471077300437014",
+        "674277319350943805",
+        "632986240169541682",
+        "297117932968738818",
+        "531224414973591552",
+        "604407998634262569",
+        "91920253700812800",
+        "309738387596771328",
+        "993593505345708182",
+        "344570569141911553",
+        "535610829723402250",
+        "491780074090004510",
+        "206209510212108288",
+        "376524661028159490",
+        "382370466448277514",
+        "1390968690559811615",
+        "500331116096520193",
+        "262022609464590346",
+        "628075263904841738",
+        "183878727611056128",
+        "145864536770084864",
+        "172353041129799680",
+        "140917453302661121",
+        "213873299782893569",
+        "137931972348608514",
+        "339890957938065418",
+        "858629641991749642",
+        "273149167176515585",
+        "748953070012071946",
+        "332391183558901762",
+        "376114134304948224",
+        "492159693037502474",
+        "1310096872450424935",
+        "782418728829976586",
+        "683615872853475338",
+        "339501374431690754",
+        "307353167346139156",
+        "162942954380591104",
+        "1088048081880219658",
+        "917939275306242078",
+        "625735122926174223",
+        "1394977041245536266",
+        "1389655491524825189",
+        "321494335449333765",
+        "1015778204000190544",
+        "110001588373835776",
+        "266717924444733440",
+        "221675229636722688",
+        "1020441286999801907",
+        "236479108748410881",
+        "802573629241557002",
+        "693911001598263486",
+        "1373829418761588908",
+        "820084585668411443",
+        "196619155632291840",
+        "269937687476174848",
+        "763167925514928138",
+        "423696289348190218",
+        "621352738793717780"
+    ]
+}

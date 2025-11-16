@@ -1,0 +1,9 @@
+{
+  "path_to_logs_directory" : "../../profiles",
+  "path_to_bans" : "./deaths.txt",
+  "path_to_cache" : "./death_watcher_cache.json",
+  "death_cues" : ["killed by", "committed suicide", "bled out", "died.", "(DEAD)", "was brutally murdered by that psycho Timmy"],
+  "ban_delay" : 5,
+  "search_logs_interval" : 1,
+  "verbose_logs" : 1
+}
