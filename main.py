@@ -18,6 +18,7 @@ from nextcord.member import Member
 import nextcord
 from nextcord import Webhook
 from dayz_dev_tools import guid as GUID
+from services import userdata_service
 from services.path_fields import PATH_FIELDS, REQUIRED_PATH_KEYS
 
 # Ensure the script runs relative to its own directory so double-click
@@ -683,8 +684,32 @@ async def unban_user(user_id):
         text = f"[UnbanUser] \"{e}\"\nIt is advised to restart this script."
         print(text)
         await dump_error_discord(text, "Unexpected error")
-    
-    
+
+
+async def bulk_revive_dead_users() -> int:
+    if not config:
+        return 0
+    path = config.get("userdata_db_path", "userdata_db.json")
+    try:
+        dead_players = userdata_service.list_dead_players(path)
+    except Exception as exc:
+        print(f"[BulkRevive] Failed to load userdata: {exc}")
+        return 0
+
+    revived = 0
+    for entry in dead_players:
+        discord_id = entry.get("discord_id")
+        if not discord_id:
+            continue
+        try:
+            await unban_user(discord_id)
+            revived += 1
+        except Exception as exc:
+            print(f"[BulkRevive] Failed to revive {discord_id}: {exc}")
+
+    print(f"[BulkRevive] Completed request. Revived {revived} players.")
+    return revived
+
 
 async def dump_error_discord(error_message : str, prefix : str = "Error", force_mention_tag : str = ""):
     prefix = "Error" if (prefix == "") else prefix

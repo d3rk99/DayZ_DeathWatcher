@@ -41,12 +41,18 @@ class DeadPlayersPanel(tk.Frame):
     def _build_actions(self) -> tk.Frame:
         frame = tk.Frame(self)
         frame.pack(fill=tk.X, pady=(6, 0))
+        self._revive_all_button = tk.Button(
+            frame,
+            text="Revive Everyone",
+            command=self._revive_all,
+        )
+        self._revive_all_button.pack(side=tk.RIGHT, padx=(0, 6))
         self._revive_button = tk.Button(
             frame,
             text="Revive Selected",
             command=self._revive_selected,
         )
-        self._revive_button.pack(side=tk.RIGHT, padx=(0, 6))
+        self._revive_button.pack(side=tk.RIGHT)
         return frame
 
     def _build_menu(self) -> tk.Menu:
@@ -89,6 +95,29 @@ class DeadPlayersPanel(tk.Frame):
 
     def _revive_selected(self) -> None:
         self._act(bot_control_service.force_revive_user)
+
+    def _revive_all(self) -> None:
+        if not messagebox.askyesno(
+            "Revive Everyone",
+            "Revive all dead players and restore their Discord roles?",
+        ):
+            return
+        try:
+            revived = bot_control_service.force_revive_all_users(self.userdata_path)
+        except Exception as exc:
+            messagebox.showerror("Revive Everyone", str(exc))
+            return
+        if revived == 0:
+            messagebox.showinfo(
+                "Revive Everyone",
+                "No dead players were found in the database.",
+            )
+        else:
+            messagebox.showinfo(
+                "Revive Everyone",
+                f"Successfully revived {revived} player{'s' if revived != 1 else ''}.",
+            )
+        self.refresh()
 
     def _view_details(self) -> None:
         selection = self._tree.selection()
@@ -155,16 +184,17 @@ class DeadPlayersPanel(tk.Frame):
         self._tree.configure(style=tree_style)
         if hasattr(self, "_actions"):
             self._actions.configure(bg=theme.panel_bg)
-        if hasattr(self, "_revive_button"):
-            self._revive_button.configure(
-                bg=theme.button_bg,
-                fg=theme.button_fg,
-                activebackground=theme.accent,
-                activeforeground=theme.console_fg,
-                highlightbackground=theme.panel_bg,
-                borderwidth=1,
-                relief=tk.FLAT,
-            )
+        for button_name in ("_revive_button", "_revive_all_button"):
+            if hasattr(self, button_name):
+                getattr(self, button_name).configure(
+                    bg=theme.button_bg,
+                    fg=theme.button_fg,
+                    activebackground=theme.accent,
+                    activeforeground=theme.console_fg,
+                    highlightbackground=theme.panel_bg,
+                    borderwidth=1,
+                    relief=tk.FLAT,
+                )
 
 
 class DeathCounterPanel(tk.Frame):
@@ -179,6 +209,7 @@ class DeathCounterPanel(tk.Frame):
         self._buttons: list[tk.Button] = []
         self._build_ui()
         self.refresh()
+        self._refresh_activity(show_feedback=False)
 
     def _build_ui(self) -> None:
         self._title = tk.Label(self, text="Death Counter", font=("Segoe UI", 12, "bold"))
@@ -295,12 +326,21 @@ class DeathCounterPanel(tk.Frame):
         else:
             self._status_var.set("Bot offline. Saved update to disk only.")
 
-    def _refresh_activity(self) -> None:
+    def _refresh_activity(self, *, show_feedback: bool = True) -> None:
         try:
             bot_control_service.refresh_activity()
-            messagebox.showinfo("Bot Activity", "Presence updated with the latest counter value.")
+            if show_feedback:
+                messagebox.showinfo(
+                    "Bot Activity",
+                    "Presence updated with the latest counter value.",
+                )
+            else:
+                self._status_var.set("Bot activity refreshed using the saved counter value.")
         except Exception as exc:
-            messagebox.showerror("Bot Activity", str(exc))
+            if show_feedback:
+                messagebox.showerror("Bot Activity", str(exc))
+            else:
+                self._status_var.set(f"Unable to refresh bot activity: {exc}")
 
     def _wipe_counter(self) -> None:
         confirm = messagebox.askyesno(

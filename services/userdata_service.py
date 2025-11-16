@@ -36,22 +36,21 @@ def list_dead_players(path: str) -> List[Dict[str, str]]:
 
 
 def _calculate_revive_eta(info: Dict) -> str:
-    wait_seconds = info.get("revive_wait", 0)
-    if not wait_seconds:
+    wait_seconds_raw = info.get("revive_wait", 0)
+    try:
+        wait_seconds = int(wait_seconds_raw)
+    except (TypeError, ValueError):
+        return "Unknown"
+    if wait_seconds <= 0:
         return "Unknown"
     time_of_death = int(info.get("time_of_death", 0))
     if not time_of_death:
         return "Unknown"
-    eta = time_of_death + int(wait_seconds)
-    now = int(time.time())
-    remaining = max(0, eta - now)
-    minutes, seconds = divmod(remaining, 60)
-    hours, minutes = divmod(minutes, 60)
-    if hours:
-        return f"{hours}h {minutes}m"
-    if minutes:
-        return f"{minutes}m"
-    return f"{seconds}s"
+    eta = time_of_death + wait_seconds
+    try:
+        return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(eta))
+    except (ValueError, OSError):
+        return "Unknown"
 
 
 def _save_userdata(path: Path, data: Dict) -> None:
@@ -82,6 +81,35 @@ def force_revive(path: str, discord_id: str) -> bool:
         return changed
 
     return _modify_user(Path(path), discord_id, updater)[0]
+
+
+def force_revive_all(path: str) -> int:
+    data = _read_json(Path(path))
+    season_deaths = data.get("season_deaths")
+    if not isinstance(season_deaths, list):
+        season_deaths = []
+        data["season_deaths"] = season_deaths
+
+    revived = 0
+    for discord_id, user in data.get("userdata", {}).items():
+        changed = False
+        if int(user.get("is_alive", 1)) != 1:
+            user["is_alive"] = 1
+            changed = True
+        if user.get("time_of_death"):
+            user["time_of_death"] = 0
+            changed = True
+        if int(user.get("revive_wait", 0)) != 0:
+            user["revive_wait"] = 0
+            changed = True
+        if changed:
+            revived += 1
+            if discord_id in season_deaths:
+                season_deaths.remove(discord_id)
+
+    if revived:
+        _save_userdata(Path(path), data)
+    return revived
 
 
 def force_mark_dead(path: str, discord_id: str) -> bool:
