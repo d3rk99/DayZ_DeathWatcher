@@ -23,8 +23,9 @@ class GuiApplication:
         self.root = tk.Tk()
         self.root.title("DayZ Death Watcher")
         self.root.geometry("1300x750")
-        self.main_queue: "queue.Queue[str]" = queue.Queue()
-        self.death_queue: "queue.Queue[str]" = queue.Queue()
+        self.main_queue: queue.Queue[str] = queue.Queue()
+        self.death_queue: queue.Queue[str | tuple[str, str]] = queue.Queue()
+        self.counter_queue: queue.Queue[tuple[int, int]] = queue.Queue()
         self.bot_thread: Optional[threading.Thread] = None
         self._shutdown_callback = on_close
         self._dark_mode = tk.BooleanVar(value=False)
@@ -124,19 +125,43 @@ class GuiApplication:
         self.main_queue.put(message)
 
     def append_death_log(self, message: str) -> None:
-        self.death_queue.put(message)
+        formatted = self._format_death_log(message)
+        if not formatted:
+            return
+        self.death_queue.put((formatted, message))
+
+    def handle_death_counter_update(self, count: int, last_reset: int) -> None:
+        self.counter_queue.put((count, last_reset))
 
     def _poll_logs(self) -> None:
         self._drain_queue(self.main_queue, self._main_console)
         self._drain_queue(self.death_queue, self._death_console, analytics=True)
+        self._process_counter_updates()
         self.root.after(100, self._poll_logs)
 
-    def _drain_queue(self, q: "queue.Queue[str]", console: ConsolePane, *, analytics: bool = False) -> None:
+    def _drain_queue(
+        self,
+        q: "queue.Queue[str | tuple[str, str]]",
+        console: ConsolePane,
+        *,
+        analytics: bool = False,
+    ) -> None:
         while not q.empty():
-            message = q.get_nowait()
+            payload = q.get_nowait()
+            if isinstance(payload, tuple):
+                message, analytics_line = payload
+            else:
+                message = payload
+                analytics_line = payload if analytics else None
             console.append(message)
-            if analytics and self.analytics_manager.record_line(message):
+            if analytics and analytics_line and self.analytics_manager.record_line(analytics_line):
                 self._analytics.refresh()
+
+    def _process_counter_updates(self) -> None:
+        while not self.counter_queue.empty():
+            count, last_reset = self.counter_queue.get_nowait()
+            if hasattr(self, "_sidebar"):
+                self._sidebar.update_death_counter(count, last_reset)
 
     def _apply_theme(self) -> None:
         self._theme = get_theme(self._dark_mode.get())
@@ -159,6 +184,49 @@ class GuiApplication:
             self._sidebar.apply_theme(palette)
         if hasattr(self, "_analytics"):
             self._analytics.apply_theme(palette)
+
+    def _format_death_log(self, message: str) -> Optional[str]:
+        if not message:
+            return None
+        line = message.strip()
+        lowered = line.lower()
+        cues = (
+            "killed",
+            "committed suicide",
+            "bled out",
+            "died.",
+            "death",
+            "(dead)",
+            "murdered",
+            "was brutally murdered by that psycho timmy",
+        )
+        if not any(cue in lowered for cue in cues):
+            return None
+        if "|" not in line or "(id=" not in line:
+            return f"[{line}]"
+        timestamp_part, remainder = line.split("|", 1)
+        timestamp_part = timestamp_part.strip()
+        remainder = remainder.strip()
+        player = remainder.split("(id=", 1)[0].strip()
+        after_id = remainder.split(")", 1)
+        cause_fragment = after_id[1].strip() if len(after_id) > 1 else ""
+        cause_fragment = cause_fragment.split("(id=", 1)[0].strip()
+        cause_fragment = cause_fragment.strip("- ")
+        date_part = ""
+        time_part = ""
+        timestamp_bits = timestamp_part.split()
+        if len(timestamp_bits) >= 2:
+            date_part, time_part = timestamp_bits[0], timestamp_bits[1]
+        elif timestamp_bits:
+            text = timestamp_bits[0]
+            if ":" in text:
+                time_part = text
+            else:
+                date_part = text
+        parts = [value for value in (date_part, player, cause_fragment, time_part) if value]
+        if not parts:
+            return None
+        return "[" + " - ".join(parts) + "]"
 
     # region setup gating
     def on_ready(self, callback: Callable[[], None]) -> None:
