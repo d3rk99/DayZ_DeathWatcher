@@ -8,6 +8,7 @@ import json
 import time
 import traceback
 import threading
+import ctypes
 from typing import Callable, List, Optional
 
 from nextcord import Interaction, SlashOption, ChannelType
@@ -856,4 +857,12 @@ if __name__ == "__main__":
     if "--no-gui" in sys.argv:
         run_bot()
     else:
+        if platform.system() == "Windows":
+            try:
+                hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+                if hwnd:
+                    ctypes.windll.user32.ShowWindow(hwnd, 0)
+                    ctypes.windll.kernel32.FreeConsole()
+            except Exception:
+                pass
         launch_gui()
