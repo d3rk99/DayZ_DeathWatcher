@@ -6,7 +6,7 @@ from tkinter import messagebox, ttk
 from typing import Callable
 
 from gui.theme import LIGHT_THEME, ThemePalette
-from services import list_service, userdata_service
+from services import bot_control_service, list_service, userdata_service
 
 
 class DeadPlayersPanel(tk.Frame):
@@ -148,6 +148,138 @@ class DeadPlayersPanel(tk.Frame):
                 activeforeground=theme.console_fg,
                 highlightbackground=theme.panel_bg,
                 borderwidth=1,
+                relief=tk.FLAT,
+            )
+
+
+class DeathCounterPanel(tk.Frame):
+    def __init__(self, master, *, death_counter_path: str) -> None:
+        super().__init__(master)
+        self.death_counter_path = death_counter_path
+        self._theme: ThemePalette = LIGHT_THEME
+        self._count_var = tk.StringVar(value="0")
+        self._status_var = tk.StringVar(value="")
+        self._input_var = tk.StringVar(value="0")
+        self._buttons: list[tk.Button] = []
+        self._build_ui()
+        self.refresh()
+
+    def _build_ui(self) -> None:
+        self._title = tk.Label(self, text="Death Counter", font=("Segoe UI", 12, "bold"))
+        self._title.pack(anchor="w", padx=10, pady=(10, 4))
+
+        self._count_display = tk.Label(
+            self,
+            textvariable=self._count_var,
+            font=("Segoe UI", 28, "bold"),
+            anchor=tk.CENTER,
+        )
+        self._count_display.pack(fill=tk.X, padx=10)
+
+        self._status_label = tk.Label(
+            self,
+            textvariable=self._status_var,
+            wraplength=250,
+            justify=tk.LEFT,
+        )
+        self._status_label.pack(fill=tk.X, padx=10, pady=(4, 8))
+
+        action_row = tk.Frame(self)
+        action_row.pack(fill=tk.X, padx=10, pady=(0, 10))
+        self._refresh_button = tk.Button(action_row, text="Refresh", command=self.refresh)
+        self._refresh_button.pack(side=tk.LEFT)
+        self._buttons.append(self._refresh_button)
+        self._activity_button = tk.Button(
+            action_row,
+            text="Update Activity",
+            command=self._refresh_activity,
+        )
+        self._activity_button.pack(side=tk.LEFT, padx=(6, 0))
+        self._buttons.append(self._activity_button)
+
+        adjust_label = tk.Label(self, text="Set counter to:")
+        adjust_label.pack(anchor="w", padx=10)
+        entry_row = tk.Frame(self)
+        entry_row.pack(fill=tk.X, padx=10, pady=(2, 6))
+        self._entry = tk.Entry(entry_row, textvariable=self._input_var, justify=tk.CENTER)
+        self._entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self._set_button = tk.Button(entry_row, text="Apply", command=self._apply_value)
+        self._set_button.pack(side=tk.LEFT, padx=(6, 0))
+        self._buttons.append(self._set_button)
+
+        delta_row = tk.Frame(self)
+        delta_row.pack(fill=tk.X, padx=10, pady=(0, 10))
+        self._minus_button = tk.Button(delta_row, text="-1", command=lambda: self._adjust(-1))
+        self._minus_button.pack(side=tk.LEFT)
+        self._buttons.append(self._minus_button)
+        self._plus_button = tk.Button(delta_row, text="+1", command=lambda: self._adjust(1))
+        self._plus_button.pack(side=tk.LEFT, padx=(6, 0))
+        self._buttons.append(self._plus_button)
+
+    def refresh(self) -> None:
+        try:
+            count, synced = bot_control_service.get_death_counter(self.death_counter_path)
+        except Exception as exc:
+            messagebox.showerror("Death Counter", str(exc))
+            return
+        self._count_var.set(str(count))
+        if synced:
+            self._status_var.set("Synced with the running bot.")
+        else:
+            self._status_var.set("Bot offline. Showing the saved file value.")
+
+    def _apply_value(self) -> None:
+        try:
+            value = int(self._input_var.get())
+        except ValueError:
+            messagebox.showerror("Death Counter", "Please enter a valid integer value.")
+            return
+        self._update_counter(lambda: bot_control_service.set_death_counter(self.death_counter_path, value))
+
+    def _adjust(self, delta: int) -> None:
+        self._update_counter(lambda: bot_control_service.adjust_death_counter(self.death_counter_path, delta))
+
+    def _update_counter(self, updater: Callable[[], tuple[int, bool]]) -> None:
+        try:
+            count, synced = updater()
+        except Exception as exc:
+            messagebox.showerror("Death Counter", str(exc))
+            return
+        self._count_var.set(str(count))
+        if synced:
+            self._status_var.set("Updated live counter and bot activity.")
+        else:
+            self._status_var.set("Bot offline. Saved update to disk only.")
+
+    def _refresh_activity(self) -> None:
+        try:
+            bot_control_service.refresh_activity()
+            messagebox.showinfo("Bot Activity", "Presence updated with the latest counter value.")
+        except Exception as exc:
+            messagebox.showerror("Bot Activity", str(exc))
+
+    def apply_theme(self, theme: ThemePalette) -> None:
+        self._theme = theme
+        self.configure(bg=theme.panel_bg)
+        for widget in (self._title, self._count_display, self._status_label):
+            widget.configure(bg=theme.panel_bg, fg=theme.fg)
+        for button in self._buttons:
+            button.configure(
+                bg=theme.button_bg,
+                fg=theme.button_fg,
+                activebackground=theme.accent,
+                activeforeground=theme.console_fg,
+                highlightbackground=theme.panel_bg,
+                borderwidth=1,
+                relief=tk.FLAT,
+            )
+        if hasattr(self, "_entry"):
+            self._entry.configure(
+                bg=theme.console_bg,
+                fg=theme.console_fg,
+                insertbackground=theme.console_fg,
+                highlightbackground=theme.panel_bg,
+                highlightcolor=theme.panel_bg,
                 relief=tk.FLAT,
             )
 
@@ -300,6 +432,12 @@ class SidebarPane(tk.Frame):
         )
         self._notebook.add(self._dead_panel, text="Currently Dead")
 
+        self._counter_panel = DeathCounterPanel(
+            self._notebook,
+            death_counter_path=self.config_data.get("death_counter_path", "death_counter.json"),
+        )
+        self._notebook.add(self._counter_panel, text="Death Counter")
+
         self._lists_notebook = ttk.Notebook(
             self._notebook, style="Sidebar.SubNotebook.TNotebook"
         )
@@ -385,6 +523,8 @@ class SidebarPane(tk.Frame):
             self._lists_notebook.configure(style="Sidebar.SubNotebook.TNotebook")
         if hasattr(self, "_dead_panel"):
             self._dead_panel.apply_theme(theme)
+        if hasattr(self, "_counter_panel"):
+            self._counter_panel.apply_theme(theme)
         if hasattr(self, "_whitelist_panel"):
             self._whitelist_panel.apply_theme(theme)
         if hasattr(self, "_banlist_panel"):

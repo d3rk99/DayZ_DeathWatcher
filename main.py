@@ -193,13 +193,7 @@ async def update_bot_activity(*, count: Optional[int] = None) -> None:
 
 
 async def increment_death_counter() -> None:
-    lock = get_death_counter_lock()
-    async with lock:
-        death_counter_state["count"] = int(death_counter_state.get("count", 0)) + 1
-        save_death_counter_state()
-        count = death_counter_state["count"]
-
-    await update_bot_activity(count=count)
+    await adjust_death_counter(delta=1)
 
 
 async def reset_death_counter() -> int:
@@ -212,6 +206,37 @@ async def reset_death_counter() -> int:
 
     await update_bot_activity(count=count)
     return count
+
+
+async def get_death_counter_value() -> int:
+    lock = get_death_counter_lock()
+    async with lock:
+        return int(death_counter_state.get("count", 0))
+
+
+async def set_death_counter_value(count: int) -> int:
+    lock = get_death_counter_lock()
+    async with lock:
+        death_counter_state["count"] = max(0, int(count))
+        save_death_counter_state()
+        current = death_counter_state["count"]
+
+    await update_bot_activity(count=current)
+    return current
+
+
+async def adjust_death_counter(delta: int) -> int:
+    lock = get_death_counter_lock()
+    async with lock:
+        death_counter_state["count"] = max(
+            0,
+            int(death_counter_state.get("count", 0)) + int(delta),
+        )
+        save_death_counter_state()
+        current = death_counter_state["count"]
+
+    await update_bot_activity(count=current)
+    return current
             
 
 @tasks.loop(seconds = 2)
