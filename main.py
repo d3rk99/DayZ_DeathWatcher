@@ -8,7 +8,7 @@ import json
 import time
 import traceback
 import threading
-from typing import Callable, Optional
+from typing import Callable, List, Optional
 
 from nextcord import Interaction, SlashOption, ChannelType
 from nextcord.abc import GuildChannel
@@ -18,6 +18,7 @@ from nextcord.member import Member
 import nextcord
 from nextcord import Webhook
 from dayz_dev_tools import guid as GUID
+from services.path_fields import PATH_FIELDS, REQUIRED_PATH_KEYS
 
 # Ensure the script runs relative to its own directory so double-click
 # launches behave the same as running from a terminal.
@@ -32,16 +33,24 @@ death_counter_state: dict = {"count": 0, "last_reset": int(time.time())}
 death_counter_lock: Optional[asyncio.Lock] = None
 
 
+class MissingConfigPaths(Exception):
+    def __init__(self, keys: List[str]):
+        self.keys = keys
+        friendly_parts = []
+        for key in keys:
+            field = PATH_FIELDS.get(key)
+            friendly_parts.append(field.label if field else key)
+        friendly = ", ".join(friendly_parts)
+        super().__init__(f"Missing configuration paths: {friendly}")
+
+
 def main(*, interactive: bool = True, death_log_callback: Optional[Callable[[str], None]] = None):
     global client
     global config
     global death_counter_state
 
     if (not os.path.isfile("config.json")):
-        message = "'config.json' not found!"
-        if interactive:
-            sys.exit(message)
-        raise FileNotFoundError(message)
+        raise MissingConfigPaths(["config.json"])
 
     print("Loading config...")
     with open("config.json") as file:
@@ -56,22 +65,15 @@ def main(*, interactive: bool = True, death_log_callback: Optional[Callable[[str
             file.write("{\"userdata\": {}}")
 
     # verify whitelist file path is valid
+    missing_paths: List[str] = []
     if (not os.path.isfile(config["whitelist_path"])):
-        message = f"Whitelist file ({config['whitelist_path']}) not found. Please verify the path to the whitelist file in the config file."
-        print(message)
-        if interactive:
-            input("Press enter to close this window.")
-            sys.exit(0)
-        raise FileNotFoundError(message)
+        missing_paths.append("whitelist_path")
 
-    # verify blacklist file path is valid
     if (not os.path.isfile(config["blacklist_path"])):
-        message = f"Blacklist_path file ({config['blacklist_path']}) not found. Please verify the path to the blacklist file in the config file."
-        print(message)
-        if interactive:
-            input("Press enter to close this window.")
-            sys.exit(0)
-        raise FileNotFoundError(message)
+        missing_paths.append("blacklist_path")
+
+    if missing_paths:
+        raise MissingConfigPaths(missing_paths)
 
     if (not os.path.isfile(config["steam_ids_to_unban_path"])):
         print(f"Steam ids to unban file ({config['steam_ids_to_unban_path']}) not found. Creating it now.")
@@ -775,13 +777,27 @@ def launch_gui() -> None:
     def bot_runner() -> None:
         try:
             run_bot(interactive=False, death_log_callback=app.append_death_log)
+        except MissingConfigPaths as exc:
+            labels = ", ".join(
+                PATH_FIELDS[key].label if key in PATH_FIELDS else key for key in exc.keys
+            )
+            app.append_main_log(
+                f"Life and Death Bot paused until the following paths are configured: {labels}.\n"
+            )
+            app.require_path_setup(exc.keys)
+            app.on_ready(start_bot_thread)
         except Exception:
             app.append_main_log("Life and Death Bot stopped due to an unexpected error:\n")
             app.append_main_log(traceback.format_exc())
 
-    bot_thread = threading.Thread(target=bot_runner, daemon=True)
-    bot_thread.start()
-    app.bot_thread = bot_thread
+    def start_bot_thread() -> None:
+        if app.bot_thread and app.bot_thread.is_alive():
+            return
+        bot_thread = threading.Thread(target=bot_runner, daemon=True)
+        bot_thread.start()
+        app.bot_thread = bot_thread
+
+    app.on_ready(start_bot_thread)
 
     app.run()
 
