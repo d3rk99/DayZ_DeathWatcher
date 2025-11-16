@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
-from typing import Callable, Dict, Iterable, List, Sequence
+from typing import Callable, Dict, Iterable, List
 
 from services.bot_fields import BOT_FIELDS, BotField
 from services.config_manager import ConfigManager
@@ -19,7 +19,6 @@ class PathSetupDialog(tk.Toplevel):
         config_manager: ConfigManager,
         *,
         missing_keys: Iterable[str] | None = None,
-        field_keys: Sequence[str] | None = None,
         button_text: str = "Save",
         on_complete: Callable[[], None] | None = None,
     ) -> None:
@@ -30,8 +29,7 @@ class PathSetupDialog(tk.Toplevel):
         self._on_complete = on_complete
         self._entries: Dict[str, tk.StringVar] = {}
         self._missing = set(missing_keys or [])
-        keys = [key for key in (field_keys or []) if key in PATH_FIELDS]
-        self._field_keys: List[str] = keys or list(PATH_FIELDS.keys())
+        self._field_keys: List[str] = list(PATH_FIELDS.keys())
         self._button_text = button_text or "Save"
 
         self.transient(master)
@@ -96,7 +94,6 @@ class PathSetupDialog(tk.Toplevel):
         options = {
             "title": f"Select {field.label}",
             "initialdir": os.path.dirname(current) if current else os.getcwd(),
-            "mustexist": field.must_exist,
         }
         chosen = filedialog.askopenfilename(**options)
         if chosen:

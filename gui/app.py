@@ -231,7 +231,6 @@ class GuiApplication:
             self.root,
             self.config_manager,
             missing_keys=missing_keys,
-            field_keys=missing_keys,
             button_text="Next" if require_followup else "Save",
             on_complete=_on_complete,
         )
