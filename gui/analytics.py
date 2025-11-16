@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import tkinter as tk
+from datetime import datetime
 from tkinter import filedialog, messagebox
 
 try:
@@ -63,7 +64,10 @@ class AnalyticsPane(tk.Frame):
         self._timeline_ax.clear()
         self._timeline_ax.set_title("Deaths Over Time")
         if times:
-            dates = mdates.epoch2num(times)
+            if hasattr(mdates, "epoch2num"):
+                dates = mdates.epoch2num(times)
+            else:
+                dates = [mdates.date2num(datetime.fromtimestamp(ts)) for ts in times]
             self._timeline_ax.plot_date(dates, counts, linestyle="solid", marker="o")
             self._timeline_ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M:%S"))
             self._timeline_ax.set_ylabel("Deaths")

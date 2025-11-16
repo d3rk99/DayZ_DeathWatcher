@@ -8,7 +8,7 @@ import json
 import time
 import traceback
 import threading
-from typing import Callable, Optional
+from typing import Callable, List, Optional
 
 from nextcord import Interaction, SlashOption, ChannelType
 from nextcord.abc import GuildChannel
@@ -18,6 +18,7 @@ from nextcord.member import Member
 import nextcord
 from nextcord import Webhook
 from dayz_dev_tools import guid as GUID
+from services.path_fields import PATH_FIELDS, REQUIRED_PATH_KEYS
 
 # Ensure the script runs relative to its own directory so double-click
 # launches behave the same as running from a terminal.
@@ -28,21 +29,34 @@ os.system("title " + "Life and Death Bot")
 
 client: Optional[Bot] = None
 config: dict = {}
+death_counter_state: dict = {"count": 0, "last_reset": int(time.time())}
+death_counter_lock: Optional[asyncio.Lock] = None
+
+
+class MissingConfigPaths(Exception):
+    def __init__(self, keys: List[str]):
+        self.keys = keys
+        friendly_parts = []
+        for key in keys:
+            field = PATH_FIELDS.get(key)
+            friendly_parts.append(field.label if field else key)
+        friendly = ", ".join(friendly_parts)
+        super().__init__(f"Missing configuration paths: {friendly}")
 
 
 def main(*, interactive: bool = True, death_log_callback: Optional[Callable[[str], None]] = None):
     global client
     global config
+    global death_counter_state
 
     if (not os.path.isfile("config.json")):
-        message = "'config.json' not found!"
-        if interactive:
-            sys.exit(message)
-        raise FileNotFoundError(message)
+        raise MissingConfigPaths(["config.json"])
 
     print("Loading config...")
     with open("config.json") as file:
         config = json.load(file)
+
+    load_death_counter_state()
 
     # create userdata db (json) file if it does not exist
     if (not os.path.isfile(config["userdata_db_path"])):
@@ -51,22 +65,15 @@ def main(*, interactive: bool = True, death_log_callback: Optional[Callable[[str
             file.write("{\"userdata\": {}}")
 
     # verify whitelist file path is valid
+    missing_paths: List[str] = []
     if (not os.path.isfile(config["whitelist_path"])):
-        message = f"Whitelist file ({config['whitelist_path']}) not found. Please verify the path to the whitelist file in the config file."
-        print(message)
-        if interactive:
-            input("Press enter to close this window.")
-            sys.exit(0)
-        raise FileNotFoundError(message)
+        missing_paths.append("whitelist_path")
 
-    # verify blacklist file path is valid
     if (not os.path.isfile(config["blacklist_path"])):
-        message = f"Blacklist_path file ({config['blacklist_path']}) not found. Please verify the path to the blacklist file in the config file."
-        print(message)
-        if interactive:
-            input("Press enter to close this window.")
-            sys.exit(0)
-        raise FileNotFoundError(message)
+        missing_paths.append("blacklist_path")
+
+    if missing_paths:
+        raise MissingConfigPaths(missing_paths)
 
     if (not os.path.isfile(config["steam_ids_to_unban_path"])):
         print(f"Steam ids to unban file ({config['steam_ids_to_unban_path']}) not found. Creating it now.")
@@ -120,6 +127,157 @@ def load_cogs():
 
         print(f"\t{fn}...")
         client.load_extension(f"cogs.{cog_name}")
+
+
+def get_death_counter_path() -> str:
+    if not config:
+        return "./death_counter.json"
+    return config.get("death_counter_path", "./death_counter.json")
+
+
+def load_death_counter_state() -> None:
+    global death_counter_state
+
+    path = get_death_counter_path()
+    default_state = {"count": 0, "last_reset": int(time.time())}
+
+    try:
+        if os.path.isfile(path):
+            with open(path, "r") as file:
+                loaded_state = json.load(file)
+            death_counter_state = {
+                "count": int(loaded_state.get("count", 0)),
+                "last_reset": int(loaded_state.get("last_reset", int(time.time()))),
+            }
+        else:
+            death_counter_state = default_state
+            save_death_counter_state()
+    except Exception as exc:
+        print(f"Failed to load death counter data ({path}). Using default state. Error: {exc}")
+        death_counter_state = default_state
+        save_death_counter_state()
+
+
+def save_death_counter_state() -> None:
+    path = get_death_counter_path()
+    directory = os.path.dirname(path)
+    if directory and not os.path.isdir(directory):
+        os.makedirs(directory, exist_ok=True)
+
+    with open(path, "w") as file:
+        json.dump(death_counter_state, file, indent=4)
+
+
+def get_death_counter_lock() -> asyncio.Lock:
+    global death_counter_lock
+    if death_counter_lock is None:
+        death_counter_lock = asyncio.Lock()
+    return death_counter_lock
+
+
+def _format_day_suffix(day: int) -> str:
+    if 10 <= day % 100 <= 20:
+        return "th"
+    return {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+
+
+def _format_since_timestamp(timestamp: Optional[int]) -> str:
+    if not timestamp:
+        return ""
+    dt = datetime.datetime.fromtimestamp(timestamp)
+    suffix = _format_day_suffix(dt.day)
+    month = dt.strftime("%b")
+    year_suffix = f", {dt.year}" if dt.year != datetime.datetime.now().year else ""
+    return f"{month} {dt.day}{suffix}{year_suffix}"
+
+
+async def update_bot_activity(*, count: Optional[int] = None, last_reset: Optional[int] = None) -> None:
+    if client is None:
+        return
+
+    if count is None or last_reset is None:
+        lock = get_death_counter_lock()
+        async with lock:
+            if count is None:
+                count = int(death_counter_state.get("count", 0))
+            if last_reset is None:
+                last_reset = int(death_counter_state.get("last_reset", int(time.time())))
+
+    activity = nextcord.Activity(
+        type=nextcord.ActivityType.watching,
+        name=_build_activity_message(count=count, last_reset=last_reset),
+    )
+    try:
+        await client.change_presence(activity=activity)
+    except Exception as exc:
+        print(f"Failed to update bot activity: {exc}")
+
+
+def _build_activity_message(*, count: int, last_reset: Optional[int]) -> str:
+    deaths = f"{count} death{'s' if count != 1 else ''}"
+    since_text = _format_since_timestamp(last_reset)
+    if since_text:
+        return f"{deaths} since {since_text}"
+    return deaths
+
+
+async def increment_death_counter() -> None:
+    await adjust_death_counter(delta=1)
+
+
+async def reset_death_counter() -> tuple[int, int]:
+    lock = get_death_counter_lock()
+    async with lock:
+        death_counter_state["count"] = 0
+        death_counter_state["last_reset"] = int(time.time())
+        save_death_counter_state()
+        count = death_counter_state["count"]
+        last_reset = death_counter_state["last_reset"]
+
+    await update_bot_activity(count=count, last_reset=last_reset)
+    return count, last_reset
+
+
+async def get_death_counter_value() -> tuple[int, int]:
+    lock = get_death_counter_lock()
+    async with lock:
+        return (
+            int(death_counter_state.get("count", 0)),
+            int(death_counter_state.get("last_reset", int(time.time()))),
+        )
+
+
+async def set_death_counter_value(count: int) -> tuple[int, int]:
+    lock = get_death_counter_lock()
+    async with lock:
+        previous = int(death_counter_state.get("count", 0))
+        death_counter_state["count"] = max(0, int(count))
+        if death_counter_state["count"] == 0 and previous != 0:
+            death_counter_state["last_reset"] = int(time.time())
+        save_death_counter_state()
+        current = death_counter_state["count"]
+        last_reset = int(death_counter_state.get("last_reset", int(time.time())))
+
+    await update_bot_activity(count=current, last_reset=last_reset)
+    return current, last_reset
+
+
+async def adjust_death_counter(delta: int) -> tuple[int, int]:
+    lock = get_death_counter_lock()
+    async with lock:
+        previous = int(death_counter_state.get("count", 0))
+        death_counter_state["count"] = max(
+            0,
+            previous + int(delta),
+        )
+        if death_counter_state["count"] == 0 and previous != 0:
+            death_counter_state["last_reset"] = int(time.time())
+        save_death_counter_state()
+        current = death_counter_state["count"]
+        last_reset = int(death_counter_state.get("last_reset", int(time.time())))
+
+    await update_bot_activity(count=current, last_reset=last_reset)
+    return current, last_reset
             
 
 @tasks.loop(seconds = 2)
@@ -407,9 +565,11 @@ async def set_user_as_dead(user_id):
             category_id = -1
         if (channel_id == int(config["join_vc_id"]) or category_id == int(config["join_vc_category_id"])):
             await member.edit(voice_channel = None)
-        
+
         print(f"Marked user ({userdata['username']}) as dead.")
-        
+
+        await increment_death_counter()
+
     except Exception as e:
         text = f"[SetUserAsDead] \"{e}\"\nIt is advised to restart this script."
         print(text)
@@ -617,13 +777,27 @@ def launch_gui() -> None:
     def bot_runner() -> None:
         try:
             run_bot(interactive=False, death_log_callback=app.append_death_log)
+        except MissingConfigPaths as exc:
+            labels = ", ".join(
+                PATH_FIELDS[key].label if key in PATH_FIELDS else key for key in exc.keys
+            )
+            app.append_main_log(
+                f"Life and Death Bot paused until the following paths are configured: {labels}.\n"
+            )
+            app.require_path_setup(exc.keys)
+            app.on_ready(start_bot_thread)
         except Exception:
             app.append_main_log("Life and Death Bot stopped due to an unexpected error:\n")
             app.append_main_log(traceback.format_exc())
 
-    bot_thread = threading.Thread(target=bot_runner, daemon=True)
-    bot_thread.start()
-    app.bot_thread = bot_thread
+    def start_bot_thread() -> None:
+        if app.bot_thread and app.bot_thread.is_alive():
+            return
+        bot_thread = threading.Thread(target=bot_runner, daemon=True)
+        bot_thread.start()
+        app.bot_thread = bot_thread
+
+    app.on_ready(start_bot_thread)
 
     app.run()
 

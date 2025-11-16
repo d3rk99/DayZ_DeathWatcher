@@ -4,11 +4,12 @@ import queue
 import threading
 import tkinter as tk
 import tkinter.ttk as ttk
-from typing import Optional
+from typing import Callable, Optional
 
 from gui.analytics import AnalyticsPane
 from gui.config_editor import ConfigEditor
 from gui.console_pane import ConsolePane
+from gui.path_setup import PathSetupDialog
 from gui.sidebar import SidebarPane
 from gui.theme import ThemePalette, get_theme
 from services.analytics_service import AnalyticsManager
@@ -26,6 +27,9 @@ class GuiApplication:
         self._shutdown_callback = on_close
         self._dark_mode = tk.BooleanVar(value=False)
         self._theme: ThemePalette = get_theme(False)
+        self._ready = False
+        self._ready_callbacks: list[Callable[[], None]] = []
+        self._path_dialog: Optional[PathSetupDialog] = None
 
         self.config_manager = ConfigManager(config_path)
         self.analytics_manager = AnalyticsManager()
@@ -34,6 +38,7 @@ class GuiApplication:
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         self.config_manager.add_listener(self._on_config_update)
         self.root.after(100, self._poll_logs)
+        self._ensure_initial_paths()
 
     # region UI
     def _build_ui(self) -> None:
@@ -108,6 +113,7 @@ class GuiApplication:
 
     def _on_config_update(self, data: dict) -> None:
         self._sidebar.reload_paths(data)
+        self._ensure_initial_paths()
 
     def append_main_log(self, message: str) -> None:
         self.main_queue.put(message)
@@ -148,6 +154,76 @@ class GuiApplication:
             self._sidebar.apply_theme(palette)
         if hasattr(self, "_analytics"):
             self._analytics.apply_theme(palette)
+
+    # region setup gating
+    def on_ready(self, callback: Callable[[], None]) -> None:
+        if callback in self._ready_callbacks:
+            return
+        self._ready_callbacks.append(callback)
+        if self._ready:
+            self._flush_ready_callbacks()
+
+    def _set_ready(self, ready: bool) -> None:
+        self._ready = ready
+        if ready:
+            self._flush_ready_callbacks()
+
+    def _flush_ready_callbacks(self) -> None:
+        if not self._ready:
+            return
+        while self._ready_callbacks:
+            callback = self._ready_callbacks.pop(0)
+            try:
+                callback()
+            except Exception:
+                pass
+
+    def _ensure_initial_paths(self) -> None:
+        from services.path_fields import find_missing_required_paths
+
+        missing = find_missing_required_paths(self.config_manager.data)
+        if missing:
+            self._set_ready(False)
+            self._show_path_dialog(missing)
+        elif self._path_dialog is None:
+            self._set_ready(True)
+
+    def require_path_setup(self, missing_keys: Optional[list[str]] = None) -> None:
+        def _prompt() -> None:
+            from services.path_fields import PATH_FIELDS, find_missing_required_paths
+
+            keys = missing_keys or find_missing_required_paths(self.config_manager.data)
+            keys = [key for key in keys if key in PATH_FIELDS]
+            if not keys:
+                keys = list(PATH_FIELDS.keys())
+            self._set_ready(False)
+            self._show_path_dialog(keys)
+
+        self.root.after(0, _prompt)
+
+    def _show_path_dialog(self, missing_keys: list[str]) -> None:
+        if self._path_dialog and self._path_dialog.winfo_exists():
+            return
+
+        def _on_complete() -> None:
+            from services.path_fields import find_missing_required_paths
+
+            self._path_dialog = None
+            missing = find_missing_required_paths(self.config_manager.data)
+            if missing:
+                self._show_path_dialog(missing)
+            else:
+                self._set_ready(True)
+
+        self._path_dialog = PathSetupDialog(
+            self.root,
+            self.config_manager,
+            missing_keys=missing_keys,
+            on_complete=_on_complete,
+        )
+        self._path_dialog.bind("<Destroy>", lambda _event: setattr(self, "_path_dialog", None))
+
+    # endregion
 
     def _on_close(self) -> None:
         if self._shutdown_callback:

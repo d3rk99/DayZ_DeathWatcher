@@ -4,7 +4,7 @@ import platform
 import json
 import nextcord
 from nextcord.ext import commands
-from main import *
+from main import update_bot_activity
 
 class Onready(commands.Cog):
     
@@ -18,6 +18,8 @@ class Onready(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         print("-------------------")
+
+        await update_bot_activity()
         print(f"Logged in as: {self.client.user.name}")
         print(f"Nextcord API Version: {nextcord.__version__}")
         print(f"Python Version: {platform.python_version()}")
