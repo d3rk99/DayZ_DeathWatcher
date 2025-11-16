@@ -17,9 +17,14 @@ class DeathWatcher(commands.Cog):
 
         config = getattr(bot, "config", {})
         config_path = config.get("death_watcher_config_path")
-        self.watcher = DayZDeathWatcher(config_path=config_path)
+        self.logger = getattr(bot, "death_watcher_logger", None)
+        self.watcher = DayZDeathWatcher(config_path=config_path, logger=self.logger)
 
-        print("\nStarting embedded DayZ death watcher...\n")
+        message = "\nStarting embedded DayZ death watcher...\n"
+        if self.logger:
+            self.logger(message)
+        else:
+            print(message)
         self.thread = threading.Thread(target=self._run_watcher, daemon=True)
         self.thread.start()
 
@@ -34,8 +39,13 @@ class DeathWatcher(commands.Cog):
         try:
             self.watcher.run_blocking()
         except Exception:
-            print("DayZ death watcher encountered an unexpected error:\n")
-            traceback.print_exc()
+            details = traceback.format_exc()
+            if self.logger:
+                self.logger("DayZ death watcher encountered an unexpected error:\n")
+                self.logger(details)
+            else:
+                print("DayZ death watcher encountered an unexpected error:\n")
+                print(details)
 
 
 def setup(bot: commands.Bot) -> None:

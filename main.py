@@ -7,6 +7,8 @@ import asyncio
 import json
 import time
 import traceback
+import threading
+from typing import Callable, Optional
 
 from nextcord import Interaction, SlashOption, ChannelType
 from nextcord.abc import GuildChannel
@@ -24,35 +26,48 @@ os.chdir(SCRIPT_DIR)
 
 os.system("title " + "Life and Death Bot")
 
-def main():
+client: Optional[Bot] = None
+config: dict = {}
+
+
+def main(*, interactive: bool = True, death_log_callback: Optional[Callable[[str], None]] = None):
     global client
     global config
-    
+
     if (not os.path.isfile("config.json")):
-        sys.exit("'config.json' not found!")
-    else:
-        print("Loading config...")
-        with open("config.json") as file:
-            config = json.load(file)
-    
+        message = "'config.json' not found!"
+        if interactive:
+            sys.exit(message)
+        raise FileNotFoundError(message)
+
+    print("Loading config...")
+    with open("config.json") as file:
+        config = json.load(file)
+
     # create userdata db (json) file if it does not exist
     if (not os.path.isfile(config["userdata_db_path"])):
         print(f"Userdata db file ({config['userdata_db_path']}) not found. Creating it now.")
         with open(config["userdata_db_path"], "w") as file:
             file.write("{\"userdata\": {}}")
-    
+
     # verify whitelist file path is valid
     if (not os.path.isfile(config["whitelist_path"])):
-        print(f"Whitelist file ({config['whitelist_path']}) not found. Please verify the path to the whitelist file in the config file.")
-        input("Press enter to close this window.")
-        sys.exit(0)
-        
+        message = f"Whitelist file ({config['whitelist_path']}) not found. Please verify the path to the whitelist file in the config file."
+        print(message)
+        if interactive:
+            input("Press enter to close this window.")
+            sys.exit(0)
+        raise FileNotFoundError(message)
+
     # verify blacklist file path is valid
     if (not os.path.isfile(config["blacklist_path"])):
-        print(f"Blacklist_path file ({config['blacklist_path']}) not found. Please verify the path to the blacklist file in the config file.")
-        input("Press enter to close this window.")
-        sys.exit(0)
-    
+        message = f"Blacklist_path file ({config['blacklist_path']}) not found. Please verify the path to the blacklist file in the config file."
+        print(message)
+        if interactive:
+            input("Press enter to close this window.")
+            sys.exit(0)
+        raise FileNotFoundError(message)
+
     if (not os.path.isfile(config["steam_ids_to_unban_path"])):
         print(f"Steam ids to unban file ({config['steam_ids_to_unban_path']}) not found. Creating it now.")
         with open(config["steam_ids_to_unban_path"], "w") as file:
@@ -64,6 +79,7 @@ def main():
 
     # expose config to cogs so optional components can read shared settings
     client.config = config
+    client.death_watcher_logger = death_log_callback
 
     client.remove_command("help")
     
@@ -522,16 +538,28 @@ async def get_user_id_from_name(username : str):
             ID = ""
     except:
         ID = ""
-    
+
     return ID
-        
 
 
 
-if __name__ == "__main__":
+
+def stop_bot() -> None:
+    global client
+    if client is None:
+        return
+
+    loop = getattr(client, "loop", None)
+    if loop and loop.is_running():
+        asyncio.run_coroutine_threadsafe(client.close(), loop)
+
+
+def run_bot(*, interactive: bool = True, death_log_callback: Optional[Callable[[str], None]] = None) -> None:
     print("Starting script...")
     try:
-        main()
+        main(interactive=interactive, death_log_callback=death_log_callback)
+        if client is None:
+            raise RuntimeError("Failed to initialize Discord client.")
         client.run(config["token"])
     except KeyboardInterrupt:
         print("Closing program...")
@@ -539,4 +567,154 @@ if __name__ == "__main__":
         print("Encountered an unexpected error. Printing traceback below:\n")
         traceback.print_exc()
         print(f"\nError: {exc}")
-        input("Press enter to close this window.")
+        if interactive:
+            input("Press enter to close this window.")
+        else:
+            raise
+
+
+def launch_gui() -> None:
+    import queue
+    import tkinter as tk
+    from tkinter import ttk
+    from tkinter.scrolledtext import ScrolledText
+
+    class GuiConsoleWriter:
+        def __init__(self, emit: Callable[[str], None], fallback):
+            self.emit = emit
+            self.fallback = fallback
+            self._buffer = ""
+
+        def write(self, data: str) -> None:
+            text = str(data)
+            if not text:
+                return
+            if self.fallback:
+                self.fallback.write(text)
+            self._buffer += text
+            while "\n" in self._buffer:
+                line, self._buffer = self._buffer.split("\n", 1)
+                self.emit(line + "\n")
+
+        def flush(self) -> None:
+            if self.fallback:
+                self.fallback.flush()
+            if self._buffer:
+                self.emit(self._buffer)
+                self._buffer = ""
+
+    class GuiApplication:
+        def __init__(self) -> None:
+            self.root = tk.Tk()
+            self.root.title("Life and Death Bot Console")
+            self.root.minsize(960, 540)
+
+            self.main_queue: "queue.Queue[str]" = queue.Queue()
+            self.death_queue: "queue.Queue[str]" = queue.Queue()
+            self.bot_thread: Optional[threading.Thread] = None
+
+            self._build_layout()
+            self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+            self._poll_logs()
+
+        def _build_layout(self) -> None:
+            container = ttk.Frame(self.root, padding=10)
+            container.pack(fill=tk.BOTH, expand=True)
+
+            container.columnconfigure(0, weight=1)
+            container.columnconfigure(1, weight=1)
+
+            self._main_text = self._create_section(
+                container,
+                column=0,
+                title="Life and Death Bot",
+                description=(
+                    "Shows everything the Discord bot is doing, including"
+                    " cog startup, voice channel automation, revive checks,"
+                    " and any unexpected errors."
+                ),
+            )
+            self._death_text = self._create_section(
+                container,
+                column=1,
+                title="DayZ Death Watcher",
+                description=(
+                    "Mirrors the watcher thread that scans DayZ server logs for"
+                    " new deaths and queues bans. Use this to verify which"
+                    " players were detected and when bans are written."
+                ),
+            )
+
+        def _create_section(self, parent, *, column: int, title: str, description: str):
+            frame = ttk.Frame(parent, padding=(0, 0, 5, 0))
+            frame.grid(row=0, column=column, sticky="nsew", padx=(0 if column == 0 else 5, 0))
+            parent.grid_rowconfigure(0, weight=1)
+
+            title_label = ttk.Label(frame, text=title, font=("Segoe UI", 12, "bold"))
+            title_label.pack(anchor="w")
+            desc_label = ttk.Label(frame, text=description, wraplength=400, justify="left")
+            desc_label.pack(anchor="w", pady=(0, 6))
+
+            text_widget = ScrolledText(frame, wrap=tk.WORD, height=30, font=("Consolas", 10))
+            text_widget.pack(fill=tk.BOTH, expand=True)
+            text_widget.configure(state="disabled")
+            return text_widget
+
+        def append_main_log(self, message: str) -> None:
+            self.main_queue.put(message)
+
+        def append_death_log(self, message: str) -> None:
+            self.death_queue.put(message)
+
+        def _poll_logs(self) -> None:
+            self._drain_queue(self.main_queue, self._main_text)
+            self._drain_queue(self.death_queue, self._death_text)
+            self.root.after(100, self._poll_logs)
+
+        def _drain_queue(self, q: "queue.Queue[str]", widget) -> None:
+            while not q.empty():
+                message = q.get_nowait()
+                if not isinstance(message, str):
+                    message = str(message)
+                widget.configure(state="normal")
+                if not message.endswith("\n"):
+                    message += "\n"
+                widget.insert(tk.END, message)
+                widget.see(tk.END)
+                widget.configure(state="disabled")
+
+        def _on_close(self) -> None:
+            stop_bot()
+            if self.bot_thread and self.bot_thread.is_alive():
+                self.bot_thread.join(timeout=5)
+            self.root.destroy()
+
+        def run(self) -> None:
+            self.root.mainloop()
+
+    app = GuiApplication()
+
+    original_stdout = sys.stdout
+    original_stderr = sys.stderr
+    sys.stdout = GuiConsoleWriter(app.append_main_log, original_stdout)
+    sys.stderr = GuiConsoleWriter(app.append_main_log, original_stderr)
+
+    def bot_runner() -> None:
+        try:
+            run_bot(interactive=False, death_log_callback=app.append_death_log)
+        except Exception:
+            app.append_main_log("Life and Death Bot stopped due to an unexpected error:\n")
+            app.append_main_log(traceback.format_exc())
+
+    bot_thread = threading.Thread(target=bot_runner, daemon=True)
+    bot_thread.start()
+    app.bot_thread = bot_thread
+
+    app.run()
+
+
+if __name__ == "__main__":
+    if "--no-gui" in sys.argv:
+        run_bot()
+    else:
+        launch_gui()

@@ -5,7 +5,7 @@ import threading
 import time
 import traceback
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 DEFAULT_CACHE_CONTENT = {
     "prev_log_read": {"line": ""},
@@ -33,13 +33,20 @@ DEFAULT_CONFIG = {
 class DayZDeathWatcher:
     """Utility that tails DayZ server logs for death events."""
 
-    def __init__(self, config_path: Optional[str] = None, *, set_console_title: bool = False) -> None:
+    def __init__(
+        self,
+        config_path: Optional[str] = None,
+        *,
+        set_console_title: bool = False,
+        logger: Optional[Callable[[str], None]] = None,
+    ) -> None:
         self._script_dir = Path(__file__).resolve().parent
         self.config_path = Path(config_path) if config_path else self._script_dir / "config.json"
         self.set_console_title = set_console_title
         self.players_to_ban: List[Tuple[str, float]] = []
         self.current_cache: dict = {}
         self._stop_event = threading.Event()
+        self._log = logger or (lambda message: print(message, flush=True))
 
         # populated during configuration loading
         self.config: dict = {}
@@ -64,19 +71,19 @@ class DayZDeathWatcher:
         try:
             self._prepare_files()
         except Exception as exc:  # pragma: no cover - interactive convenience
-            print(f"Failed to prepare death watcher files: {exc}")
+            self._log(f"Failed to prepare death watcher files: {exc}")
             raise
 
         last_log_line = self.current_cache.get("prev_log_read", {}).get("line", "")
         if last_log_line:
-            print(f"Last log read: {last_log_line}")
+            self._log(f"Last log read: {last_log_line}")
 
         self._sleep(1)
         latest_file = self._get_latest_file()
         if latest_file:
-            print(f"Started searching for new logs. ({latest_file})\n")
+            self._log(f"Started searching for new logs. ({latest_file})\n")
         else:
-            print("Waiting for DayZ log files to appear...\n")
+            self._log("Waiting for DayZ log files to appear...\n")
         self._sleep(1)
 
         log_number = 0
@@ -84,7 +91,7 @@ class DayZDeathWatcher:
             try:
                 latest_file = self._get_latest_file()
             except Exception as exc:
-                print(f"Unable to locate .adm logs: {exc}")
+                self._log(f"Unable to locate .adm logs: {exc}")
                 self._sleep(10)
                 continue
 
@@ -96,7 +103,7 @@ class DayZDeathWatcher:
                 with latest_file.open("r", encoding="utf-8", errors="ignore") as log_file:
                     logs = [line for line in log_file.read().split("\n") if line]
             except Exception as exc:
-                print(f"Failed to read log file {latest_file}: {exc}")
+                self._log(f"Failed to read log file {latest_file}: {exc}")
                 self._sleep(10)
                 continue
 
@@ -107,16 +114,16 @@ class DayZDeathWatcher:
 
             new_lines = self._read_new_lines(latest_file, logs)
             if self.verbose_logs and new_lines:
-                print(f"Found {len(new_lines)} new logs")
+                self._log(f"Found {len(new_lines)} new logs")
 
             for line in new_lines:
                 if self.verbose_logs:
-                    print(f"[{log_number}] {line}")
+                    self._log(f"[{log_number}] {line}")
 
                 if self._is_death_log(line):
                     player_id = self._get_id_from_line(line)
                     if self.verbose_logs:
-                        print(f"Found death log:\n    {line} Victim id: {player_id}")
+                        self._log(f"Found death log:\n    {line} Victim id: {player_id}")
 
                     if player_id and not self._player_is_queued_for_ban(player_id):
                         self._queue_player_for_ban(player_id)
@@ -126,12 +133,12 @@ class DayZDeathWatcher:
                 log_number += 1
 
             if self.verbose_logs and new_lines:
-                print()
+                self._log("")
 
             self._try_to_ban_players()
             self._sleep(self.search_logs_interval)
 
-        print("Death watcher stopped.")
+        self._log("Death watcher stopped.")
 
     def stop(self) -> None:
         self._stop_event.set()
@@ -154,7 +161,7 @@ class DayZDeathWatcher:
         if self.config_path.exists():
             return
 
-        print(f"Generating default config file: ({self.config_path})")
+        self._log(f"Generating default config file: ({self.config_path})")
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         with self.config_path.open("w", encoding="utf-8") as config_file:
             json.dump(DEFAULT_CONFIG, config_file, indent=4)
@@ -190,7 +197,7 @@ class DayZDeathWatcher:
             return
 
         assert self.path_to_cache is not None
-        print(f"Failed to find cache file: {self.path_to_cache}\nCreating it now.")
+        self._log(f"Failed to find cache file: {self.path_to_cache}\nCreating it now.")
         self.path_to_cache.parent.mkdir(parents=True, exist_ok=True)
         with self.path_to_cache.open("w", encoding="utf-8") as file:
             json.dump(DEFAULT_CACHE_CONTENT, file, indent=4)
@@ -211,7 +218,7 @@ class DayZDeathWatcher:
         with self.path_to_cache.open("w", encoding="utf-8") as json_file:
             json.dump(self.current_cache, json_file, indent=4)
         if self.verbose_logs:
-            print(f"Updated cache file:\n    {self.current_cache}")
+            self._log(f"Updated cache file:\n    {self.current_cache}")
 
     # ------------------------------------------------------------------
     # log helpers
@@ -266,10 +273,10 @@ class DayZDeathWatcher:
         if self.players_to_ban and time_to_ban_player < self.players_to_ban[-1][1] + 2:
             time_to_ban_player = self.players_to_ban[-1][1] + 2
         self.players_to_ban.append((player_id, time_to_ban_player))
-        print(f"    Banning player with id: {player_id}.")
+        self._log(f"    Banning player with id: {player_id}.")
         if self.verbose_logs:
             eta = max(0.0, time_to_ban_player - time.time())
-            print(f"    This player will be banned in {eta} seconds.")
+            self._log(f"    This player will be banned in {eta} seconds.")
 
     def _try_to_ban_players(self) -> None:
         current_seconds = time.time()
@@ -291,15 +298,15 @@ class DayZDeathWatcher:
                         file.write(f"{player_id}\n")
                 success = True
             except Exception as exc:
-                print(f"Failed to ban player: '{exc}' Try: {tries + 1}")
+                self._log(f"Failed to ban player: '{exc}' Try: {tries + 1}")
                 tries += 1
                 self._sleep(0.25)
 
         if success:
             if self.verbose_logs:
-                print(f"Added player with id: {player_id} to ban file: {self.path_to_bans}")
+                self._log(f"Added player with id: {player_id} to ban file: {self.path_to_bans}")
         else:
-            print(f"Player: {player_id} could not be added to the ban file: {self.path_to_bans}")
+            self._log(f"Player: {player_id} could not be added to the ban file: {self.path_to_bans}")
 
     # ------------------------------------------------------------------
     # misc helpers
@@ -317,11 +324,11 @@ def main() -> None:
     try:
         watcher.run_blocking()
     except KeyboardInterrupt:
-        print("Closing program...")
+        self._log("Closing program...")
         time.sleep(1.0)
     except Exception:
-        print("Ran into an unexpected exception. Printing traceback below:\n")
-        traceback.print_exc()
+        self._log("Ran into an unexpected exception. Printing traceback below:\n")
+        self._log(traceback.format_exc())
         input("Press enter to close this window.")
 
 
