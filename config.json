@@ -15,6 +15,7 @@
     "season_pass_role" : 997382529910837318,
     "watch_death_watcher" : 1,
     "death_watcher_death_path" : "./death_watcher/deaths.txt",
+    "death_counter_path" : "./death_counter.json",
     "run_death_watcher_cog" : 1,
     "death_watcher_config_path" : "./death_watcher/config.json",
         "steam_ids_to_unban_path" : "./steam_ids_to_unban.txt",

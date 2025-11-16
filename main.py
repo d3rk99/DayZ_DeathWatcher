@@ -28,11 +28,14 @@ os.system("title " + "Life and Death Bot")
 
 client: Optional[Bot] = None
 config: dict = {}
+death_counter_state: dict = {"count": 0, "last_reset": int(time.time())}
+death_counter_lock: Optional[asyncio.Lock] = None
 
 
 def main(*, interactive: bool = True, death_log_callback: Optional[Callable[[str], None]] = None):
     global client
     global config
+    global death_counter_state
 
     if (not os.path.isfile("config.json")):
         message = "'config.json' not found!"
@@ -43,6 +46,8 @@ def main(*, interactive: bool = True, death_log_callback: Optional[Callable[[str
     print("Loading config...")
     with open("config.json") as file:
         config = json.load(file)
+
+    load_death_counter_state()
 
     # create userdata db (json) file if it does not exist
     if (not os.path.isfile(config["userdata_db_path"])):
@@ -120,6 +125,93 @@ def load_cogs():
 
         print(f"\t{fn}...")
         client.load_extension(f"cogs.{cog_name}")
+
+
+def get_death_counter_path() -> str:
+    if not config:
+        return "./death_counter.json"
+    return config.get("death_counter_path", "./death_counter.json")
+
+
+def load_death_counter_state() -> None:
+    global death_counter_state
+
+    path = get_death_counter_path()
+    default_state = {"count": 0, "last_reset": int(time.time())}
+
+    try:
+        if os.path.isfile(path):
+            with open(path, "r") as file:
+                loaded_state = json.load(file)
+            death_counter_state = {
+                "count": int(loaded_state.get("count", 0)),
+                "last_reset": int(loaded_state.get("last_reset", int(time.time()))),
+            }
+        else:
+            death_counter_state = default_state
+            save_death_counter_state()
+    except Exception as exc:
+        print(f"Failed to load death counter data ({path}). Using default state. Error: {exc}")
+        death_counter_state = default_state
+        save_death_counter_state()
+
+
+def save_death_counter_state() -> None:
+    path = get_death_counter_path()
+    directory = os.path.dirname(path)
+    if directory and not os.path.isdir(directory):
+        os.makedirs(directory, exist_ok=True)
+
+    with open(path, "w") as file:
+        json.dump(death_counter_state, file, indent=4)
+
+
+def get_death_counter_lock() -> asyncio.Lock:
+    global death_counter_lock
+    if death_counter_lock is None:
+        death_counter_lock = asyncio.Lock()
+    return death_counter_lock
+
+
+async def update_bot_activity(*, count: Optional[int] = None) -> None:
+    if client is None:
+        return
+
+    if count is None:
+        lock = get_death_counter_lock()
+        async with lock:
+            count = int(death_counter_state.get("count", 0))
+
+    activity = nextcord.Activity(
+        type=nextcord.ActivityType.watching,
+        name=f"{count} death{'s' if count != 1 else ''}",
+    )
+    try:
+        await client.change_presence(activity=activity)
+    except Exception as exc:
+        print(f"Failed to update bot activity: {exc}")
+
+
+async def increment_death_counter() -> None:
+    lock = get_death_counter_lock()
+    async with lock:
+        death_counter_state["count"] = int(death_counter_state.get("count", 0)) + 1
+        save_death_counter_state()
+        count = death_counter_state["count"]
+
+    await update_bot_activity(count=count)
+
+
+async def reset_death_counter() -> int:
+    lock = get_death_counter_lock()
+    async with lock:
+        death_counter_state["count"] = 0
+        death_counter_state["last_reset"] = int(time.time())
+        save_death_counter_state()
+        count = death_counter_state["count"]
+
+    await update_bot_activity(count=count)
+    return count
             
 
 @tasks.loop(seconds = 2)
@@ -407,9 +499,11 @@ async def set_user_as_dead(user_id):
             category_id = -1
         if (channel_id == int(config["join_vc_id"]) or category_id == int(config["join_vc_category_id"])):
             await member.edit(voice_channel = None)
-        
+
         print(f"Marked user ({userdata['username']}) as dead.")
-        
+
+        await increment_death_counter()
+
     except Exception as e:
         text = f"[SetUserAsDead] \"{e}\"\nIt is advised to restart this script."
         print(text)
