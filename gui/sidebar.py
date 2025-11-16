@@ -194,7 +194,9 @@ class SidebarPane(tk.Frame):
         )
         self._notebook.add(self._dead_panel, text="Currently Dead")
 
-        self._lists_notebook = ttk.Notebook(self._notebook, style="Sidebar.SubNotebook")
+        self._lists_notebook = ttk.Notebook(
+            self._notebook, style="Sidebar.SubNotebook.TNotebook"
+        )
         self._whitelist_panel = ListViewerPanel(
             self._lists_notebook,
             title="Whitelist",
@@ -232,7 +234,7 @@ class SidebarPane(tk.Frame):
             background=[("selected", theme.panel_bg)],
             foreground=[("selected", theme.fg)],
         )
-        style.configure("Sidebar.SubNotebook", background=theme.bg, borderwidth=0)
+        style.configure("Sidebar.SubNotebook.TNotebook", background=theme.bg, borderwidth=0)
         style.configure(
             "Sidebar.SubNotebook.Tab",
             background=theme.panel_bg,
@@ -248,7 +250,7 @@ class SidebarPane(tk.Frame):
         if hasattr(self, "_notebook"):
             self._notebook.configure(style="Sidebar.TNotebook")
         if hasattr(self, "_lists_notebook"):
-            self._lists_notebook.configure(style="Sidebar.SubNotebook")
+            self._lists_notebook.configure(style="Sidebar.SubNotebook.TNotebook")
         if hasattr(self, "_dead_panel"):
             self._dead_panel.apply_theme(theme)
         if hasattr(self, "_whitelist_panel"):
