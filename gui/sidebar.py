@@ -343,6 +343,161 @@ class DeathCounterPanel(tk.Frame):
             )
 
 
+class AdminManagerPanel(tk.Frame):
+    def __init__(self, master, *, userdata_path: str) -> None:
+        super().__init__(master)
+        self.userdata_path = userdata_path
+        self._theme: ThemePalette = LIGHT_THEME
+        self._entry_var = tk.StringVar()
+        self._status_var = tk.StringVar(value="")
+        self._buttons: list[tk.Button] = []
+        self._build_ui()
+        self.refresh()
+
+    def _build_ui(self) -> None:
+        self._title = tk.Label(self, text="Admins", font=("Segoe UI", 12, "bold"))
+        self._title.pack(anchor="w", padx=10, pady=(10, 4))
+
+        columns = ("username", "discord", "steam")
+        self._tree = ttk.Treeview(self, columns=columns, show="headings", height=10)
+        headings = {
+            "username": "Discord Name",
+            "discord": "Discord ID",
+            "steam": "Steam64",
+        }
+        for key, text in headings.items():
+            self._tree.heading(key, text=text)
+            width = 140 if key != "steam" else 160
+            self._tree.column(key, width=width, anchor=tk.CENTER)
+        self._tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 6))
+        self._tree.bind("<<TreeviewSelect>>", self._sync_entry_from_selection)
+
+        self._status_label = tk.Label(
+            self,
+            textvariable=self._status_var,
+            wraplength=250,
+            justify=tk.LEFT,
+        )
+        self._status_label.pack(fill=tk.X, padx=10, pady=(0, 8))
+
+        button_row = tk.Frame(self)
+        button_row.pack(fill=tk.X, padx=10, pady=(0, 8))
+        refresh_btn = tk.Button(button_row, text="Refresh", command=self.refresh)
+        refresh_btn.pack(side=tk.LEFT)
+        self._buttons.append(refresh_btn)
+        remove_btn = tk.Button(
+            button_row,
+            text="Remove Selected",
+            command=self._remove_selected_admin,
+        )
+        remove_btn.pack(side=tk.LEFT, padx=(6, 0))
+        self._buttons.append(remove_btn)
+
+        entry_row = tk.Frame(self)
+        entry_row.pack(fill=tk.X, padx=10, pady=(0, 10))
+        self._entry_label = tk.Label(entry_row, text="Discord ID:")
+        self._entry_label.pack(side=tk.LEFT)
+        self._entry = tk.Entry(entry_row, textvariable=self._entry_var)
+        self._entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(6, 6))
+        add_btn = tk.Button(entry_row, text="Add Admin", command=self._add_admin)
+        add_btn.pack(side=tk.LEFT)
+        self._buttons.append(add_btn)
+
+    def refresh(self) -> None:
+        try:
+            admins = userdata_service.list_admins(self.userdata_path)
+        except Exception as exc:
+            messagebox.showerror("Admins", str(exc))
+            return
+        self._tree.delete(*self._tree.get_children())
+        for entry in admins:
+            self._tree.insert(
+                "",
+                tk.END,
+                iid=entry["discord_id"],
+                values=(entry["username"], entry["discord_id"], entry["steam_id"]),
+            )
+        count = len(admins)
+        if count:
+            self._status_var.set(f"{count} admin{'s' if count != 1 else ''} in the database.")
+        else:
+            self._status_var.set("No admins found in the database.")
+
+    def _sync_entry_from_selection(self, _event=None) -> None:
+        selection = self._tree.selection()
+        if selection:
+            self._entry_var.set(selection[0])
+
+    def _add_admin(self) -> None:
+        discord_id = self._entry_var.get().strip()
+        if not discord_id:
+            messagebox.showwarning("Admins", "Enter the Discord ID you want to promote.")
+            return
+        self._apply_admin_change(discord_id, True)
+
+    def _remove_selected_admin(self) -> None:
+        selection = self._tree.selection()
+        if not selection:
+            messagebox.showwarning("Admins", "Select an admin to remove.")
+            return
+        discord_id = selection[0]
+        self._apply_admin_change(discord_id, False)
+
+    def _apply_admin_change(self, discord_id: str, is_admin: bool) -> None:
+        success, message = userdata_service.set_admin_status(
+            self.userdata_path, discord_id, is_admin
+        )
+        if not success:
+            messagebox.showwarning("Admins", message)
+            return
+        self._status_var.set(message)
+        if not is_admin and self._entry_var.get() == discord_id:
+            self._entry_var.set("")
+        self.refresh()
+
+    def apply_theme(self, theme: ThemePalette) -> None:
+        self._theme = theme
+        self.configure(bg=theme.panel_bg)
+        for widget in (self._title, self._status_label, self._entry_label):
+            widget.configure(bg=theme.panel_bg, fg=theme.fg)
+        style = ttk.Style(self)
+        tree_style = "Sidebar.Admin.Treeview"
+        heading_style = f"{tree_style}.Heading"
+        style.configure(
+            tree_style,
+            background=theme.panel_bg,
+            fieldbackground=theme.panel_bg,
+            foreground=theme.fg,
+            rowheight=24,
+            borderwidth=0,
+        )
+        style.map(
+            tree_style,
+            background=[("selected", theme.accent)],
+            foreground=[("selected", theme.console_fg)],
+        )
+        style.configure(heading_style, background=theme.panel_bg, foreground=theme.fg)
+        self._tree.configure(style=tree_style)
+        for button in self._buttons:
+            button.configure(
+                bg=theme.button_bg,
+                fg=theme.button_fg,
+                activebackground=theme.accent,
+                activeforeground=theme.console_fg,
+                highlightbackground=theme.panel_bg,
+                borderwidth=1,
+                relief=tk.FLAT,
+            )
+        self._entry.configure(
+            bg=theme.console_bg,
+            fg=theme.console_fg,
+            insertbackground=theme.console_fg,
+            highlightbackground=theme.panel_bg,
+            highlightcolor=theme.panel_bg,
+            relief=tk.FLAT,
+        )
+
+
 class ListViewerPanel(tk.Frame):
     def __init__(self, master, *, title: str, path: str) -> None:
         super().__init__(master)
@@ -514,6 +669,12 @@ class SidebarPane(tk.Frame):
         self._lists_notebook.add(self._banlist_panel, text="Banlist")
         self._notebook.add(self._lists_notebook, text="Lists")
 
+        self._admin_panel = AdminManagerPanel(
+            self._notebook,
+            userdata_path=self.config_data.get("userdata_db_path", "userdata_db.json"),
+        )
+        self._notebook.add(self._admin_panel, text="Admins")
+
         self._danger_panel = DangerPanel(
             self._notebook,
             userdata_path=self.config_data.get("userdata_db_path", "userdata_db.json"),
@@ -588,5 +749,7 @@ class SidebarPane(tk.Frame):
             self._whitelist_panel.apply_theme(theme)
         if hasattr(self, "_banlist_panel"):
             self._banlist_panel.apply_theme(theme)
+        if hasattr(self, "_admin_panel"):
+            self._admin_panel.apply_theme(theme)
         if hasattr(self, "_danger_panel"):
             self._danger_panel.apply_theme(theme)
