@@ -791,20 +791,33 @@ def launch_gui() -> None:
             self.fallback = fallback
             self._buffer = ""
 
+        def _safe_fallback_call(self, method: str, *args) -> None:
+            if not self.fallback:
+                return
+            try:
+                getattr(self.fallback, method)(*args)
+            except OSError as exc:
+                # When the console window is hidden on Windows, stdout/stderr become
+                # invalid handles which raise WinError 6 whenever written to. Once we
+                # encounter that situation we simply drop the fallback writer to avoid
+                # repeated crashes while still emitting logs to the GUI.
+                if getattr(exc, "winerror", None) == 6:
+                    self.fallback = None
+                else:
+                    raise
+
         def write(self, data: str) -> None:
             text = str(data)
             if not text:
                 return
-            if self.fallback:
-                self.fallback.write(text)
+            self._safe_fallback_call("write", text)
             self._buffer += text
             while "\n" in self._buffer:
                 line, self._buffer = self._buffer.split("\n", 1)
                 self.emit(line + "\n")
 
         def flush(self) -> None:
-            if self.fallback:
-                self.fallback.flush()
+            self._safe_fallback_call("flush")
             if self._buffer:
                 self.emit(self._buffer)
                 self._buffer = ""

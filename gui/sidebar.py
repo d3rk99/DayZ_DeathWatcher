@@ -142,8 +142,11 @@ class DeadPlayersPanel(tk.Frame):
         messagebox.showinfo("Death Details", message)
 
     def refresh(self) -> None:
+        previous_selection = self._tree.selection()
+        previous_focus = self._tree.focus()
         for item in self._tree.get_children():
             self._tree.delete(item)
+        available_items: list[str] = []
         for entry in userdata_service.list_dead_players(
             self.userdata_path, default_wait_seconds=self._default_wait_seconds
         ):
@@ -152,10 +155,11 @@ class DeadPlayersPanel(tk.Frame):
                 display_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp))
             else:
                 display_time = "Unknown"
+            iid = entry["discord_id"]
             self._tree.insert(
                 "",
                 tk.END,
-                iid=entry["discord_id"],
+                iid=iid,
                 values=(
                     entry["discord_name"],
                     entry["steam64"],
@@ -164,6 +168,13 @@ class DeadPlayersPanel(tk.Frame):
                     entry["revival_eta"],
                 ),
             )
+            available_items.append(iid)
+
+        preserved_selection = [item for item in previous_selection if item in available_items]
+        if preserved_selection:
+            self._tree.selection_set(preserved_selection)
+            focus_target = previous_focus if previous_focus in preserved_selection else preserved_selection[0]
+            self._tree.focus(focus_target)
 
     def _poll(self) -> None:
         if not self.winfo_exists():
