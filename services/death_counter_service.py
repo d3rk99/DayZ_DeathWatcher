@@ -39,17 +39,23 @@ def get_counter(path_str: str) -> Tuple[int, int]:
     return state["count"], state["last_reset"]
 
 
-def set_counter(path_str: str, count: int) -> int:
+def set_counter(path_str: str, count: int) -> Tuple[int, int]:
     path = Path(path_str)
     state = _load_state(path)
+    previous = state["count"]
     state["count"] = max(0, int(count))
+    if state["count"] == 0 and previous != 0:
+        state["last_reset"] = int(time.time())
     _write_state(path, state)
-    return state["count"]
+    return state["count"], state["last_reset"]
 
 
-def adjust_counter(path_str: str, delta: int) -> int:
+def adjust_counter(path_str: str, delta: int) -> Tuple[int, int]:
     path = Path(path_str)
     state = _load_state(path)
+    previous = state["count"]
     state["count"] = max(0, state["count"] + int(delta))
+    if state["count"] == 0 and previous != 0:
+        state["last_reset"] = int(time.time())
     _write_state(path, state)
-    return state["count"]
+    return state["count"], state["last_reset"]

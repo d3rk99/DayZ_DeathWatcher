@@ -38,32 +38,37 @@ def is_bot_running() -> bool:
     return _get_bot_loop() is not None
 
 
-def get_death_counter(path: str) -> Tuple[int, bool]:
+def get_death_counter(path: str) -> Tuple[int, int, bool]:
     module = _get_main_module()
     coro = getattr(module, "get_death_counter_value", None)
     loop = _get_bot_loop()
     if coro and loop:
-        return _run_in_loop(coro), True
-    count, _ = death_counter_service.get_counter(path)
-    return count, False
+        count, last_reset = _run_in_loop(coro)
+        return count, last_reset, True
+    count, last_reset = death_counter_service.get_counter(path)
+    return count, last_reset, False
 
 
-def set_death_counter(path: str, count: int) -> Tuple[int, bool]:
+def set_death_counter(path: str, count: int) -> Tuple[int, int, bool]:
     module = _get_main_module()
     coro = getattr(module, "set_death_counter_value", None)
     loop = _get_bot_loop()
     if coro and loop:
-        return _run_in_loop(lambda: coro(count)), True
-    return death_counter_service.set_counter(path, count), False
+        new_count, last_reset = _run_in_loop(lambda: coro(count))
+        return new_count, last_reset, True
+    new_count, last_reset = death_counter_service.set_counter(path, count)
+    return new_count, last_reset, False
 
 
-def adjust_death_counter(path: str, delta: int) -> Tuple[int, bool]:
+def adjust_death_counter(path: str, delta: int) -> Tuple[int, int, bool]:
     module = _get_main_module()
     coro = getattr(module, "adjust_death_counter", None)
     loop = _get_bot_loop()
     if coro and loop:
-        return _run_in_loop(lambda: coro(delta)), True
-    return death_counter_service.adjust_counter(path, delta), False
+        count, last_reset = _run_in_loop(lambda: coro(delta))
+        return count, last_reset, True
+    count, last_reset = death_counter_service.adjust_counter(path, delta)
+    return count, last_reset, False
 
 
 def refresh_activity() -> None:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import time
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -160,6 +161,7 @@ class DeathCounterPanel(tk.Frame):
         self._count_var = tk.StringVar(value="0")
         self._status_var = tk.StringVar(value="")
         self._input_var = tk.StringVar(value="0")
+        self._since_var = tk.StringVar(value="")
         self._buttons: list[tk.Button] = []
         self._build_ui()
         self.refresh()
@@ -175,6 +177,14 @@ class DeathCounterPanel(tk.Frame):
             anchor=tk.CENTER,
         )
         self._count_display.pack(fill=tk.X, padx=10)
+
+        self._since_label = tk.Label(
+            self,
+            textvariable=self._since_var,
+            font=("Segoe UI", 11, "normal"),
+            anchor=tk.CENTER,
+        )
+        self._since_label.pack(fill=tk.X, padx=10)
 
         self._status_label = tk.Label(
             self,
@@ -218,15 +228,20 @@ class DeathCounterPanel(tk.Frame):
 
     def refresh(self) -> None:
         try:
-            count, synced = bot_control_service.get_death_counter(self.death_counter_path)
+            count, last_reset, synced = bot_control_service.get_death_counter(self.death_counter_path)
         except Exception as exc:
             messagebox.showerror("Death Counter", str(exc))
             return
         self._count_var.set(str(count))
+        self._since_var.set(self._format_since_text(last_reset))
+        status_parts: list[str] = []
         if synced:
-            self._status_var.set("Synced with the running bot.")
+            status_parts.append("Synced with the running bot.")
         else:
-            self._status_var.set("Bot offline. Showing the saved file value.")
+            status_parts.append("Bot offline. Showing the saved file value.")
+        if self._since_var.get():
+            status_parts.append(self._since_var.get())
+        self._status_var.set(" ".join(status_parts))
 
     def _apply_value(self) -> None:
         try:
@@ -239,13 +254,14 @@ class DeathCounterPanel(tk.Frame):
     def _adjust(self, delta: int) -> None:
         self._update_counter(lambda: bot_control_service.adjust_death_counter(self.death_counter_path, delta))
 
-    def _update_counter(self, updater: Callable[[], tuple[int, bool]]) -> None:
+    def _update_counter(self, updater: Callable[[], tuple[int, int, bool]]) -> None:
         try:
-            count, synced = updater()
+            count, last_reset, synced = updater()
         except Exception as exc:
             messagebox.showerror("Death Counter", str(exc))
             return
         self._count_var.set(str(count))
+        self._since_var.set(self._format_since_text(last_reset))
         if synced:
             self._status_var.set("Updated live counter and bot activity.")
         else:
@@ -258,11 +274,25 @@ class DeathCounterPanel(tk.Frame):
         except Exception as exc:
             messagebox.showerror("Bot Activity", str(exc))
 
+    def _format_since_text(self, timestamp: int) -> str:
+        if not timestamp:
+            return ""
+        dt = datetime.datetime.fromtimestamp(timestamp)
+        day = dt.day
+        if 10 <= day % 100 <= 20:
+            suffix = "th"
+        else:
+            suffix = {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+        month = dt.strftime("%b")
+        year_suffix = f", {dt.year}" if dt.year != datetime.datetime.now().year else ""
+        return f"Since {month} {day}{suffix}{year_suffix}"
+
     def apply_theme(self, theme: ThemePalette) -> None:
         self._theme = theme
         self.configure(bg=theme.panel_bg)
         for widget in (self._title, self._count_display, self._status_label):
             widget.configure(bg=theme.panel_bg, fg=theme.fg)
+        self._since_label.configure(bg=theme.panel_bg, fg=theme.fg)
         for button in self._buttons:
             button.configure(
                 bg=theme.button_bg,

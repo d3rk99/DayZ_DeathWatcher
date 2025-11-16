@@ -173,18 +173,37 @@ def get_death_counter_lock() -> asyncio.Lock:
     return death_counter_lock
 
 
-async def update_bot_activity(*, count: Optional[int] = None) -> None:
+def _format_day_suffix(day: int) -> str:
+    if 10 <= day % 100 <= 20:
+        return "th"
+    return {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+
+
+def _format_since_timestamp(timestamp: Optional[int]) -> str:
+    if not timestamp:
+        return ""
+    dt = datetime.datetime.fromtimestamp(timestamp)
+    suffix = _format_day_suffix(dt.day)
+    month = dt.strftime("%b")
+    year_suffix = f", {dt.year}" if dt.year != datetime.datetime.now().year else ""
+    return f"{month} {dt.day}{suffix}{year_suffix}"
+
+
+async def update_bot_activity(*, count: Optional[int] = None, last_reset: Optional[int] = None) -> None:
     if client is None:
         return
 
-    if count is None:
+    if count is None or last_reset is None:
         lock = get_death_counter_lock()
         async with lock:
-            count = int(death_counter_state.get("count", 0))
+            if count is None:
+                count = int(death_counter_state.get("count", 0))
+            if last_reset is None:
+                last_reset = int(death_counter_state.get("last_reset", int(time.time())))
 
     activity = nextcord.Activity(
         type=nextcord.ActivityType.watching,
-        name=f"{count} death{'s' if count != 1 else ''}",
+        name=_build_activity_message(count=count, last_reset=last_reset),
     )
     try:
         await client.change_presence(activity=activity)
@@ -192,51 +211,71 @@ async def update_bot_activity(*, count: Optional[int] = None) -> None:
         print(f"Failed to update bot activity: {exc}")
 
 
+def _build_activity_message(*, count: int, last_reset: Optional[int]) -> str:
+    deaths = f"{count} death{'s' if count != 1 else ''}"
+    since_text = _format_since_timestamp(last_reset)
+    if since_text:
+        return f"{deaths} since {since_text}"
+    return deaths
+
+
 async def increment_death_counter() -> None:
     await adjust_death_counter(delta=1)
 
 
-async def reset_death_counter() -> int:
+async def reset_death_counter() -> tuple[int, int]:
     lock = get_death_counter_lock()
     async with lock:
         death_counter_state["count"] = 0
         death_counter_state["last_reset"] = int(time.time())
         save_death_counter_state()
         count = death_counter_state["count"]
+        last_reset = death_counter_state["last_reset"]
 
-    await update_bot_activity(count=count)
-    return count
+    await update_bot_activity(count=count, last_reset=last_reset)
+    return count, last_reset
 
 
-async def get_death_counter_value() -> int:
+async def get_death_counter_value() -> tuple[int, int]:
     lock = get_death_counter_lock()
     async with lock:
-        return int(death_counter_state.get("count", 0))
+        return (
+            int(death_counter_state.get("count", 0)),
+            int(death_counter_state.get("last_reset", int(time.time()))),
+        )
 
 
-async def set_death_counter_value(count: int) -> int:
+async def set_death_counter_value(count: int) -> tuple[int, int]:
     lock = get_death_counter_lock()
     async with lock:
+        previous = int(death_counter_state.get("count", 0))
         death_counter_state["count"] = max(0, int(count))
+        if death_counter_state["count"] == 0 and previous != 0:
+            death_counter_state["last_reset"] = int(time.time())
         save_death_counter_state()
         current = death_counter_state["count"]
+        last_reset = int(death_counter_state.get("last_reset", int(time.time())))
 
-    await update_bot_activity(count=current)
-    return current
+    await update_bot_activity(count=current, last_reset=last_reset)
+    return current, last_reset
 
 
-async def adjust_death_counter(delta: int) -> int:
+async def adjust_death_counter(delta: int) -> tuple[int, int]:
     lock = get_death_counter_lock()
     async with lock:
+        previous = int(death_counter_state.get("count", 0))
         death_counter_state["count"] = max(
             0,
-            int(death_counter_state.get("count", 0)) + int(delta),
+            previous + int(delta),
         )
+        if death_counter_state["count"] == 0 and previous != 0:
+            death_counter_state["last_reset"] = int(time.time())
         save_death_counter_state()
         current = death_counter_state["count"]
+        last_reset = int(death_counter_state.get("last_reset", int(time.time())))
 
-    await update_bot_activity(count=current)
-    return current
+    await update_bot_activity(count=current, last_reset=last_reset)
+    return current, last_reset
             
 
 @tasks.loop(seconds = 2)
