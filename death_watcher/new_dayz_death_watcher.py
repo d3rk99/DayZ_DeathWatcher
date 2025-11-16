@@ -3,6 +3,7 @@ import sys
 import os
 import json
 import glob
+import traceback
 
 
 os.system("title " + "DayZ Death Watcher")
@@ -266,13 +267,15 @@ def __main__():
             sleep_amount -= sleep_inc
     
 
-try:
-    __main__()
-    
-except KeyboardInterrupt:
-    print("Closing program...")
-    time.sleep(1.0)
-    
-except Exception as e:
-    print(f"Ran into an unexpected exception. Error: {e}")
-    input("Press enter to close this window.")
+if __name__ == "__main__":
+    try:
+        __main__()
+        
+    except KeyboardInterrupt:
+        print("Closing program...")
+        time.sleep(1.0)
+        
+    except Exception:
+        print("Ran into an unexpected exception. Printing traceback below:\n")
+        traceback.print_exc()
+        input("Press enter to close this window.")
