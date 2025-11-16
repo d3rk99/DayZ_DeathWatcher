@@ -6,7 +6,7 @@ import nextcord
 from nextcord.ext import commands
 from nextcord import Webhook
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
-from main import *
+from main import reset_death_counter
 import asyncio
 
 
@@ -119,7 +119,33 @@ class ExtraCommands(commands.Cog):
         except Exception as e:
             text = f"[DeleteUserEntry] \"{e}\"\n"
             print(text)
-    
+
+
+    @nextcord.slash_command(name="reset_death_counter", description="Reset the tracked death counter and bot activity display.")
+    @commands.has_role("Admin")
+    async def reset_death_counter_command(self, interaction):
+        try:
+            is_admin = False
+            for role in interaction.user.roles:
+                if (role.id == config["admin_role_id"]):
+                    is_admin = True
+                    break
+
+            if (not is_admin):
+                await interaction.response.send_message("You are not authorized to use this command.", ephemeral=True, delete_after=15)
+                return
+
+            await reset_death_counter()
+            await interaction.response.send_message("Death counter reset to 0.", ephemeral=True, delete_after=20)
+
+        except Exception as e:
+            text = f"[ResetDeathCounterCommand] \"{e}\"\n"
+            print(text)
+            try:
+                await interaction.response.send_message("Failed to reset the death counter.", ephemeral=True, delete_after=20)
+            except Exception:
+                pass
+
     
     
     

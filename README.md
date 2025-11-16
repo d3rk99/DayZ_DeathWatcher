@@ -69,6 +69,17 @@ All of the bot's knobs live in `config.json`:
 | `error_dump_channel`, `error_dump_allow_mention`, `error_dump_mention_tag` | Controls for piping unexpected errors to a Discord channel. |
 | `wait_time_new_life_seconds` / `_season_pass` | Cooldown timers before a dead player can return. |
 
+### First-time GUI setup & missing paths
+When you launch the GUI for the first time (or after deleting `config.json`), the app starts in a
+"path setup" workflow. You'll be prompted to fill in every required file path (whitelist,
+blacklist, DayZ log folder, etc.) before the Discord bot thread spins up. Those values are saved
+back into `config.json`, so the next launch will run normally without prompting.
+
+If a future change breaks one of the paths—for example you move the whitelist file and forget to
+update the config—the worker thread raises a `MissingConfigPaths` error. The GUI catches that,
+pauses startup, and shows the same path setup dialog so you can correct the paths inline. After you
+click **Save & Continue**, the bot restarts automatically with the new values.
+
 ### Supporting data files
 - `userdata_db.json` is auto-created with `{ "userdata": {} }` the first time the bot runs.
 - `steam_ids_to_unban.txt` is created if missing and stores one Steam64 ID per line.

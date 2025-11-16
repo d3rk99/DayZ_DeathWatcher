@@ -110,3 +110,60 @@ def wipe_database(path: str) -> bool:
         return True
     except OSError:
         return False
+
+
+def list_admins(path: str) -> List[Dict[str, str]]:
+    """Return metadata for every user currently flagged as an admin."""
+    data = load_userdata(path)
+    admins: List[Dict[str, str]] = []
+    for discord_id, info in data.get("userdata", {}).items():
+        if int(info.get("is_admin", 0)) != 1:
+            continue
+        admins.append(
+            {
+                "discord_id": discord_id,
+                "username": info.get("username", "Unknown"),
+                "steam_id": info.get("steam_id", ""),
+            }
+        )
+    admins.sort(key=lambda entry: entry.get("username", "").lower())
+    return admins
+
+
+def list_all_users(path: str) -> List[Dict[str, str]]:
+    """Return lightweight metadata for every user in the database."""
+
+    data = load_userdata(path)
+    entries: List[Dict[str, str]] = []
+    for discord_id, info in data.get("userdata", {}).items():
+        entries.append(
+            {
+                "discord_id": discord_id,
+                "username": info.get("username", "Unknown"),
+                "steam_id": info.get("steam_id", ""),
+                "is_admin": info.get("is_admin", 0),
+            }
+        )
+    entries.sort(key=lambda entry: entry.get("username", "").lower())
+    return entries
+
+
+def set_admin_status(path: str, discord_id: str, is_admin: bool) -> Tuple[bool, str]:
+    """Toggle the admin flag for a specific Discord ID."""
+
+    data = _read_json(Path(path))
+    user = data.get("userdata", {}).get(discord_id)
+    if user is None:
+        return False, "User not found in the database."
+
+    desired_value = 1 if is_admin else 0
+    current_value = int(user.get("is_admin", 0))
+    if current_value == desired_value:
+        if is_admin:
+            return False, f"{user.get('username', discord_id)} is already marked as an admin."
+        return False, f"{user.get('username', discord_id)} is not currently marked as an admin."
+
+    user["is_admin"] = desired_value
+    _save_userdata(Path(path), data)
+    action = "now an admin" if is_admin else "no longer an admin"
+    return True, f"{user.get('username', discord_id)} is {action}."
