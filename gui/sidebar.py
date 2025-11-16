@@ -11,10 +11,18 @@ from services import bot_control_service, list_service, userdata_service
 
 
 class DeadPlayersPanel(tk.Frame):
-    def __init__(self, master, *, userdata_path: str, refresh_interval: int = 5_000) -> None:
+    def __init__(
+        self,
+        master,
+        *,
+        userdata_path: str,
+        wait_time_seconds: int | None = None,
+        refresh_interval: int = 5_000,
+    ) -> None:
         super().__init__(master)
         self.userdata_path = userdata_path
         self.refresh_interval = refresh_interval
+        self._default_wait_seconds = self._normalize_wait_time(wait_time_seconds)
         self._theme: ThemePalette = LIGHT_THEME
         self._tree = self._build_tree()
         self._context_menu = self._build_menu()
@@ -136,7 +144,9 @@ class DeadPlayersPanel(tk.Frame):
     def refresh(self) -> None:
         for item in self._tree.get_children():
             self._tree.delete(item)
-        for entry in userdata_service.list_dead_players(self.userdata_path):
+        for entry in userdata_service.list_dead_players(
+            self.userdata_path, default_wait_seconds=self._default_wait_seconds
+        ):
             timestamp = entry.get("time_of_death")
             if timestamp:
                 display_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp))
@@ -160,6 +170,15 @@ class DeadPlayersPanel(tk.Frame):
             return
         self.refresh()
         self.after(self.refresh_interval, self._poll)
+
+    def _normalize_wait_time(self, value: int | None) -> int | None:
+        try:
+            seconds = int(value) if value is not None else None
+        except (TypeError, ValueError):
+            return None
+        if seconds and seconds > 0:
+            return seconds
+        return None
 
     def apply_theme(self, theme: ThemePalette) -> None:
         self._theme = theme
@@ -782,6 +801,7 @@ class SidebarPane(tk.Frame):
         self._dead_panel = DeadPlayersPanel(
             self._notebook,
             userdata_path=self.config_data.get("userdata_db_path", "userdata_db.json"),
+            wait_time_seconds=self.config_data.get("wait_time_new_life_seconds"),
         )
         self._notebook.add(self._dead_panel, text="Currently Dead")
 

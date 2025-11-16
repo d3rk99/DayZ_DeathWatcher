@@ -1,7 +1,7 @@
 import json
 import time
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 
 def _read_json(path: Path) -> Dict:
@@ -17,7 +17,9 @@ def load_userdata(path: str) -> Dict:
     return _read_json(Path(path))
 
 
-def list_dead_players(path: str) -> List[Dict[str, str]]:
+def list_dead_players(
+    path: str, *, default_wait_seconds: Optional[int] = None
+) -> List[Dict[str, str]]:
     data = load_userdata(path)
     result: List[Dict[str, str]] = []
     for discord_id, info in data.get("userdata", {}).items():
@@ -29,14 +31,20 @@ def list_dead_players(path: str) -> List[Dict[str, str]]:
                     "steam64": info.get("steam_id", ""),
                     "time_of_death": info.get("time_of_death", 0),
                     "alive_status": "Dead" if int(info.get("is_alive", 0)) == 0 else "Alive",
-                    "revival_eta": _calculate_revive_eta(info),
+                    "revival_eta": _calculate_revive_eta(
+                        info, default_wait_seconds=default_wait_seconds
+                    ),
                 }
             )
     return result
 
 
-def _calculate_revive_eta(info: Dict) -> str:
-    wait_seconds_raw = info.get("revive_wait", 0)
+def _calculate_revive_eta(
+    info: Dict, *, default_wait_seconds: Optional[int] = None
+) -> str:
+    wait_seconds_raw = info.get("revive_wait")
+    if wait_seconds_raw in (None, "", 0):
+        wait_seconds_raw = default_wait_seconds
     try:
         wait_seconds = int(wait_seconds_raw)
     except (TypeError, ValueError):
