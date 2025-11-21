@@ -36,18 +36,20 @@ requirements.txt         # Python dependencies needed by both scripts
 - A Windows host (optional) if you rely on `os.system("title …")` console titles for the provided scripts
 
 ## Local setup
-1. Clone the repository and create a virtual environment:
+1. Clone the repository and bootstrap the environment (the script will install Python 3.11 if missing and reuse/create `.venv`):
    ```bash
    git clone <repo-url>
    cd DayZ_DeathWatcher
-   python3 -m venv .venv
-   source .venv/bin/activate
-   pip install --upgrade pip
-   pip install -r requirements.txt
+   ./scripts/bootstrap.sh
    ```
-2. Copy `config.json` to a safe location and replace any secrets (Discord token, role IDs, file paths)
+   The script prefers `pyenv` when available and falls back to `apt-get` for Debian/Ubuntu systems. It upgrades `pip` and installs the packages from `requirements.txt` inside `.venv`.
+2. Activate the environment for the current shell:
+   ```bash
+   source .venv/bin/activate
+   ```
+3. Copy `config.json` to a safe location and replace any secrets (Discord token, role IDs, file paths)
    with the values that match your environment. **Never commit a real bot token.**
-3. Review the DayZ whitelist (`whitelist_path`), blacklist (`blacklist_path`), and `death_watcher`
+4. Review the DayZ whitelist (`whitelist_path`), blacklist (`blacklist_path`), and `death_watcher`
    paths to make sure the bot can read and write to them from the same machine where it runs.
 
 ### Configuration reference
