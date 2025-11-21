@@ -47,9 +47,11 @@ requirements.txt         # Python dependencies needed by both scripts
    ```bash
    source .venv/bin/activate
    ```
-3. Copy `config.json` to a safe location and replace any secrets (Discord token, role IDs, file paths)
-   with the values that match your environment. **Never commit a real bot token.**
-4. Review the DayZ whitelist (`whitelist_path`), blacklist (`blacklist_path`), and `death_watcher`
+3. Windows users can skip the manual activation step by running `scripts\run_main.bat`, which will
+   create `.venv`, install dependencies, and launch the bot automatically (see below).
+4. Copy `config.json` to a safe location and replace any secrets (Discord token, role IDs, file
+   paths) with the values that match your environment. **Never commit a real bot token.**
+5. Review the DayZ whitelist (`whitelist_path`), blacklist (`blacklist_path`), and `death_watcher`
    paths to make sure the bot can read and write to them from the same machine where it runs.
 
 ### Configuration reference
@@ -95,6 +97,12 @@ python main.py
 Ensure the machine can reach both the Discord API and the DayZ server's filesystem paths referenced in
 `config.json`. The bot automatically loads every `cogs/*.py` module, so you can add features by
 dropping new cogs in that folder.
+
+On Windows, you can use the included helper to create the virtual environment (if needed), install
+packages, and start the bot in one step:
+```bat
+scripts\run_main.bat
+```
 
 ## Running the death watcher
 The `death_watcher/new_dayz_death_watcher.py` script can run on the same host as the DayZ server. It
