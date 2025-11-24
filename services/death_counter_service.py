@@ -69,3 +69,12 @@ def wipe_counter(path_str: str) -> Tuple[int, int]:
     state["last_reset"] = int(time.time())
     _write_state(path, state)
     return state["count"], state["last_reset"]
+
+
+def set_last_reset(path_str: str, timestamp: int) -> Tuple[int, int]:
+    """Persist a custom last_reset value without altering the counter."""
+    path = Path(path_str)
+    state = _load_state(path)
+    state["last_reset"] = max(0, int(timestamp))
+    _write_state(path, state)
+    return state["count"], state["last_reset"]

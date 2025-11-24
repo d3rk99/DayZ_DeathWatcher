@@ -82,6 +82,17 @@ def wipe_death_counter(path: str) -> Tuple[int, int, bool]:
     return count, last_reset, False
 
 
+def set_death_counter_wipe_date(path: str, timestamp: int) -> Tuple[int, int, bool]:
+    module = _get_main_module()
+    coro = getattr(module, "set_last_reset_date", None)
+    loop = _get_bot_loop()
+    if coro and loop:
+        count, last_reset = _run_in_loop(lambda: coro(timestamp))
+        return count, last_reset, True
+    count, last_reset = death_counter_service.set_last_reset(path, timestamp)
+    return count, last_reset, False
+
+
 def refresh_activity() -> None:
     module = _get_main_module()
     coro = getattr(module, "update_bot_activity", None)

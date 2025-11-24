@@ -53,7 +53,9 @@ class GuiApplication:
 
         self._left = tk.Frame(paned)
         paned.add(self._left, stretch="always")
-        self._sidebar = SidebarPane(paned, config=self.config_manager.data)
+        self._sidebar = SidebarPane(
+            paned, config=self.config_manager.data, config_manager=self.config_manager
+        )
         paned.add(self._sidebar, minsize=360)
 
         notebook = ttk.Notebook(self._left)

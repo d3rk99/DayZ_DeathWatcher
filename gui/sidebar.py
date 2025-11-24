@@ -8,6 +8,7 @@ from typing import Callable
 
 from gui.theme import LIGHT_THEME, ThemePalette
 from services import bot_control_service, list_service, userdata_service
+from services.config_manager import ConfigManager
 
 
 class DeadPlayersPanel(tk.Frame):
@@ -228,14 +229,23 @@ class DeadPlayersPanel(tk.Frame):
 
 
 class DeathCounterPanel(tk.Frame):
-    def __init__(self, master, *, death_counter_path: str) -> None:
+    def __init__(
+        self,
+        master,
+        *,
+        death_counter_path: str,
+        config_manager: ConfigManager | None = None,
+        wipe_date: str | None = None,
+    ) -> None:
         super().__init__(master)
         self.death_counter_path = death_counter_path
+        self._config_manager = config_manager
         self._theme: ThemePalette = LIGHT_THEME
         self._count_var = tk.StringVar(value="0")
         self._status_var = tk.StringVar(value="")
         self._input_var = tk.StringVar(value="0")
         self._since_var = tk.StringVar(value="")
+        self._wipe_date_var = tk.StringVar(value=wipe_date or "")
         self._buttons: list[tk.Button] = []
         self._build_ui()
         self.refresh()
@@ -271,6 +281,25 @@ class DeathCounterPanel(tk.Frame):
             justify=tk.LEFT,
         )
         self._status_label.pack(fill=tk.X, padx=10, pady=(4, 8))
+
+        wipe_label = tk.Label(self, text="Last wipe date (YYYY-MM-DD):")
+        wipe_label.pack(anchor="w", padx=10)
+        self._wipe_date_label = wipe_label
+        wipe_row = tk.Frame(self)
+        wipe_row.pack(fill=tk.X, padx=10, pady=(0, 8))
+        self._wipe_entry = tk.Entry(
+            wipe_row,
+            textvariable=self._wipe_date_var,
+            justify=tk.CENTER,
+        )
+        self._wipe_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self._apply_wipe_button = tk.Button(
+            wipe_row,
+            text="Apply",
+            command=self._apply_wipe_date,
+        )
+        self._apply_wipe_button.pack(side=tk.LEFT, padx=(6, 0))
+        self._buttons.append(self._apply_wipe_button)
 
         action_row = tk.Frame(self)
         action_row.pack(fill=tk.X, padx=10, pady=(0, 10))
@@ -319,6 +348,8 @@ class DeathCounterPanel(tk.Frame):
             return
         self._count_var.set(str(count))
         self._since_var.set(self._format_since_text(last_reset))
+        if not self._wipe_date_var.get() and last_reset:
+            self._wipe_date_var.set(self._format_date_input(last_reset))
         status_parts: list[str] = []
         if synced:
             status_parts.append("Synced with the running bot.")
@@ -338,6 +369,32 @@ class DeathCounterPanel(tk.Frame):
 
     def _adjust(self, delta: int) -> None:
         self._update_counter(lambda: bot_control_service.adjust_death_counter(self.death_counter_path, delta))
+
+    def _apply_wipe_date(self) -> None:
+        raw_value = self._wipe_date_var.get().strip()
+        timestamp = self._parse_wipe_date(raw_value)
+        if timestamp is None:
+            messagebox.showerror(
+                "Wipe Date",
+                "Please enter a valid date in YYYY-MM-DD format.",
+            )
+            return
+
+        try:
+            count, last_reset, synced = bot_control_service.set_death_counter_wipe_date(
+                self.death_counter_path, timestamp
+            )
+        except Exception as exc:
+            messagebox.showerror("Wipe Date", str(exc))
+            return
+
+        if self._config_manager:
+            self._config_manager.update({"last_wipe_date": raw_value})
+        self._count_var.set(str(count))
+        self._since_var.set(self._format_since_text(last_reset))
+        self._status_var.set(
+            "Wipe date updated and bot activity refreshed." if synced else "Bot offline. Wipe date saved to disk."
+        )
 
     def _update_counter(
         self,
@@ -403,12 +460,30 @@ class DeathCounterPanel(tk.Frame):
         year_suffix = f", {dt.year}" if dt.year != datetime.datetime.now().year else ""
         return f"Since {month} {day}{suffix}{year_suffix}"
 
+    def _parse_wipe_date(self, value: str) -> int | None:
+        cleaned = value.strip()
+        if not cleaned:
+            return None
+        try:
+            dt = datetime.datetime.fromisoformat(cleaned)
+        except ValueError:
+            try:
+                dt = datetime.datetime.strptime(cleaned, "%Y-%m-%d")
+            except ValueError:
+                return None
+        return int(dt.timestamp())
+
+    def _format_date_input(self, timestamp: int) -> str:
+        return datetime.datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d")
+
     def apply_theme(self, theme: ThemePalette) -> None:
         self._theme = theme
         self.configure(bg=theme.panel_bg)
         for widget in (self._title, self._count_display, self._status_label):
             widget.configure(bg=theme.panel_bg, fg=theme.fg)
         self._since_label.configure(bg=theme.panel_bg, fg=theme.fg)
+        if hasattr(self, "_wipe_date_label"):
+            self._wipe_date_label.configure(bg=theme.panel_bg, fg=theme.fg)
         for button in self._buttons:
             button.configure(
                 bg=theme.button_bg,
@@ -421,6 +496,15 @@ class DeathCounterPanel(tk.Frame):
             )
         if hasattr(self, "_entry"):
             self._entry.configure(
+                bg=theme.console_bg,
+                fg=theme.console_fg,
+                insertbackground=theme.console_fg,
+                highlightbackground=theme.panel_bg,
+                highlightcolor=theme.panel_bg,
+                relief=tk.FLAT,
+            )
+        if hasattr(self, "_wipe_entry"):
+            self._wipe_entry.configure(
                 bg=theme.console_bg,
                 fg=theme.console_fg,
                 insertbackground=theme.console_fg,
@@ -796,9 +880,10 @@ class DangerPanel(tk.Frame):
 
 
 class SidebarPane(tk.Frame):
-    def __init__(self, master, *, config: dict) -> None:
+    def __init__(self, master, *, config: dict, config_manager: ConfigManager | None = None) -> None:
         super().__init__(master)
         self.config_data = config
+        self._config_manager = config_manager
         self._theme: ThemePalette = LIGHT_THEME
         self._build_ui()
 
@@ -819,6 +904,8 @@ class SidebarPane(tk.Frame):
         self._counter_panel = DeathCounterPanel(
             self._notebook,
             death_counter_path=self.config_data.get("death_counter_path", "death_counter.json"),
+            config_manager=self._config_manager,
+            wipe_date=self.config_data.get("last_wipe_date"),
         )
         self._notebook.add(self._counter_panel, text="Death Counter")
 

@@ -60,6 +60,7 @@ def main(*, interactive: bool = True, death_log_callback: Optional[Callable[[str
         config = json.load(file)
 
     load_death_counter_state()
+    _apply_configured_wipe_date()
 
     # create userdata db (json) file if it does not exist
     if (not os.path.isfile(config["userdata_db_path"])):
@@ -213,6 +214,32 @@ def _format_since_timestamp(timestamp: Optional[int]) -> str:
     return f"{month} {dt.day}{suffix}{year_suffix}"
 
 
+def _parse_wipe_date(value: Optional[str]) -> Optional[int]:
+    if not value:
+        return None
+    cleaned = value.strip()
+    if not cleaned:
+        return None
+    try:
+        dt = datetime.datetime.fromisoformat(cleaned)
+    except ValueError:
+        try:
+            dt = datetime.datetime.strptime(cleaned, "%Y-%m-%d")
+        except ValueError:
+            return None
+    return int(dt.timestamp())
+
+
+def _apply_configured_wipe_date() -> None:
+    global death_counter_state
+
+    configured = _parse_wipe_date(config.get("last_wipe_date")) if config else None
+    if configured is None:
+        return
+    death_counter_state["last_reset"] = configured
+    save_death_counter_state()
+
+
 async def update_bot_activity(*, count: Optional[int] = None, last_reset: Optional[int] = None) -> None:
     if client is None:
         return
@@ -303,7 +330,20 @@ async def adjust_death_counter(delta: int) -> tuple[int, int]:
     await update_bot_activity(count=current, last_reset=last_reset)
     _notify_death_counter_observers(current, last_reset)
     return current, last_reset
-            
+
+
+async def set_last_reset_date(timestamp: int) -> tuple[int, int]:
+    lock = get_death_counter_lock()
+    async with lock:
+        death_counter_state["last_reset"] = max(0, int(timestamp))
+        save_death_counter_state()
+        count = int(death_counter_state.get("count", 0))
+        last_reset = int(death_counter_state.get("last_reset", 0))
+
+    await update_bot_activity(count=count, last_reset=last_reset)
+    _notify_death_counter_observers(count, last_reset)
+    return count, last_reset
+
 
 @tasks.loop(seconds = 2)
 async def vc_check():

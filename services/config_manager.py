@@ -33,6 +33,7 @@ def _default_config() -> Dict[str, Any]:
         "error_dump_mention_tag": "",
         "wait_time_new_life_seconds": 1209600,
         "wait_time_new_life_seconds_season_pass": 300,
+        "last_wipe_date": "",
     }
 
 
