@@ -9,11 +9,13 @@ from typing import Callable, Optional
 from gui.analytics import AnalyticsPane
 from gui.config_editor import ConfigEditor
 from gui.console_pane import ConsolePane
+from gui.notification_pane import NotificationPane
 from gui.path_setup import BotSetupDialog, PathSetupDialog
 from gui.sidebar import SidebarPane
 from gui.theme import ThemePalette, get_theme
 from services.analytics_service import AnalyticsManager
 from services.config_manager import ConfigManager
+from services.notification_manager import NotificationManager
 
 
 class GuiApplication:
@@ -38,6 +40,9 @@ class GuiApplication:
         self.config_manager = ConfigManager(config_path)
         self._needs_full_setup = self.config_manager.needs_initial_setup
         self.analytics_manager = AnalyticsManager()
+        self.notification_manager = NotificationManager(
+            self.config_manager.data, on_status=self.append_main_log
+        )
 
         self._build_ui()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -90,6 +95,12 @@ class GuiApplication:
         self._analytics = AnalyticsPane(analytics_tab, self.analytics_manager)
         self._analytics.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
 
+        notifications_tab = NotificationPane(
+            notebook, self.config_manager, self.notification_manager
+        )
+        notebook.add(notifications_tab, text="Notifications")
+        self._notifications = notifications_tab
+
         self._apply_theme()
 
     def _create_menus(self) -> None:
@@ -119,6 +130,9 @@ class GuiApplication:
 
     def _on_config_update(self, data: dict) -> None:
         self._sidebar.reload_paths(data)
+        if hasattr(self, "_notifications"):
+            self._notifications.reload(data)
+        self.notification_manager.update_config(data)
         self._ensure_initial_paths()
 
     def append_main_log(self, message: str) -> None:
@@ -153,9 +167,11 @@ class GuiApplication:
             else:
                 message = payload
                 analytics_line = payload if analytics else None
+            raw_line = analytics_line or message
             console.append(message)
             if analytics and analytics_line and self.analytics_manager.record_line(analytics_line):
                 self._analytics.refresh()
+            self.notification_manager.handle_log_line(raw_line)
 
     def _process_counter_updates(self) -> None:
         while not self.counter_queue.empty():
@@ -184,6 +200,8 @@ class GuiApplication:
             self._sidebar.apply_theme(palette)
         if hasattr(self, "_analytics"):
             self._analytics.apply_theme(palette)
+        if hasattr(self, "_notifications"):
+            self._notifications.apply_theme(palette)
 
     def _format_death_log(self, message: str) -> Optional[str]:
         if not message:
