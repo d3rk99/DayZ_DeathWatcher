@@ -41,7 +41,7 @@
             "steam_id": "76561198076842142",
             "guid": "LreMpmgPrz9j_BJ9GwNO1SOb1s_5TjDn777XBpeKYeQ=",
             "is_alive": 0,
-            "time_of_death": 1762913209,
+            "time_of_death": 1764537691,
             "can_revive": 0,
             "is_admin": 0
         },
@@ -67,7 +67,7 @@
             "username": "routier028",
             "steam_id": "76561197994516341",
             "guid": "Jlr5Bcyu0TSaFoEHZ2ztlN_DRKxsqAs4hF5J1fiqkMU=",
-            "is_alive": 0,
+            "is_alive": 1,
             "time_of_death": 1763150095,
             "can_revive": 0,
             "is_admin": 0
@@ -238,7 +238,7 @@
             "username": "veri.najs",
             "steam_id": "76561198835748141",
             "guid": "q4ip2MWL9QgActse2AmfLT6KbP_nb75Vc_F3Mjm7nD0=",
-            "is_alive": 0,
+            "is_alive": 1,
             "time_of_death": 1763196616,
             "can_revive": 0,
             "is_admin": 0
@@ -940,8 +940,8 @@
             "username": "bananacars",
             "steam_id": "76561198848887138",
             "guid": "WArWbZKq5hZ2uMn_ayIb_ZTwkv9huNCw9CTuVuO4jZA=",
-            "is_alive": 1,
-            "time_of_death": 1761755699,
+            "is_alive": 0,
+            "time_of_death": 1764456496,
             "can_revive": 0,
             "is_admin": 0
         },
@@ -1327,8 +1327,8 @@
             "username": "dirtyernie227",
             "steam_id": "76561199165652669",
             "guid": "Dtyw6GLt5AOPWdx1PJ6oMRblElSk-cL_hJpptFTkex0=",
-            "is_alive": 1,
-            "time_of_death": 1759004772,
+            "is_alive": 0,
+            "time_of_death": 1764562377,
             "can_revive": 0,
             "is_admin": 0
         },
@@ -1337,7 +1337,7 @@
             "steam_id": "76561199856701760",
             "guid": "pWsnMMCeX3YZQjKCs7xVfKt8Ni3qXeD-1N8NmkUKiG0=",
             "is_alive": 0,
-            "time_of_death": 1762050703,
+            "time_of_death": 1763693919,
             "can_revive": 0,
             "is_admin": 0
         },
@@ -1526,7 +1526,7 @@
             "steam_id": "76561198002795727",
             "guid": "S4XX--LfhWIXiJ2TErGm9XuzsX43NRlc4cwHU_2Blpc=",
             "is_alive": 0,
-            "time_of_death": 1762566398,
+            "time_of_death": 1763912714,
             "can_revive": 0,
             "is_admin": 0
         },
@@ -1534,7 +1534,7 @@
             "username": "florre1984",
             "steam_id": "76561198271304685",
             "guid": "3ZACS7Hha9GcneRAQ4WC0CrCsBd3h9m-q_cbKCPf9f8=",
-            "is_alive": 0,
+            "is_alive": 1,
             "time_of_death": 1762532190,
             "can_revive": 0,
             "is_admin": 0
@@ -1544,7 +1544,7 @@
             "steam_id": "76561198065987054",
             "guid": "OQmeCeeDwhPM0iR_0j3TV_VcIIaZKSVkVC7XWAYPu2k=",
             "is_alive": 0,
-            "time_of_death": 1762546895,
+            "time_of_death": 1764549082,
             "can_revive": 0,
             "is_admin": 0
         },
@@ -1553,7 +1553,7 @@
             "steam_id": "76561199001109965",
             "guid": "rToRdVVPDuBSd-2htPtlfxFAcNN-TuJkZ1-wFNfk8lA=",
             "is_alive": 0,
-            "time_of_death": 1762818773,
+            "time_of_death": 1764450036,
             "can_revive": 0,
             "is_admin": 0
         },
@@ -1570,7 +1570,7 @@
             "username": "robinhood4412",
             "steam_id": "76561198036023228",
             "guid": "8isEFU0Q17u-F2O330MyDtZ_1xBMAMTC5paJCwD7Vgo=",
-            "is_alive": 0,
+            "is_alive": 1,
             "time_of_death": 1763070539,
             "can_revive": 0,
             "is_admin": 0
@@ -1588,8 +1588,62 @@
             "username": "pktj240sx",
             "steam_id": "76561199104699036",
             "guid": "LQGdCccGMsYehDH0nuk6FCbHPm3WDPq0KlODCypBjB8=",
-            "is_alive": 0,
+            "is_alive": 1,
             "time_of_death": 1763147723,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "285150706153816073": {
+            "username": "oskar91pl",
+            "steam_id": "76561198193224259",
+            "guid": "_a9NuaMUMMT4eBR6wQbWN0W6N6nE16xd7VzSFgK9U3c=",
+            "is_alive": 0,
+            "time_of_death": 1764182482,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "922641984773046312": {
+            "username": "captspaulding0421",
+            "steam_id": "76561198040009218",
+            "guid": "d_cOieu2APOMeQsPE2_EtvWe1TidL6TZ5ZSoJmJFAmE=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "561279580682321936": {
+            "username": "soupcan3041",
+            "steam_id": "76561198126227816",
+            "guid": "RVpnqHaXdqf7DSpauY9VCjTHW8IIBAVpCB0c7Qgv5Jg=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "138005904254566400": {
+            "username": "ingalbesto",
+            "steam_id": "76561198006497841",
+            "guid": "lgAXdrefzLXMd5WBPm708RMwFnsrOwgaegeH9ivQUXk=",
+            "is_alive": 0,
+            "time_of_death": 1764341691,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "711219375721545809": {
+            "username": "stankywick87",
+            "steam_id": "76561199231071875",
+            "guid": "FDvyIBQ_yuof-omNxdJ5cbUarvcvuEmzoa_xSMP4LsQ=",
+            "is_alive": 1,
+            "time_of_death": 0,
+            "can_revive": 0,
+            "is_admin": 0
+        },
+        "838451543946166303": {
+            "username": "rakk615",
+            "steam_id": "76561198058628607",
+            "guid": "IK9h2PZRCiaVAB90SOBzULZ7pZsgKU28_v9WjYR0DZY=",
+            "is_alive": 1,
+            "time_of_death": 0,
             "can_revive": 0,
             "is_admin": 0
         }
@@ -1672,6 +1726,8 @@
         "269937687476174848",
         "763167925514928138",
         "423696289348190218",
-        "621352738793717780"
+        "621352738793717780",
+        "285150706153816073",
+        "138005904254566400"
     ]
 }
