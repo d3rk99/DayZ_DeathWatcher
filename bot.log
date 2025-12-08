@@ -1,0 +1,14 @@
+2025-12-08 16:23:32,625 [INFO] __main__: Loading config from E:\DayZ MM\servers\MementoMori\!Life and Death Bot\config.json
+2025-12-08 16:23:32,632 [WARNING] nextcord.client: PyNaCl is not installed, voice will NOT be supported
+2025-12-08 16:23:32,876 [INFO] nextcord.client: logging in using static token
+2025-12-08 16:23:32,877 [INFO] nextcord.http: Allowed 1 rate limits to be garbage collected.
+2025-12-08 16:23:33,291 [INFO] nextcord.gateway: Shard ID None has sent the IDENTIFY payload.
+2025-12-08 16:23:33,480 [INFO] nextcord.gateway: Shard ID None has connected to Gateway: ["gateway-prd-arm-us-east1-b-98gw",{"micros":126978,"calls":["id_created",{"micros":495,"calls":[]},"session_lookup_time",{"micros":301,"calls":[]},"session_lookup_finished",{"micros":12,"calls":[]},"discord-sessions-prd-2-127",{"micros":125734,"calls":["start_session",{"micros":117375,"calls":["discord-api-rpc-774cf9cfdc-p26v6",{"micros":65708,"calls":["get_user",{"micros":8526},"get_guilds",{"micros":26377},"send_scheduled_deletion_message",{"micros":16},"guild_join_requests",{"micros":2},"authorized_ip_coro",{"micros":11},"pending_payments",{"micros":410},"apex_experiments",{"micros":44983},"user_activities",{"micros":4},"played_application_ids",{"micros":8},"linked_users",{"micros":2}]}]},"starting_guild_connect",{"micros":35,"calls":[]},"presence_started",{"micros":5876,"calls":[]},"guilds_started",{"micros":63,"calls":[]},"lobbies_started",{"micros":1,"calls":[]},"guilds_connect",{"micros":2,"calls":[]},"presence_connect",{"micros":2328,"calls":[]},"connect_finished",{"micros":2369,"calls":[]},"build_ready",{"micros":13,"calls":[]},"clean_ready",{"micros":0,"calls":[]},"optimize_ready",{"micros":0,"calls":[]},"split_ready",{"micros":1,"calls":[]}]}]}] (Session ID: 02234de8756b7d4cfcc728a469994ea5). Resume URL specified as wss://gateway-us-east1-b.discord.gg
+2025-12-08 16:23:33,603 [INFO] nextcord.state: nextcord.ConnectionState: Registering command with signature ('userdata', 1, None)
+2025-12-08 16:23:33,711 [INFO] nextcord.state: nextcord.ConnectionState: Registering command with signature ('delete_user_from_database', 1, None)
+2025-12-08 16:23:33,837 [INFO] nextcord.state: nextcord.ConnectionState: Registering command with signature ('reset_death_counter', 1, None)
+2025-12-08 16:28:32,889 [INFO] nextcord.http: Allowed 1 rate limits to be garbage collected.
+2025-12-08 16:32:48,551 [INFO] nextcord.gateway: Websocket closed with 1000, cannot reconnect.
+2025-12-08 16:32:48,658 [INFO] nextcord.client: Cleaning up after 4 tasks.
+2025-12-08 16:32:48,658 [INFO] nextcord.client: All tasks finished cancelling.
+2025-12-08 16:32:48,658 [INFO] nextcord.client: Closing the event loop.
