@@ -12,7 +12,8 @@ def fetch_playtime_leaderboard(api_base: str, *, timeout: float = 8.0) -> Tuple[
     """Retrieve the top playtime leaderboard and the current user's row.
 
     Args:
-        api_base: Base URL of the backend (e.g. "http://localhost:3001").
+        api_base: Base URL of the backend (e.g. "http://localhost:3001" or
+            the already-prefixed leaderboard route like "http://localhost:3001/api/leaderboards").
         timeout: Number of seconds to wait before giving up on the request.
 
     Returns:
@@ -25,7 +26,12 @@ def fetch_playtime_leaderboard(api_base: str, *, timeout: float = 8.0) -> Tuple[
     if not api_base:
         raise ValueError("Leaderboard API URL is not configured.")
 
-    url = f"{api_base}/leaderboards/playtime"
+    if api_base.endswith("/leaderboards/playtime"):
+        url = api_base
+    elif api_base.endswith("/leaderboards"):
+        url = f"{api_base}/playtime"
+    else:
+        url = f"{api_base}/leaderboards/playtime"
     request = urllib.request.Request(url, headers={"Accept": "application/json"})
 
     try:
