@@ -1,15 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import { db, nowIso } from '../db';
+import { playSessionSchema } from '../utils/validation';
+import { z } from 'zod';
 
-export type PlaySessionPayload = {
-  playerGuid: string;
-  playerName?: string | null;
-  steam64Id?: string | null;
-  loginAt: string;
-  logoutAt: string;
-  durationSeconds: number;
-};
+export type PlaySessionPayload = z.infer<typeof playSessionSchema>;
 
 const USERDATA_PATH = path.join(process.cwd(), 'userdata_db.json');
 
