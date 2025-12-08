@@ -73,7 +73,7 @@
                     <div class="card-header">
                         <div>
                             <p class="eyebrow">Time Invested</p>
-                            <h3>Top 5 Playtime</h3>
+                            <h3>Live Playtime Leaders</h3>
                         </div>
                         <span class="badge">Live</span>
                     </div>
@@ -89,6 +89,7 @@
                             <tr><td colspan="3" class="muted">Loading…</td></tr>
                         </tbody>
                     </table>
+                    <p id="leaderboard-note" class="muted" style="margin-top: 0.5rem;">&nbsp;</p>
                 </article>
                 <article class="info-card">
                     <div class="card-header">
@@ -147,43 +148,63 @@
     };
 
     async function loadLeaderboard() {
-        const res = await fetch('/api/leaderboards/playtime');
-        const data = await res.json();
         const tbody = document.getElementById('playtime-leaders');
         const myPlaytime = document.getElementById('my-playtime');
+        const note = document.getElementById('leaderboard-note');
 
-        if (tbody) {
-            tbody.innerHTML = '';
-            if (data.leaderboard && data.leaderboard.length) {
-                data.leaderboard.forEach((row, idx) => {
+        try {
+            const res = await fetch('/api/leaderboards/playtime?limit=50');
+            const data = await res.json();
+            const leaderboard = Array.isArray(data?.leaderboard) ? data.leaderboard : [];
+
+            if (tbody) {
+                tbody.innerHTML = '';
+                if (leaderboard.length) {
+                    leaderboard.forEach((row, idx) => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${idx + 1}</td>
+                            <td>${row.playerName || row.playerGuid || row.steam64Id || 'Unknown'}</td>
+                            <td>${formatHours(row.totalSeconds)}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
                     const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${idx + 1}</td>
-                        <td>${row.playerName || row.playerGuid || row.steam64Id || 'Unknown'}</td>
-                        <td>${formatHours(row.totalSeconds)}</td>
-                    `;
+                    tr.innerHTML = '<td colspan="3" class="muted">No playtime recorded yet.</td>';
                     tbody.appendChild(tr);
-                });
-            } else {
-                const tr = document.createElement('tr');
-                tr.innerHTML = '<td colspan="3" class="muted">No playtime recorded yet.</td>';
-                tbody.appendChild(tr);
+                }
             }
-        }
 
-        if (myPlaytime) {
-            if (data.me) {
-                myPlaytime.classList.remove('muted');
-                myPlaytime.innerHTML = `
-                    <div class="stat">
-                        <div class="stat-number">${formatHours(data.me.totalSeconds)}</div>
-                        <div class="stat-label">Tracked as ${data.me.playerName || 'Unknown Survivor'}</div>
-                    </div>
-                `;
-            } else {
-                myPlaytime.classList.add('muted');
-                myPlaytime.textContent = 'Sign in with Discord to view your personal playtime.';
+            if (note) {
+                const count = leaderboard.length;
+                note.textContent = count
+                    ? `Showing ${count} tracked player${count === 1 ? '' : 's'}.`
+                    : 'Waiting for the first tracked session to come in.';
             }
+
+            if (myPlaytime) {
+                if (data.me) {
+                    myPlaytime.classList.remove('muted');
+                    myPlaytime.innerHTML = `
+                        <div class="stat">
+                            <div class="stat-number">${formatHours(data.me.totalSeconds)}</div>
+                            <div class="stat-label">Tracked as ${data.me.playerName || 'Unknown Survivor'}</div>
+                        </div>
+                    `;
+                } else {
+                    myPlaytime.classList.add('muted');
+                    myPlaytime.textContent = 'Sign in with Discord to view your personal playtime.';
+                }
+            }
+        } catch (err) {
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="3" class="muted">Unable to load playtime data.</td></tr>';
+            }
+            if (note) {
+                note.textContent = 'Leaderboard data failed to load.';
+            }
+            console.error('Failed to load leaderboard', err);
         }
     }
     loadLeaderboard();

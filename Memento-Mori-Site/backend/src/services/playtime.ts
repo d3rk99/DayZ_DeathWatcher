@@ -86,7 +86,8 @@ export const recordPlaySession = (payload: PlaySessionPayload) => {
   updateUserdataPlaytime(payload, Math.max(0, totalSeconds));
 };
 
-export const getTopPlaytime = (limit = 5) => {
+export const getTopPlaytime = (limitInput?: number) => {
+  const limit = Number.isFinite(limitInput) && Number(limitInput) > 0 ? Number(limitInput) : 5;
   const rows = db
     .prepare('SELECT player_guid, steam64, player_name, total_seconds, last_session_at FROM player_playtime ORDER BY total_seconds DESC LIMIT ?')
     .all(limit);

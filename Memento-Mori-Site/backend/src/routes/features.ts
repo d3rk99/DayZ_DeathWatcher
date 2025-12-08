@@ -322,7 +322,8 @@ router.get('/leaderboards', (req, res) => {
 });
 
 router.get('/leaderboards/playtime', (req, res) => {
-  const leaderboard = getTopPlaytime(5);
+  const limitParam = Number(req.query.limit);
+  const leaderboard = getTopPlaytime(Number.isFinite(limitParam) ? limitParam : undefined);
   const sessionUserId = (req as any).session?.userId;
   let me: any = null;
   if (sessionUserId) {
