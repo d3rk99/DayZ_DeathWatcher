@@ -39,6 +39,16 @@ const upload = multer({
 
 type FileUploadRequest = Request & { file?: MulterFile };
 
+const parseJson = (value: unknown) => {
+  if (typeof value !== 'string' || !value.trim()) return undefined;
+  try {
+    return JSON.parse(value);
+  } catch (err) {
+    console.warn('[leaderboards] Unable to parse metadata_json payload', err);
+    return undefined;
+  }
+};
+
 router.get('/seasons/current', (_req, res) => {
   const season = db.prepare('SELECT * FROM seasons WHERE is_current = 1 ORDER BY start_date DESC LIMIT 1').get();
   res.json(season || null);
@@ -291,19 +301,34 @@ router.delete('/media/:id', requireAuth, requireAdmin, (req, res) => {
 });
 
 router.get('/leaderboards', (req, res) => {
-  const { seasonId, category } = req.query;
-  let query = 'SELECT * FROM stats_entries WHERE 1=1';
-  const params: any[] = [];
-  if (seasonId) {
-    query += ' AND season_id = ?';
-    params.push(seasonId);
+  try {
+    const { seasonId, category } = req.query;
+    let query = 'SELECT * FROM stats_entries WHERE 1=1';
+    const params: any[] = [];
+    if (seasonId) {
+      query += ' AND season_id = ?';
+      params.push(seasonId);
+    }
+    if (category) {
+      query += ' AND category = ?';
+      params.push(category);
+    }
+    const rows = db.prepare(`${query} ORDER BY value DESC`).all(...params);
+    const normalized = rows.map((row: any) => ({
+      id: row.id,
+      seasonId: row.season_id,
+      playerName: row.player_name,
+      category: row.category,
+      value: Number(row.value),
+      metadata: parseJson(row.metadata_json),
+      createdAt: row.created_at,
+      updatedAt: row.updated_at || row.created_at,
+    }));
+    res.json(normalized);
+  } catch (err: any) {
+    console.error('[leaderboards] Failed to fetch leaderboard data', err);
+    res.status(500).json({ message: 'Failed to load leaderboard data' });
   }
-  if (category) {
-    query += ' AND category = ?';
-    params.push(category);
-  }
-  const rows = db.prepare(`${query} ORDER BY value DESC`).all(...params);
-  res.json(rows);
 });
 
 router.post('/leaderboards/import', text({ type: ['text/*', 'application/csv'] }), requireAuth, requireAdmin, (req, res) => {
