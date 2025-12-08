@@ -847,7 +847,7 @@ class PlaytimeLeaderboardPanel(tk.Frame):
         try:
             leaderboard, me = fetch_playtime_leaderboard(self.api_url)
         except Exception as exc:
-            self.after(0, lambda: self._handle_error(str(exc)))
+            self.after(0, lambda exc=exc: self._handle_error(str(exc)))
             return
         self.after(0, lambda: self._apply_data(leaderboard, me))
 
