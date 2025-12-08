@@ -43,3 +43,12 @@ export const botSyncStatusSchema = z.object({
   status: z.enum(['pending', 'processed', 'failed']),
   errorMessage: z.string().optional(),
 });
+
+export const playSessionSchema = z.object({
+  playerGuid: z.string().min(1),
+  playerName: z.string().optional().nullable(),
+  steam64Id: z.string().regex(/^\d{15,}$/).optional().nullable(),
+  loginAt: z.string().min(1),
+  logoutAt: z.string().min(1),
+  durationSeconds: z.number().nonnegative(),
+});
