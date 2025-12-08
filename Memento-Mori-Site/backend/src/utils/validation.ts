@@ -25,6 +25,7 @@ export const whitelistSchema = z.object({
   discordTag: z.string().min(2),
   region: z.string().optional(),
   acceptedRules: z.boolean(),
+  notes: z.string().optional(),
 });
 
 export const adminWhitelistUpdateSchema = z.object({
