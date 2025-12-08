@@ -1,12 +1,15 @@
 import glob
 import json
+import datetime
 import os
+import re
 import threading
 import time
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Iterable, List, Optional, Tuple
+from typing import Callable, Dict, Iterable, List, Optional, Tuple
+from urllib import error, request
 
 DEFAULT_CACHE_CONTENT = {
     "prev_log_read": {"line": ""},
@@ -17,6 +20,7 @@ DEFAULT_CONFIG = {
     "path_to_logs_directory": "../../profiles",
     "path_to_bans": "./deaths.txt",
     "path_to_cache": "./death_watcher_cache.json",
+    "userdata_db_path": "../userdata_db.json",
     "death_cues": [
         "killed by",
         "committed suicide",
@@ -28,6 +32,9 @@ DEFAULT_CONFIG = {
     "ban_delay": 5,
     "search_logs_interval": 1,
     "verbose_logs": 1,
+    "track_playtime": 0,
+    "playtime_report_url": "",
+    "playtime_bridge_token": "",
 }
 
 
@@ -105,6 +112,13 @@ class DayZDeathWatcher:
         self.search_logs_interval: float = 1.0
         self.verbose_logs: bool = False
         self.ban_delay: float = 5.0
+        self.track_playtime: bool = False
+        self.playtime_report_url: Optional[str] = None
+        self.playtime_bridge_token: Optional[str] = None
+        self.userdata_db_path: Optional[Path] = None
+        self._active_sessions: Dict[str, Dict[str, object]] = {}
+        self._userdata_cache: Dict[str, Dict[str, object]] = {}
+        self._userdata_loaded_at: float = 0.0
 
     # ------------------------------------------------------------------
     # public api
@@ -169,6 +183,8 @@ class DayZDeathWatcher:
                     if not self._player_is_queued_for_ban(player_id):
                         self._queue_player_for_ban(player_id)
 
+                self._handle_session_tracking(line)
+
                 self.current_cache["prev_log_read"]["line"] = line
                 self._update_cache()
                 log_number += 1
@@ -221,10 +237,15 @@ class DayZDeathWatcher:
             self.logs_directory = resolve_path(self.config["path_to_logs_directory"])
             self.path_to_bans = resolve_path(self.config["path_to_bans"])
             self.path_to_cache = resolve_path(self.config["path_to_cache"])
+            userdata_path = self.config.get("userdata_db_path")
+            self.userdata_db_path = resolve_path(userdata_path) if userdata_path else None
             self.death_cues = list(self.config["death_cues"])
             self.search_logs_interval = float(self.config["search_logs_interval"])
             self.verbose_logs = bool(int(self.config["verbose_logs"]))
             self.ban_delay = float(self.config["ban_delay"])
+            self.track_playtime = bool(int(self.config.get("track_playtime", 0)))
+            self.playtime_report_url = self.config.get("playtime_report_url") or None
+            self.playtime_bridge_token = self.config.get("playtime_bridge_token") or None
         except KeyError as exc:
             raise RuntimeError(f"Missing config entry: {exc}")
 
@@ -253,6 +274,128 @@ class DayZDeathWatcher:
             cache["prev_log_read"]["line"] = ""
         cache.setdefault("log_label", "")
         return cache
+
+    # ------------------------------------------------------------------
+    # playtime tracking
+    # ------------------------------------------------------------------
+    def _extract_timestamp(self, line: str) -> float:
+        match = re.search(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})", line)
+        if match:
+            try:
+                return datetime.datetime.strptime(match.group(1), "%Y-%m-%d %H:%M:%S").timestamp()
+            except ValueError:
+                pass
+
+        match = re.search(r"(\d{2}:\d{2}:\d{2})", line)
+        if match:
+            try:
+                today = datetime.datetime.utcnow().date()
+                dt = datetime.datetime.strptime(match.group(1), "%H:%M:%S")
+                combined = datetime.datetime.combine(today, dt.time())
+                return combined.timestamp()
+            except ValueError:
+                pass
+
+        return time.time()
+
+    def _reload_userdata_cache(self) -> None:
+        if not self.userdata_db_path or not self.userdata_db_path.exists():
+            return
+        if time.time() - self._userdata_loaded_at < 60:
+            return
+        try:
+            content = self.userdata_db_path.read_text(encoding="utf-8")
+            data = json.loads(content)
+            self._userdata_cache = data.get("userdata", {}) if isinstance(data, dict) else {}
+            self._userdata_loaded_at = time.time()
+        except Exception as exc:  # pragma: no cover - best effort helper
+            self._log(f"[playtime] Failed to load userdata cache: {exc}")
+
+    def _lookup_steam_id(self, guid: str) -> Optional[str]:
+        self._reload_userdata_cache()
+        for entry in self._userdata_cache.values():
+            if not isinstance(entry, dict):
+                continue
+            if entry.get("guid") == guid:
+                steam_id = entry.get("steam_id")
+                if isinstance(steam_id, str) and steam_id.strip():
+                    return steam_id.strip()
+        return None
+
+    def _handle_session_tracking(self, line: str) -> None:
+        if not self.track_playtime or not self.playtime_report_url:
+            return
+
+        match = re.search(r'Player "(?P<name>[^"]+)".*\(id=(?P<guid>[^\)]+)\)', line)
+        if not match:
+            return
+
+        normalized = line.casefold()
+        event: Optional[str] = None
+        if any(token in normalized for token in ("connected", "has joined", "logged in")):
+            event = "login"
+        elif any(token in normalized for token in ("disconnected", "has been disconnected", "logged off", "has left")):
+            event = "logout"
+
+        if not event:
+            return
+
+        timestamp = self._extract_timestamp(line)
+        guid = match.group("guid").strip()
+        name = match.group("name").strip()
+
+        if event == "login":
+            self._active_sessions[guid] = {
+                "name": name,
+                "login": timestamp,
+                "steam_id": self._lookup_steam_id(guid),
+            }
+            return
+
+        session = self._active_sessions.pop(guid, None)
+        if not session:
+            return
+
+        login_ts = float(session.get("login", timestamp))
+        duration = max(0, int(timestamp - login_ts))
+        steam_id = session.get("steam_id") if isinstance(session, dict) else None
+        self._report_play_session(guid, name or session.get("name", ""), login_ts, timestamp, duration, steam_id)
+
+    def _report_play_session(
+        self,
+        guid: str,
+        name: str,
+        login_ts: float,
+        logout_ts: float,
+        duration: int,
+        steam_id: Optional[str] = None,
+    ) -> None:
+        payload = {
+            "playerGuid": guid,
+            "playerName": name,
+            "steam64Id": steam_id,
+            "loginAt": datetime.datetime.utcfromtimestamp(login_ts).isoformat(),
+            "logoutAt": datetime.datetime.utcfromtimestamp(logout_ts).isoformat(),
+            "durationSeconds": int(duration),
+        }
+
+        headers = {"Content-Type": "application/json"}
+        if self.playtime_bridge_token:
+            headers["x-bot-bridge-token"] = self.playtime_bridge_token
+
+        request_obj = request.Request(
+            self.playtime_report_url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers=headers,
+            method="POST",
+        )
+
+        try:
+            request.urlopen(request_obj, timeout=10)
+        except error.HTTPError as exc:  # pragma: no cover - network operation
+            self._log(f"[playtime] Failed to report session ({exc.code}): {exc.reason}")
+        except Exception as exc:  # pragma: no cover - network operation
+            self._log(f"[playtime] Failed to report session: {exc}")
 
     def _update_cache(self) -> None:
         assert self.path_to_cache is not None

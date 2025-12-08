@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { APP_CONFIG } from '../config';
 import { requireAuth } from '../middleware/auth';
-import { botSyncRequestSchema, botSyncStatusSchema } from '../utils/validation';
+import { botSyncRequestSchema, botSyncStatusSchema, playSessionSchema } from '../utils/validation';
+import { recordPlaySession } from '../services/playtime';
 import { enqueueWhitelistSync, getPendingSyncs, updateSyncStatus } from '../services/botSync';
 
 const router = Router();
 
-const requireBridgeToken = (req: any, res: any, next: any) => {
+export const requireBridgeToken = (req: any, res: any, next: any) => {
   const token = (req.headers['x-bot-bridge-token'] as string) || '';
   if (!token || token !== APP_CONFIG.botSync.bridgeToken) {
     return res.status(401).json({ message: 'Unauthorized' });
@@ -49,6 +50,16 @@ router.patch('/queue/:id', requireBridgeToken, (req, res) => {
 
   const id = Number(req.params.id);
   updateSyncStatus(id, parsed.data.status, parsed.data.errorMessage || null);
+  res.json({ ok: true });
+});
+
+router.post('/playtime', requireBridgeToken, (req, res) => {
+  const parsed = playSessionSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: 'Invalid payload', issues: parsed.error.flatten() });
+  }
+
+  recordPlaySession(parsed.data);
   res.json({ ok: true });
 });
 
