@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import queue
+from collections import deque
 import re
 import threading
 import tkinter as tk
@@ -37,6 +38,9 @@ class GuiApplication:
         self._ready_callbacks: list[Callable[[], None]] = []
         self._path_dialog: Optional[PathSetupDialog] = None
         self._bot_dialog: Optional[BotSetupDialog] = None
+        self._recent_death_logs: deque[str] = deque()
+        self._recent_death_limit = 400
+        self._recent_death_seen: set[str] = set()
 
         self.config_manager = ConfigManager(config_path)
         self._needs_full_setup = self.config_manager.needs_initial_setup
@@ -143,7 +147,20 @@ class GuiApplication:
         formatted, tag = self._format_death_log(message)
         if not formatted:
             return
+        if not self._remember_death_log(formatted):
+            return
         self.death_queue.put((formatted, message, tag))
+
+    def _remember_death_log(self, line: str) -> bool:
+        if line in self._recent_death_seen:
+            return False
+        self._recent_death_logs.append(line)
+        self._recent_death_seen.add(line)
+        if len(self._recent_death_logs) > self._recent_death_limit:
+            oldest = self._recent_death_logs.popleft()
+            if oldest != line:
+                self._recent_death_seen.discard(oldest)
+        return True
 
     def handle_death_counter_update(self, count: int, last_reset: int) -> None:
         self.counter_queue.put((count, last_reset))
@@ -215,15 +232,20 @@ class GuiApplication:
         line = message.strip()
         lowered = line.lower()
         if lowered.startswith("[session]"):
-            tag = "connect" if " connected " in lowered else "disconnect" if " disconnected " in lowered else None
+            if " disconnected " in lowered:
+                tag = "disconnect"
+            elif " connected " in lowered:
+                tag = "connect"
+            else:
+                tag = None
             return line, tag
         if "(id=" in line:
-            if any(token in lowered for token in ("connected", "has joined", "logged in")):
-                summary = self._format_session_line(line, "connected")
-                return summary, "connect"
             if any(token in lowered for token in ("disconnected", "has been disconnected", "logged off", "has left")):
                 summary = self._format_session_line(line, "disconnected")
                 return summary, "disconnect"
+            if any(token in lowered for token in ("connected", "has joined", "logged in")):
+                summary = self._format_session_line(line, "connected")
+                return summary, "connect"
         cues = (
             "killed",
             "committed suicide",

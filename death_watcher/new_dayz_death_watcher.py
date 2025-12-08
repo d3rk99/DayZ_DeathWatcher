@@ -329,10 +329,13 @@ class DayZDeathWatcher:
 
         normalized = line.casefold()
         event: Optional[str] = None
-        if any(token in normalized for token in ("connected", "has joined", "logged in")):
-            event = "login"
-        elif any(token in normalized for token in ("disconnected", "has been disconnected", "logged off", "has left")):
+        if any(
+            token in normalized
+            for token in ("disconnected", "has been disconnected", "logged off", "has left")
+        ):
             event = "logout"
+        elif any(token in normalized for token in ("connected", "has joined", "logged in")):
+            event = "login"
 
         if not event:
             return
