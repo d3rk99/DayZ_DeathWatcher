@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import threading
 import time
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -8,6 +9,7 @@ from typing import Callable
 
 from gui.theme import LIGHT_THEME, ThemePalette
 from services import bot_control_service, list_service, userdata_service
+from services.leaderboard_service import fetch_playtime_leaderboard
 
 
 class DeadPlayersPanel(tk.Frame):
@@ -795,6 +797,133 @@ class DangerPanel(tk.Frame):
         self._wipe_button.configure(highlightbackground=theme.panel_bg)
 
 
+class PlaytimeLeaderboardPanel(tk.Frame):
+    def __init__(self, master, *, api_url: str | None = None) -> None:
+        super().__init__(master)
+        self.api_url = api_url or ""
+        self._theme: ThemePalette = LIGHT_THEME
+        self._status_var = tk.StringVar(value="Configure the leaderboard API URL to view playtime.")
+        self._me_var = tk.StringVar(value="")
+        self._build_ui()
+        self.refresh()
+
+    def _build_ui(self) -> None:
+        self._header = tk.Frame(self)
+        self._header.pack(fill=tk.X, padx=10, pady=(10, 4))
+        self._title = tk.Label(self._header, text="Playtime Leaderboard", font=("Segoe UI", 12, "bold"))
+        self._title.pack(side=tk.LEFT)
+        self._refresh_btn = tk.Button(self._header, text="Refresh", command=self.refresh)
+        self._refresh_btn.pack(side=tk.RIGHT)
+
+        columns = ("rank", "player", "hours", "last_session")
+        self._tree = ttk.Treeview(self, columns=columns, show="headings", height=10)
+        headings = {
+            "rank": "#",
+            "player": "Player",
+            "hours": "Hours Played",
+            "last_session": "Last Session",
+        }
+        widths = {"rank": 40, "player": 170, "hours": 110, "last_session": 180}
+        for key in columns:
+            self._tree.heading(key, text=headings[key])
+            self._tree.column(key, width=widths.get(key, 140), anchor=tk.CENTER if key != "player" else tk.W)
+        self._tree.pack(fill=tk.BOTH, expand=True, padx=10)
+
+        self._me_label = tk.Label(self, textvariable=self._me_var, anchor=tk.W, justify=tk.LEFT)
+        self._me_label.pack(fill=tk.X, padx=10, pady=(6, 0))
+
+        self._status_label = tk.Label(self, textvariable=self._status_var, anchor=tk.W, wraplength=320, justify=tk.LEFT)
+        self._status_label.pack(fill=tk.X, padx=10, pady=(4, 10))
+
+    def refresh(self) -> None:
+        if not self.api_url:
+            self._status_var.set("Set `leaderboard_api_url` in config to load data.")
+            self._clear_rows()
+            return
+        self._set_loading(True)
+        threading.Thread(target=self._load_data, daemon=True).start()
+
+    def _load_data(self) -> None:
+        try:
+            leaderboard, me = fetch_playtime_leaderboard(self.api_url)
+        except Exception as exc:
+            self.after(0, lambda: self._handle_error(str(exc)))
+            return
+        self.after(0, lambda: self._apply_data(leaderboard, me))
+
+    def _handle_error(self, message: str) -> None:
+        self._status_var.set(message)
+        self._clear_rows()
+        self._set_loading(False)
+
+    def _apply_data(self, leaderboard, me) -> None:
+        self._clear_rows()
+        for idx, row in enumerate(leaderboard, start=1):
+            player = row.get("playerName") or row.get("steam64Id") or row.get("playerGuid") or "Unknown"
+            hours = self._format_hours(row.get("totalSeconds"))
+            last_session = row.get("lastSessionAt") or ""
+            self._tree.insert("", tk.END, values=(idx, player, hours, last_session))
+        if me:
+            player = me.get("playerName") or me.get("steam64Id") or me.get("playerGuid") or "you"
+            hours = self._format_hours(me.get("totalSeconds"))
+            self._me_var.set(f"Your playtime: {player} — {hours} hours")
+        else:
+            self._me_var.set("")
+        self._status_var.set("Updated playtime leaderboard.")
+        self._set_loading(False)
+
+    def _format_hours(self, seconds_value) -> str:
+        try:
+            hours = float(seconds_value) / 3600
+        except (TypeError, ValueError):
+            hours = 0.0
+        return f"{hours:.1f}"
+
+    def _clear_rows(self) -> None:
+        for item in self._tree.get_children():
+            self._tree.delete(item)
+
+    def _set_loading(self, loading: bool) -> None:
+        if hasattr(self, "_refresh_btn"):
+            self._refresh_btn.configure(state=tk.DISABLED if loading else tk.NORMAL)
+
+    def apply_theme(self, theme: ThemePalette) -> None:
+        self._theme = theme
+        self.configure(bg=theme.panel_bg)
+        if hasattr(self, "_header"):
+            self._header.configure(bg=theme.panel_bg)
+        if hasattr(self, "_title"):
+            self._title.configure(bg=theme.panel_bg, fg=theme.fg)
+        for widget in (self._me_label, self._status_label):
+            widget.configure(bg=theme.panel_bg, fg=theme.fg)
+        style = ttk.Style(self)
+        tree_style = "Sidebar.Leaderboard.Treeview"
+        heading_style = f"{tree_style}.Heading"
+        style.configure(
+            tree_style,
+            background=theme.panel_bg,
+            fieldbackground=theme.panel_bg,
+            foreground=theme.fg,
+            rowheight=24,
+            borderwidth=0,
+        )
+        style.map(
+            tree_style,
+            background=[("selected", theme.accent)],
+            foreground=[("selected", theme.console_fg)],
+        )
+        style.configure(heading_style, background=theme.panel_bg, foreground=theme.fg)
+        self._tree.configure(style=tree_style)
+        if hasattr(self, "_refresh_btn"):
+            self._refresh_btn.configure(
+                bg=theme.button_bg,
+                fg=theme.button_fg,
+                activebackground=theme.accent,
+                activeforeground=theme.console_fg,
+                highlightbackground=theme.panel_bg,
+            )
+
+
 class SidebarPane(tk.Frame):
     def __init__(self, master, *, config: dict) -> None:
         super().__init__(master)
@@ -850,6 +979,13 @@ class SidebarPane(tk.Frame):
             userdata_path=self.config_data.get("userdata_db_path", "userdata_db.json"),
         )
         self._notebook.add(self._danger_panel, text="Danger")
+
+        self._leaderboard_panel = PlaytimeLeaderboardPanel(
+            self._notebook,
+            api_url=self.config_data.get("leaderboard_api_url")
+            or self.config_data.get("bot_sync_api_url"),
+        )
+        self._notebook.add(self._leaderboard_panel, text="Leaderboards")
 
     def update_death_counter(self, count: int, last_reset: int) -> None:
         if hasattr(self, "_counter_panel"):
@@ -927,3 +1063,5 @@ class SidebarPane(tk.Frame):
             self._admin_panel.apply_theme(theme)
         if hasattr(self, "_danger_panel"):
             self._danger_panel.apply_theme(theme)
+        if hasattr(self, "_leaderboard_panel"):
+            self._leaderboard_panel.apply_theme(theme)

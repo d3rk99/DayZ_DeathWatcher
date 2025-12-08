@@ -37,6 +37,7 @@ def _default_config() -> Dict[str, Any]:
         "restart_notification_triggers": [],
         "bot_sync_api_url": "",
         "bot_sync_token": "",
+        "leaderboard_api_url": "",
     }
 
 
