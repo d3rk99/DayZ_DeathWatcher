@@ -4,8 +4,9 @@ import os
 import threading
 import time
 import traceback
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, Iterable, List, Optional, Tuple
 
 DEFAULT_CACHE_CONTENT = {
     "prev_log_read": {"line": ""},
@@ -30,6 +31,52 @@ DEFAULT_CONFIG = {
 }
 
 
+def death_event_player_id(line: str, cues: Iterable[str]) -> str:
+    """Return the player id for a valid death line, otherwise an empty string.
+
+    The helper enforces the following rules to avoid noisy matches:
+
+    * A configured death cue must appear outside of quotes.
+    * The line must include a parenthesised ``id=`` segment that is long enough
+      to contain a DayZ GUID.
+    * Unknown player ids are ignored.
+    """
+
+    if not line or "(id=" not in line:
+        return ""
+
+    normalized = line.casefold()
+    if not any(cue.casefold() in normalized for cue in cues):
+        return ""
+
+    for cue in cues:
+        lowered = cue.casefold()
+        if lowered in normalized:
+            quoted_double = f'"{cue}' in line
+            quoted_single = f"'{cue}" in line
+            if quoted_double or quoted_single:
+                continue
+            break
+    else:
+        return ""
+
+    index = line.find("(id=")
+    start_index = index + 4
+    if index == -1 or len(line) < (start_index + 44):
+        return ""
+    player_id = line[start_index : start_index + 44]
+    if "Unknown" in player_id or len(player_id.strip()) < 10:
+        return ""
+    return player_id
+
+
+@dataclass
+class _LogFileState:
+    path: Path
+    inode: int
+    position: int
+
+
 class DayZDeathWatcher:
     """Utility that tails DayZ server logs for death events."""
 
@@ -47,6 +94,7 @@ class DayZDeathWatcher:
         self.current_cache: dict = {}
         self._stop_event = threading.Event()
         self._log = logger or (lambda message: print(message, flush=True))
+        self._log_state: Optional[_LogFileState] = None
 
         # populated during configuration loading
         self.config: dict = {}
@@ -100,19 +148,12 @@ class DayZDeathWatcher:
                 continue
 
             try:
-                with latest_file.open("r", encoding="utf-8", errors="ignore") as log_file:
-                    logs = [line for line in log_file.read().split("\n") if line]
+                new_lines = self._collect_new_lines(latest_file)
             except Exception as exc:
                 self._log(f"Failed to read log file {latest_file}: {exc}")
                 self._sleep(10)
                 continue
 
-            if len(logs) > 1:
-                log_label = " ".join(logs[1].split(" ")[3:])
-                if log_label:
-                    self.current_cache["log_label"] = log_label
-
-            new_lines = self._read_new_lines(latest_file, logs)
             if self.verbose_logs and new_lines:
                 self._log(f"Found {len(new_lines)} new logs")
 
@@ -120,12 +161,12 @@ class DayZDeathWatcher:
                 if self.verbose_logs:
                     self._log(f"[{log_number}] {line}")
 
-                if self._is_death_log(line):
-                    player_id = self._get_id_from_line(line)
+                player_id = death_event_player_id(line, self.death_cues)
+                if player_id:
                     if self.verbose_logs:
                         self._log(f"Found death log:\n    {line} Victim id: {player_id}")
 
-                    if player_id and not self._player_is_queued_for_ban(player_id):
+                    if not self._player_is_queued_for_ban(player_id):
                         self._queue_player_for_ban(player_id)
 
                 self.current_cache["prev_log_read"]["line"] = line
@@ -231,36 +272,63 @@ class DayZDeathWatcher:
         latest_file = max(adm_files, key=os.path.getmtime)
         return Path(latest_file)
 
-    def _read_new_lines(self, log_file: Path, cached_lines: List[str]) -> List[str]:
-        last_line = self.current_cache.get("prev_log_read", {}).get("line", "")
-        if not cached_lines:
+    def _get_cached_last_line(self) -> str:
+        return self.current_cache.get("prev_log_read", {}).get("line", "")
+
+    def _collect_new_lines(self, latest_file: Path) -> List[str]:
+        if self._log_state is None or not self._log_state.path.exists():
+            self._log_state, new_lines = self._prime_log_state(latest_file)
+            return new_lines
+
+        state_stat = self._log_state.path.stat()
+        if state_stat.st_ino != self._log_state.inode or state_stat.st_size < self._log_state.position:
+            self._log_state, new_lines = self._prime_log_state(latest_file)
+            return new_lines
+
+        if latest_file != self._log_state.path:
+            new_lines = self._read_from_position(self._log_state)
+            self._log_state, primed_lines = self._prime_log_state(latest_file)
+            return new_lines + primed_lines
+
+        return self._read_from_position(self._log_state)
+
+    def _prime_log_state(self, log_file: Path) -> Tuple[_LogFileState, List[str]]:
+        lines = self._read_lines_from_file(log_file)
+        if len(lines) > 1:
+            log_label = " ".join(lines[1].split(" ")[3:])
+            if log_label:
+                self.current_cache["log_label"] = log_label
+
+        new_lines = self._filter_cached_lines(lines)
+        inode = log_file.stat().st_ino
+        position = log_file.stat().st_size
+        return _LogFileState(path=log_file, inode=inode, position=position), new_lines
+
+    def _read_from_position(self, state: _LogFileState) -> List[str]:
+        with state.path.open("r", encoding="utf-8", errors="ignore") as log_file:
+            log_file.seek(state.position)
+            content = log_file.read()
+            state.position = log_file.tell()
+        return [line for line in content.split("\n") if line]
+
+    @staticmethod
+    def _read_lines_from_file(log_file: Path) -> List[str]:
+        with log_file.open("r", encoding="utf-8", errors="ignore") as file:
+            return [line for line in file.read().split("\n") if line]
+
+    def _filter_cached_lines(self, lines: List[str]) -> List[str]:
+        last_line = self._get_cached_last_line()
+        if not lines:
             return []
 
-        lines = list(cached_lines)
-        lines.reverse()
+        reversed_lines = list(lines)
+        reversed_lines.reverse()
         new_lines: List[str] = []
-        for line in lines:
+        for line in reversed_lines:
             if line == last_line:
                 break
             new_lines.insert(0, line)
         return new_lines
-
-    def _is_death_log(self, line: str) -> bool:
-        for cue in self.death_cues:
-            if cue in line and f'"{cue}' not in line and f"'{cue}" not in line:
-                return True
-        return False
-
-    @staticmethod
-    def _get_id_from_line(line: str) -> str:
-        index = line.find("(id=")
-        start_index = index + 4
-        if index == -1 or len(line) < (start_index + 44):
-            return ""
-        player_id = line[start_index:start_index + 44]
-        if "Unknown" in player_id:
-            return ""
-        return player_id
 
     # ------------------------------------------------------------------
     # ban helpers
@@ -324,11 +392,11 @@ def main() -> None:
     try:
         watcher.run_blocking()
     except KeyboardInterrupt:
-        self._log("Closing program...")
+        watcher._log("Closing program...")
         time.sleep(1.0)
     except Exception:
-        self._log("Ran into an unexpected exception. Printing traceback below:\n")
-        self._log(traceback.format_exc())
+        watcher._log("Ran into an unexpected exception. Printing traceback below:\n")
+        watcher._log(traceback.format_exc())
         input("Press enter to close this window.")
 
 
