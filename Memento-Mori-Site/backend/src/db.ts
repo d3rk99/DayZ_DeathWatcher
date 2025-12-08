@@ -76,6 +76,21 @@ db.exec(`
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
 
+  CREATE TABLE IF NOT EXISTS bot_sync_queue (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    discord_id TEXT NOT NULL,
+    discord_username TEXT NOT NULL,
+    steam64 TEXT NOT NULL,
+    region TEXT,
+    notes TEXT,
+    status TEXT NOT NULL,
+    error_message TEXT,
+    created_at TEXT NOT NULL,
+    processed_at TEXT,
+    UNIQUE(discord_id),
+    UNIQUE(steam64)
+  );
+
   CREATE TABLE IF NOT EXISTS timeline_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     season_id INTEGER,
@@ -136,6 +151,29 @@ db.exec(`
     metadata_json TEXT,
     created_at TEXT NOT NULL,
     FOREIGN KEY (season_id) REFERENCES seasons(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS player_playtime (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_guid TEXT NOT NULL,
+    steam64 TEXT,
+    player_name TEXT,
+    total_seconds INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL,
+    last_session_at TEXT,
+    UNIQUE(player_guid),
+    UNIQUE(steam64)
+  );
+
+  CREATE TABLE IF NOT EXISTS player_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_guid TEXT NOT NULL,
+    steam64 TEXT,
+    player_name TEXT,
+    login_at TEXT NOT NULL,
+    logout_at TEXT NOT NULL,
+    duration_seconds INTEGER NOT NULL,
+    created_at TEXT NOT NULL
   );
 
   CREATE TABLE IF NOT EXISTS marker_assets (

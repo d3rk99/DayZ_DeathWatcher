@@ -60,62 +60,48 @@
 <main>
     <section class="page-hero">
         <div class="section-inner">
-            <h2>Seasonal Leaderboards</h2>
-            <p class="muted">Top survivors per category. Import logs later; placeholder data shown here.</p>
-        </div>
-    </section>
-
-    <section class="panel">
-        <div class="section-inner">
-            <div class="card-header">
-                <div>
-                    <p class="eyebrow">Season 5</p>
-                    <h3>Black Forest Rankings</h3>
-                </div>
-                <div class="flag-row">
-                    <span class="pill">Category: PvP Kills</span>
-                    <span class="pill">Category: Longest Life</span>
-                </div>
-            </div>
-            <div class="table-wrap">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Rank</th>
-                            <th>Player</th>
-                            <th>Category</th>
-                            <th>Value</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>1</td>
-                            <td>Crane</td>
-                            <td>Longest Life</td>
-                            <td>22d 6h</td>
-                        </tr>
-                        <tr>
-                            <td>2</td>
-                            <td>Redline</td>
-                            <td>PvP Kills</td>
-                            <td>94</td>
-                        </tr>
-                        <tr>
-                            <td>3</td>
-                            <td>Vela</td>
-                            <td>Objectives Completed</td>
-                            <td>18</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+            <h2>Leaderboards</h2>
+            <p class="muted">Live stats straight from the server — updated as players log time.</p>
         </div>
     </section>
 
     <section class="panel">
         <div class="section-inner">
             <h3>Live Leaderboards (API)</h3>
-            <div id="leaderboard-list"></div>
+            <div class="card-grid">
+                <article class="info-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Time Invested</p>
+                            <h3>Live Playtime Leaders</h3>
+                        </div>
+                        <span class="badge">Live</span>
+                    </div>
+                    <table class="styled-table" aria-label="Top playtime leaderboard">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Player</th>
+                                <th>Hours Played</th>
+                            </tr>
+                        </thead>
+                        <tbody id="playtime-leaders">
+                            <tr><td colspan="3" class="muted">Loading…</td></tr>
+                        </tbody>
+                    </table>
+                    <p id="leaderboard-note" class="muted" style="margin-top: 0.5rem;">&nbsp;</p>
+                </article>
+                <article class="info-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Your Session</p>
+                            <h3>Your Playtime</h3>
+                        </div>
+                        <span class="badge">Discord Login</span>
+                    </div>
+                    <div id="my-playtime" class="muted">Sign in with Discord to see your tracked time.</div>
+                </article>
+            </div>
         </div>
     </section>
 
@@ -154,18 +140,72 @@
 <script>
     document.getElementById('year').textContent = new Date().getFullYear();
 
+    const formatHours = (seconds) => {
+        const totalSeconds = Number(seconds) || 0;
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        return `${hours}h ${minutes}m`;
+    };
+
     async function loadLeaderboard() {
-        const res = await fetch('/api/leaderboards');
-        const data = await res.json();
-        const list = document.getElementById('leaderboard-list');
-        if (!list) return;
-        list.innerHTML = '';
-        data.forEach(row => {
-            const div = document.createElement('div');
-            div.className = 'note-card';
-            div.innerHTML = `<strong>${row.player_name}</strong> — ${row.category}: ${row.value}`;
-            list.appendChild(div);
-        });
+        const tbody = document.getElementById('playtime-leaders');
+        const myPlaytime = document.getElementById('my-playtime');
+        const note = document.getElementById('leaderboard-note');
+
+        try {
+            const res = await fetch('/api/leaderboards/playtime?limit=50');
+            const data = await res.json();
+            const leaderboard = Array.isArray(data?.leaderboard) ? data.leaderboard : [];
+
+            if (tbody) {
+                tbody.innerHTML = '';
+                if (leaderboard.length) {
+                    leaderboard.forEach((row, idx) => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${idx + 1}</td>
+                            <td>${row.playerName || row.playerGuid || row.steam64Id || 'Unknown'}</td>
+                            <td>${formatHours(row.totalSeconds)}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = '<td colspan="3" class="muted">No playtime recorded yet.</td>';
+                    tbody.appendChild(tr);
+                }
+            }
+
+            if (note) {
+                const count = leaderboard.length;
+                note.textContent = count
+                    ? `Showing ${count} tracked player${count === 1 ? '' : 's'}.`
+                    : 'Waiting for the first tracked session to come in.';
+            }
+
+            if (myPlaytime) {
+                if (data.me) {
+                    myPlaytime.classList.remove('muted');
+                    myPlaytime.innerHTML = `
+                        <div class="stat">
+                            <div class="stat-number">${formatHours(data.me.totalSeconds)}</div>
+                            <div class="stat-label">Tracked as ${data.me.playerName || 'Unknown Survivor'}</div>
+                        </div>
+                    `;
+                } else {
+                    myPlaytime.classList.add('muted');
+                    myPlaytime.textContent = 'Sign in with Discord to view your personal playtime.';
+                }
+            }
+        } catch (err) {
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="3" class="muted">Unable to load playtime data.</td></tr>';
+            }
+            if (note) {
+                note.textContent = 'Leaderboard data failed to load.';
+            }
+            console.error('Failed to load leaderboard', err);
+        }
     }
     loadLeaderboard();
 

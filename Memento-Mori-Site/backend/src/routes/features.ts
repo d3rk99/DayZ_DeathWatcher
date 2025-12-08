@@ -12,6 +12,9 @@ import { requireAuth, requireAdmin } from '../middleware/auth';
 import { composeMap } from '../utils/mapComposer';
 import { notifyPatchNote, notifyMapExport, notifyWhitelist } from '../utils/webhooks';
 import { APP_CONFIG } from '../config';
+import { enqueueWhitelistSync, getPendingSyncs, updateSyncStatus } from '../services/botSync';
+import { botSyncStatusSchema, whitelistSchema } from '../utils/validation';
+import { getPlaytimeForPlayer, getTopPlaytime, lookupSteamFromUserdata } from '../services/playtime';
 
 const router = Router();
 const ensureDir = (dir: string) => {
@@ -120,27 +123,39 @@ router.patch('/stories/:id', requireAuth, requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-router.post('/whitelist', (req, res) => {
-  const body = req.body;
-  const now = nowIso();
-  const result = db
-    .prepare('INSERT INTO whitelist_requests (user_id, steam64, discord_tag, region, notes, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-    .run((req as any).user?.id || null, body.steam64, body.discord_tag, body.region || null, body.notes || null, 'pending', now, now);
-  res.json({ id: result.lastInsertRowid });
+router.post('/whitelist', requireAuth, (req, res) => {
+  const parsed = whitelistSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: 'Invalid payload', issues: parsed.error.flatten() });
+  }
+
+  const user = (req as any).user;
+  const id = enqueueWhitelistSync({
+    discordId: user.discord_id,
+    discordUsername: user.discord_username,
+    steam64Id: parsed.data.steam64Id,
+    region: parsed.data.region || null,
+    notes: parsed.data.notes || null,
+  });
+
+  res.json({ id, status: 'pending' });
 });
 
 router.get('/whitelist/pending', requireAuth, requireAdmin, (_req, res) => {
-  const rows = db.prepare('SELECT * FROM whitelist_requests WHERE status = ? ORDER BY created_at ASC').all('pending');
+  const rows = getPendingSyncs();
   res.json(rows);
 });
 
 router.patch('/whitelist/:id', requireAuth, requireAdmin, async (req, res) => {
-  const { status } = req.body;
-  const now = nowIso();
-  const existing = db.prepare('SELECT * FROM whitelist_requests WHERE id = ?').get(req.params.id);
-  db.prepare('UPDATE whitelist_requests SET status = ?, updated_at = ?, handled_by_user_id = ? WHERE id = ?')
-    .run(status, now, (req as any).user.id, req.params.id);
-  if (existing) await notifyWhitelist(existing.discord_tag, status);
+  const parsed = botSyncStatusSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: 'Invalid payload', issues: parsed.error.flatten() });
+  }
+
+  const { status, errorMessage } = parsed.data;
+  const existing = db.prepare('SELECT * FROM bot_sync_queue WHERE id = ?').get(req.params.id);
+  updateSyncStatus(Number(req.params.id), status, errorMessage || null);
+  if (existing) await notifyWhitelist(existing.discord_username, status);
   res.json({ ok: true });
 });
 
@@ -304,6 +319,24 @@ router.get('/leaderboards', (req, res) => {
   }
   const rows = db.prepare(`${query} ORDER BY value DESC`).all(...params);
   res.json(rows);
+});
+
+router.get('/leaderboards/playtime', (req, res) => {
+  const limitParam = Number(req.query.limit);
+  const leaderboard = getTopPlaytime(Number.isFinite(limitParam) ? limitParam : undefined);
+  const sessionUserId = (req as any).session?.userId;
+  let me: any = null;
+  if (sessionUserId) {
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(sessionUserId) as any;
+    const mapping = user?.discord_id ? lookupSteamFromUserdata(user.discord_id) : null;
+    if (mapping) {
+      const mine = getPlaytimeForPlayer(mapping.steam64, mapping.guid);
+      if (mine) {
+        me = { ...mine, playerName: mine.playerName || mapping.username };
+      }
+    }
+  }
+  res.json({ leaderboard, me });
 });
 
 router.post('/leaderboards/import', text({ type: ['text/*', 'application/csv'] }), requireAuth, requireAdmin, (req, res) => {

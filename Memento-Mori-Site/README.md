@@ -22,6 +22,7 @@ Create a `.env` file under `backend/` (or set environment variables):
 - `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI` – Discord OAuth2 details
 - `DISCORD_ADMIN_IDS` – comma-separated Discord user IDs that should be treated as admins
 - `DISCORD_WEBHOOK_URL_patch_notes`, `DISCORD_WEBHOOK_URL_map`, `DISCORD_WEBHOOK_URL_whitelist` – optional webhook URLs
+- `BOT_SYNC_TOKEN` – shared secret token used by the Discord bot to poll `/bot-sync` bridge endpoints
 - `MAP_BASE_DIR`, `GENERATED_DIR`, `UPLOADS_DIR` – legacy locations for base map PNGs, generated composites, and marker uploads
 - `MAP_TEMPLATE_DIR`, `MAP_CURRENT_DIR`, `MAP_OVERLAYS_DIR`, `MAP_AWAITING_DIR` – optional overrides for the new map asset folders
 

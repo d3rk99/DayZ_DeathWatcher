@@ -6,6 +6,7 @@ import { ensureEnvReady, APP_CONFIG } from './config';
 import './db';
 import authRouter from './routes/auth';
 import featuresRouter from './routes/features';
+import botSyncRouter from './routes/botSync';
 
 ensureEnvReady();
 
@@ -25,6 +26,7 @@ app.use(express.static(path.join(process.cwd())));
 
 app.use('/auth', authRouter);
 app.use('/api', featuresRouter);
+app.use('/bot-sync', botSyncRouter);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);

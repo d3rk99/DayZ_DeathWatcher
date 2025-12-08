@@ -35,6 +35,9 @@ def _default_config() -> Dict[str, Any]:
         "wait_time_new_life_seconds_season_pass": 300,
         "restart_notification_sound_path": "",
         "restart_notification_triggers": [],
+        "bot_sync_api_url": "",
+        "bot_sync_token": "",
+        "leaderboard_api_url": "",
     }
 
 
