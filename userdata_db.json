@@ -1336,7 +1336,7 @@
             "username": "dirtydope306",
             "steam_id": "76561199856701760",
             "guid": "pWsnMMCeX3YZQjKCs7xVfKt8Ni3qXeD-1N8NmkUKiG0=",
-            "is_alive": 0,
+            "is_alive": 1,
             "time_of_death": 1763693919,
             "can_revive": 0,
             "is_admin": 0
@@ -1525,7 +1525,7 @@
             "username": "neckbeardactual",
             "steam_id": "76561198002795727",
             "guid": "S4XX--LfhWIXiJ2TErGm9XuzsX43NRlc4cwHU_2Blpc=",
-            "is_alive": 0,
+            "is_alive": 1,
             "time_of_death": 1763912714,
             "can_revive": 0,
             "is_admin": 0
