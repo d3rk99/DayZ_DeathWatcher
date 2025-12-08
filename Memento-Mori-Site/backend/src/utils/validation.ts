@@ -31,3 +31,14 @@ export const adminWhitelistUpdateSchema = z.object({
   status: z.enum(['pending', 'approved', 'rejected']),
   adminNotes: z.string().optional(),
 });
+
+export const botSyncRequestSchema = z.object({
+  steam64Id: z.string().regex(/^\d{15,}$/),
+  region: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+export const botSyncStatusSchema = z.object({
+  status: z.enum(['pending', 'processed', 'failed']),
+  errorMessage: z.string().optional(),
+});

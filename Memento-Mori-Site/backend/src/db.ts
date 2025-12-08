@@ -76,6 +76,21 @@ db.exec(`
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
 
+  CREATE TABLE IF NOT EXISTS bot_sync_queue (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    discord_id TEXT NOT NULL,
+    discord_username TEXT NOT NULL,
+    steam64 TEXT NOT NULL,
+    region TEXT,
+    notes TEXT,
+    status TEXT NOT NULL,
+    error_message TEXT,
+    created_at TEXT NOT NULL,
+    processed_at TEXT,
+    UNIQUE(discord_id),
+    UNIQUE(steam64)
+  );
+
   CREATE TABLE IF NOT EXISTS timeline_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     season_id INTEGER,

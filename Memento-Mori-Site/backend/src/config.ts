@@ -27,6 +27,9 @@ export const APP_CONFIG = {
     overlaysDir: process.env.MAP_OVERLAYS_DIR || path.join(process.cwd(), 'maps', 'overlays'),
     awaitingDir: process.env.MAP_AWAITING_DIR || path.join(process.cwd(), 'maps', 'awaiting-approval'),
   },
+  botSync: {
+    bridgeToken: process.env.BOT_SYNC_TOKEN || '',
+  },
 };
 
 export const ensureEnvReady = () => {
