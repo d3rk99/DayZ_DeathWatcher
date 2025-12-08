@@ -30,3 +30,7 @@ jobs:
       - name: Run Codex checks
         run: |
           python -m compileall main.py death_watcher cogs
+
+      - name: Validate sample configuration
+        run: |
+          python -m services.config_manager --config config.sample.json

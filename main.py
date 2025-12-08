@@ -9,6 +9,8 @@ import time
 import traceback
 import threading
 import ctypes
+import logging
+from pathlib import Path
 from typing import Callable, List, Optional
 
 from nextcord import Interaction, SlashOption, ChannelType
@@ -21,11 +23,18 @@ from nextcord import Webhook
 from dayz_dev_tools import guid as GUID
 from services import userdata_service
 from services.path_fields import PATH_FIELDS, REQUIRED_PATH_KEYS
+from services.config_manager import ConfigValidationError, validate_config
+from dotenv import load_dotenv
 
 # Ensure the script runs relative to its own directory so double-click
 # launches behave the same as running from a terminal.
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(SCRIPT_DIR)
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+
+load_dotenv()
 
 os.system("title " + "Life and Death Bot")
 
@@ -47,17 +56,44 @@ class MissingConfigPaths(Exception):
         super().__init__(f"Missing configuration paths: {friendly}")
 
 
+def _apply_env_overrides(config_data: dict) -> dict:
+    env_overrides = {
+        "DISCORD_TOKEN": "token",
+        "DISCORD_ERROR_DUMP_CHANNEL": "error_dump_channel",
+        "DISCORD_ERROR_DUMP_MENTION_TAG": "error_dump_mention_tag",
+    }
+
+    for env_var, key in env_overrides.items():
+        if env_var in os.environ and os.environ[env_var]:
+            config_data[key] = os.environ[env_var]
+            logger.info("Loaded %s from environment", env_var)
+
+    return config_data
+
+
+def load_and_validate_config(config_path: Path | str = Path("config.json")) -> dict:
+    config_path = Path(config_path).expanduser().resolve()
+
+    logger.info("Loading config from %s", config_path)
+    if not config_path.is_file():
+        raise ConfigValidationError([f"Config file not found at {config_path}."])
+
+    try:
+        config_data = json.loads(config_path.read_text())
+    except json.JSONDecodeError as exc:
+        raise ConfigValidationError([f"Config file contains invalid JSON: {exc}"]) from exc
+
+    config_data = _apply_env_overrides(config_data)
+    validate_config(config_data, config_path=config_path)
+    return config_data
+
+
 def main(*, interactive: bool = True, death_log_callback: Optional[Callable[[str], None]] = None):
     global client
     global config
     global death_counter_state
 
-    if (not os.path.isfile("config.json")):
-        raise MissingConfigPaths(["config.json"])
-
-    print("Loading config...")
-    with open("config.json") as file:
-        config = json.load(file)
+    config = load_and_validate_config()
 
     load_death_counter_state()
 
@@ -772,6 +808,14 @@ def run_bot(*, interactive: bool = True, death_log_callback: Optional[Callable[[
         client.run(config["token"])
     except KeyboardInterrupt:
         print("Closing program...")
+    except ConfigValidationError as exc:
+        print("Configuration invalid; aborting startup.")
+        for issue in exc.issues:
+            print(f" - {issue}")
+        if interactive:
+            input("Press enter to close this window.")
+        else:
+            raise
     except Exception as exc:
         print("Encountered an unexpected error. Printing traceback below:\n")
         traceback.print_exc()
@@ -841,6 +885,18 @@ def launch_gui() -> None:
     def bot_runner() -> None:
         try:
             run_bot(interactive=False, death_log_callback=app.append_death_log)
+        except ConfigValidationError as exc:
+            app.append_main_log("Life and Death Bot configuration is invalid:\n")
+            for issue in exc.issues:
+                app.append_main_log(f" - {issue}\n")
+            if exc.missing_path_keys:
+                labels = ", ".join(
+                    PATH_FIELDS[key].label if key in PATH_FIELDS else key for key in exc.missing_path_keys
+                )
+                app.append_main_log(
+                    f"Life and Death Bot paused until the following paths are configured: {labels}.\n"
+                )
+                app.require_path_setup(list(exc.missing_path_keys))
         except MissingConfigPaths as exc:
             labels = ", ".join(
                 PATH_FIELDS[key].label if key in PATH_FIELDS else key for key in exc.keys

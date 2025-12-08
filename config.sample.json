@@ -1,0 +1,32 @@
+{
+    "prefix": "*",
+    "token": "TEST_TOKEN",
+    "whitelist_path": "./sample_data/whitelist.txt",
+    "blacklist_path": "./sample_data/blacklist.txt",
+    "userdata_db_path": "./userdata_db.json",
+    "admin_role_id": 111111,
+    "guild_id": 222222,
+    "join_vc_id": 333333,
+    "join_vc_category_id": 444444,
+    "validate_steam_id_channel": "555555",
+    "alive_role": 666666,
+    "dead_role": 777777,
+    "can_revive_role": 888888,
+    "season_pass_role": 999999,
+    "watch_death_watcher": 0,
+    "death_watcher_death_path": "./death_watcher/deaths.txt",
+    "death_counter_path": "./death_counter.json",
+    "run_death_watcher_cog": 0,
+    "death_watcher_config_path": "./death_watcher/config.json",
+    "steam_ids_to_unban_path": "./steam_ids_to_unban.txt",
+    "error_dump_channel": "1000000",
+    "error_dump_allow_mention": 0,
+    "error_dump_mention_tag": "",
+    "wait_time_new_life_seconds": 1209600,
+    "wait_time_new_life_seconds_season_pass": 300,
+    "restart_notification_sound_path": "",
+    "restart_notification_triggers": [
+        "Restart"
+    ],
+    "last_wipe_date": "2025-11-16"
+}

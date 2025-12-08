@@ -50,6 +50,25 @@ requirements.txt         # Python dependencies needed by both scripts
 3. Review the DayZ whitelist (`whitelist_path`), blacklist (`blacklist_path`), and `death_watcher`
    paths to make sure the bot can read and write to them from the same machine where it runs.
 
+### Environment-based secrets & validation
+Set sensitive values such as the Discord bot token or error dump channel via environment variables to
+avoid storing secrets in `config.json`:
+
+```bash
+export DISCORD_TOKEN="your_bot_token"
+export DISCORD_ERROR_DUMP_CHANNEL="1234567890123"  # optional
+export DISCORD_ERROR_DUMP_MENTION_TAG="@ops"       # optional
+```
+
+You can pre-flight your configuration without starting the bot:
+
+```bash
+python -m services.config_manager --config config.sample.json
+```
+
+The validation step checks required IDs and file paths (whitelist/blacklist) and reports any missing
+or unreadable entries before the bot spins up.
+
 ### Configuration reference
 All of the bot's knobs live in `config.json`:
 
