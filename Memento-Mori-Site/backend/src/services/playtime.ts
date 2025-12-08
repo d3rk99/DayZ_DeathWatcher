@@ -8,6 +8,13 @@ export type PlaySessionPayload = z.infer<typeof playSessionSchema>;
 
 const USERDATA_PATH = path.join(process.cwd(), 'userdata_db.json');
 
+type UserdataEntry = {
+  username?: string;
+  steam_id?: string;
+  guid?: string;
+  playtime_seconds?: number;
+};
+
 const coerceName = (value?: string | null, fallback?: string | null) => value?.trim() || fallback || null;
 
 const getExistingByGuidOrSteam = (guid?: string, steam64?: string | null) => {
@@ -20,6 +27,36 @@ const getExistingByGuidOrSteam = (guid?: string, steam64?: string | null) => {
     if (row) return row as any;
   }
   return null;
+};
+
+const findUserdataKey = (entries: Record<string, UserdataEntry>, guid?: string, steam64?: string | null) => {
+  return Object.keys(entries).find((key) => {
+    const entry = entries[key];
+    return (guid && entry.guid === guid) || (steam64 && entry.steam_id === steam64);
+  });
+};
+
+const updateUserdataPlaytime = (payload: PlaySessionPayload, totalSeconds: number) => {
+  try {
+    if (!fs.existsSync(USERDATA_PATH)) return;
+    const raw = fs.readFileSync(USERDATA_PATH, 'utf-8');
+    const data = JSON.parse(raw);
+    const entries: Record<string, UserdataEntry> | undefined = data?.userdata;
+    if (!entries) return;
+
+    const key = findUserdataKey(entries, payload.playerGuid, payload.steam64Id);
+    if (!key) return;
+
+    const entry = entries[key];
+    entry.playtime_seconds = totalSeconds;
+    if (payload.playerName) {
+      entry.username = payload.playerName;
+    }
+
+    fs.writeFileSync(USERDATA_PATH, JSON.stringify(data, null, 4));
+  } catch (err) {
+    console.warn('[playtime] Failed to write playtime into userdata_db.json', err);
+  }
 };
 
 export const recordPlaySession = (payload: PlaySessionPayload) => {
@@ -45,6 +82,8 @@ export const recordPlaySession = (payload: PlaySessionPayload) => {
        player_name = COALESCE(excluded.player_name, player_playtime.player_name),
        steam64 = COALESCE(excluded.steam64, player_playtime.steam64)`
   ).run(playerGuid, steam64, playerName, Math.max(0, totalSeconds), now, payload.logoutAt);
+
+  updateUserdataPlaytime(payload, Math.max(0, totalSeconds));
 };
 
 export const getTopPlaytime = (limit = 5) => {

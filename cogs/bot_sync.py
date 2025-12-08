@@ -147,6 +147,7 @@ class BotSync(commands.Cog):
             "username": username,
             "steam_id": str(steam_id),
             "guid": str(guid),
+            "playtime_seconds": 0,
             "is_alive": 1,
             "time_of_death": 0,
             "can_revive": 0,
