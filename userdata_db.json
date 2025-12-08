@@ -1201,8 +1201,8 @@
             "username": "toadster8823",
             "steam_id": "76561198829948930",
             "guid": "zhrVXv9ZHEv_WTCA3ID86_WMljISz6OHc6LHrZW_iM0=",
-            "is_alive": 1,
-            "time_of_death": 1756172577,
+            "is_alive": 0,
+            "time_of_death": 1765048926,
             "can_revive": 0,
             "is_admin": 0
         },
@@ -1273,8 +1273,8 @@
             "username": "xeniummm",
             "steam_id": "76561198164473263",
             "guid": "FmjAdlIwkqMUjAowHC_QlAqqv6F8Oe0PQuS-YFSMQpo=",
-            "is_alive": 1,
-            "time_of_death": 1760877864,
+            "is_alive": 0,
+            "time_of_death": 1765134919,
             "can_revive": 0,
             "is_admin": 0
         },
@@ -1337,7 +1337,7 @@
             "steam_id": "76561199856701760",
             "guid": "pWsnMMCeX3YZQjKCs7xVfKt8Ni3qXeD-1N8NmkUKiG0=",
             "is_alive": 0,
-            "time_of_death": 1763693919,
+            "time_of_death": 1765059328,
             "can_revive": 0,
             "is_admin": 0
         },
@@ -1525,7 +1525,7 @@
             "username": "neckbeardactual",
             "steam_id": "76561198002795727",
             "guid": "S4XX--LfhWIXiJ2TErGm9XuzsX43NRlc4cwHU_2Blpc=",
-            "is_alive": 0,
+            "is_alive": 1,
             "time_of_death": 1763912714,
             "can_revive": 0,
             "is_admin": 0
@@ -1615,8 +1615,8 @@
             "username": "soupcan3041",
             "steam_id": "76561198126227816",
             "guid": "RVpnqHaXdqf7DSpauY9VCjTHW8IIBAVpCB0c7Qgv5Jg=",
-            "is_alive": 1,
-            "time_of_death": 0,
+            "is_alive": 0,
+            "time_of_death": 1765135327,
             "can_revive": 0,
             "is_admin": 0
         },
@@ -1633,8 +1633,8 @@
             "username": "stankywick87",
             "steam_id": "76561199231071875",
             "guid": "FDvyIBQ_yuof-omNxdJ5cbUarvcvuEmzoa_xSMP4LsQ=",
-            "is_alive": 1,
-            "time_of_death": 0,
+            "is_alive": 0,
+            "time_of_death": 1765048281,
             "can_revive": 0,
             "is_admin": 0
         },
@@ -1642,8 +1642,8 @@
             "username": "rakk615",
             "steam_id": "76561198058628607",
             "guid": "IK9h2PZRCiaVAB90SOBzULZ7pZsgKU28_v9WjYR0DZY=",
-            "is_alive": 1,
-            "time_of_death": 0,
+            "is_alive": 0,
+            "time_of_death": 1765163882,
             "can_revive": 0,
             "is_admin": 0
         }
@@ -1728,6 +1728,9 @@
         "423696289348190218",
         "621352738793717780",
         "285150706153816073",
-        "138005904254566400"
+        "138005904254566400",
+        "711219375721545809",
+        "561279580682321936",
+        "838451543946166303"
     ]
 }
