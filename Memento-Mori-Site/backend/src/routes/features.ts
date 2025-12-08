@@ -14,6 +14,7 @@ import { notifyPatchNote, notifyMapExport, notifyWhitelist } from '../utils/webh
 import { APP_CONFIG } from '../config';
 import { enqueueWhitelistSync, getPendingSyncs, updateSyncStatus } from '../services/botSync';
 import { botSyncStatusSchema, whitelistSchema } from '../utils/validation';
+import { getPlaytimeForPlayer, getTopPlaytime, lookupSteamFromUserdata } from '../services/playtime';
 
 const router = Router();
 const ensureDir = (dir: string) => {
@@ -318,6 +319,24 @@ router.get('/leaderboards', (req, res) => {
   }
   const rows = db.prepare(`${query} ORDER BY value DESC`).all(...params);
   res.json(rows);
+});
+
+router.get('/leaderboards/playtime', (req, res) => {
+  const limitParam = Number(req.query.limit);
+  const leaderboard = getTopPlaytime(Number.isFinite(limitParam) ? limitParam : undefined);
+  const sessionUserId = (req as any).session?.userId;
+  let me: any = null;
+  if (sessionUserId) {
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(sessionUserId) as any;
+    const mapping = user?.discord_id ? lookupSteamFromUserdata(user.discord_id) : null;
+    if (mapping) {
+      const mine = getPlaytimeForPlayer(mapping.steam64, mapping.guid);
+      if (mine) {
+        me = { ...mine, playerName: mine.playerName || mapping.username };
+      }
+    }
+  }
+  res.json({ leaderboard, me });
 });
 
 router.post('/leaderboards/import', text({ type: ['text/*', 'application/csv'] }), requireAuth, requireAdmin, (req, res) => {

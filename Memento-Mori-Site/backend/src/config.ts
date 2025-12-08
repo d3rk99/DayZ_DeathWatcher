@@ -28,7 +28,7 @@ export const APP_CONFIG = {
     awaitingDir: process.env.MAP_AWAITING_DIR || path.join(process.cwd(), 'maps', 'awaiting-approval'),
   },
   botSync: {
-    bridgeToken: process.env.BOT_SYNC_TOKEN || '',
+    bridgeToken: process.env.BOT_SYNC_TOKEN || 'memento-mori-bot-bridge',
   },
 };
 

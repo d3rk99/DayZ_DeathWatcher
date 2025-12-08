@@ -28,5 +28,8 @@
     "restart_notification_triggers": [
         "Restart"
     ],
-    "last_wipe_date": "2025-11-16"
+    "last_wipe_date": "2025-11-16",
+    "bot_sync_api_url": "http://localhost:3001/bot-sync",
+    "bot_sync_token": "memento-mori-bot-bridge",
+    "leaderboard_api_url": "http://localhost:3001/api/leaderboards"
 }
