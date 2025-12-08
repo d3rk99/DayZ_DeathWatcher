@@ -31,7 +31,39 @@ from dotenv import load_dotenv
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(SCRIPT_DIR)
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+
+
+class SafeStreamHandler(logging.StreamHandler):
+    """StreamHandler that suppresses OSError when stdout/stderr are unavailable."""
+
+    def handleError(self, record: logging.LogRecord) -> None:  # pragma: no cover - defensive
+        exc_type, exc_value, _ = sys.exc_info()
+        if isinstance(exc_value, OSError):
+            return
+        super().handleError(record)
+
+
+def _configure_logging() -> None:
+    """Configure logging to avoid Windows handle errors and persist to file."""
+
+    log_format = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    handlers: list[logging.Handler] = []
+
+    try:
+        handlers.append(SafeStreamHandler(stream=sys.stdout))
+    except OSError:
+        pass
+
+    log_file = Path(SCRIPT_DIR) / "bot.log"
+    try:
+        handlers.append(logging.FileHandler(log_file, encoding="utf-8"))
+    except OSError:
+        pass
+
+    logging.basicConfig(level=logging.INFO, format=log_format, handlers=handlers or [logging.NullHandler()])
+
+
+_configure_logging()
 logger = logging.getLogger(__name__)
 
 load_dotenv()
