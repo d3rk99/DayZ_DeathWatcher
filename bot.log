@@ -8,7 +8,10 @@
 2025-12-08 16:23:33,711 [INFO] nextcord.state: nextcord.ConnectionState: Registering command with signature ('delete_user_from_database', 1, None)
 2025-12-08 16:23:33,837 [INFO] nextcord.state: nextcord.ConnectionState: Registering command with signature ('reset_death_counter', 1, None)
 2025-12-08 16:28:32,889 [INFO] nextcord.http: Allowed 1 rate limits to be garbage collected.
+<<<<<<< Updated upstream
 2025-12-08 16:32:48,551 [INFO] nextcord.gateway: Websocket closed with 1000, cannot reconnect.
 2025-12-08 16:32:48,658 [INFO] nextcord.client: Cleaning up after 4 tasks.
 2025-12-08 16:32:48,658 [INFO] nextcord.client: All tasks finished cancelling.
 2025-12-08 16:32:48,658 [INFO] nextcord.client: Closing the event loop.
+=======
+>>>>>>> Stashed changes
