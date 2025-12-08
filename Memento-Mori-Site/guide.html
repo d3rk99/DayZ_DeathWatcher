@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Memento Mori – New Survivor Guide</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;600&family=Roboto+Mono:wght@300;400&display=swap" rel="stylesheet">
+</head>
+<body>
+<header class="site-header">
+    <div class="header-inner">
+        <h1 class="site-title">Memento Mori</h1>
+        <nav class="main-nav">
+            <div class="nav-item">
+                <a href="index.html" class="nav-link">Home</a>
+            </div>
+            <div class="nav-item has-dropdown">
+                <a href="about.html" class="nav-link active">About</a>
+                <div class="dropdown">
+                    <a href="about.html" class="dropdown-link">About</a>
+                    <a href="guide.html" class="dropdown-link active">New Survivor Guide</a>
+                </div>
+            </div>
+            <div class="nav-item has-dropdown">
+                <a href="seasons.html" class="nav-link">Seasons</a>
+                <div class="dropdown">
+                    <a href="seasons.html" class="dropdown-link">Season Dashboard</a>
+                    <a href="patch-notes.html" class="dropdown-link">Patch Notes</a>
+                    <a href="timeline.html" class="dropdown-link">Timeline</a>
+                </div>
+            </div>
+            <div class="nav-item has-dropdown">
+                <a href="players.html" class="nav-link">Players</a>
+                <div class="dropdown">
+                    <a href="players.html" class="dropdown-link">Players Overview</a>
+                    <a href="map.html" class="dropdown-link">Map</a>
+                    <a href="stories.html" class="dropdown-link">Stories</a>
+                    <a href="factions.html" class="dropdown-link">Factions</a>
+                    <a href="leaderboards.html" class="dropdown-link">Leaderboards</a>
+                    <a href="gallery.html" class="dropdown-link">Gallery</a>
+                </div>
+            </div>
+            <div class="nav-item">
+                <a href="join.html" class="nav-link">Join</a>
+            </div>
+            <div class="nav-item has-dropdown">
+                <a href="admin.html" class="nav-link">Admins</a>
+                <div class="dropdown">
+                    <a href="admin.html" class="dropdown-link">Admin Console</a>
+                    <a href="admin.html#seasons" class="dropdown-link">Season Admin</a>
+                    <a href="admin.html#patch-notes" class="dropdown-link">Patch Notes Admin</a>
+                    <a href="admin.html#stories" class="dropdown-link">Stories Admin</a>
+                    <a href="admin.html#factions" class="dropdown-link">Factions Admin</a>
+                    <a href="admin.html#leaderboards" class="dropdown-link">Leaderboards Admin</a>
+                </div>
+            </div>
+        </nav>
+    </div>
+</header>
+<main>
+    <section class="page-hero">
+        <div class="section-inner">
+            <h2>New Survivor Guide</h2>
+            <p class="muted">Read this first. These sections will be updated per season as rules and weather shift.</p>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="section-inner guide-grid">
+            <article class="guide-section">
+                <p class="eyebrow">Section 01</p>
+                <h3>Expectations</h3>
+                <p class="muted">Slow survival pace, scarce meds, and weather that matters. Expect long walks and ambushes.</p>
+            </article>
+            <article class="guide-section">
+                <p class="eyebrow">Section 02</p>
+                <h3>Rules</h3>
+                <ul class="bullet-list">
+                    <li>No combat logging or ghosting.</li>
+                    <li>No exploiting dupes or terrain glitches.</li>
+                    <li>Respect restart timers; report bugs in Discord.</li>
+                </ul>
+            </article>
+            <article class="guide-section">
+                <p class="eyebrow">Section 03</p>
+                <h3>Basics</h3>
+                <p class="muted">Carry two heat sources, plan food routes, and keep a spare radio battery.</p>
+            </article>
+            <article class="guide-section">
+                <p class="eyebrow">Section 04</p>
+                <h3>Tips</h3>
+                <ul class="bullet-list">
+                    <li>Storms drift; watch cloud direction before crossing rivers.</li>
+                    <li>Convoys drop unique loot — scout, don’t rush.</li>
+                    <li>Travel light when weather warnings hit.</li>
+                </ul>
+            </article>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="section-inner">
+            <h3>Live Guide (API)</h3>
+            <div id="guide-sections" class="notes-grid"></div>
+        </div>
+    </section>
+
+</main>
+<footer class="site-footer">
+    <div class="footer-inner">
+        <div class="footer-col">
+            <h4>Server</h4>
+            <ul>
+                <li>Region: NA</li>
+                <li>Style: Hardcore Survival</li>
+                <li>Mode: Seasonal / Story-Driven</li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h4>Links</h4>
+            <ul>
+                <li><a href="https://discord.gg/your-invite" target="_blank">Discord</a></li>
+                <li><a href="join.html">How to Join</a></li>
+                <li><a href="about.html">About the Team</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h4>Notes</h4>
+            <p>
+                Memento Mori is a community-run DayZ server project.
+                Not affiliated with or endorsed by Bohemia Interactive.
+            </p>
+        </div>
+    </div>
+    <div class="footer-meta">
+        <span>&copy; <span id="year"></span> Memento Mori Server</span>
+        <span>Last wipe: Seasonal schedule</span>
+    </div>
+</footer>
+<script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    async function loadGuide() {
+        const res = await fetch('/api/guide');
+        const data = await res.json();
+        const wrap = document.getElementById('guide-sections');
+        if (!wrap) return;
+        wrap.innerHTML = '';
+        data.forEach(section => {
+            const card = document.createElement('article');
+            card.className = 'note-card';
+            card.innerHTML = `<p class="eyebrow">${section.title}</p><p>${section.body_markdown}</p>`;
+            wrap.appendChild(card);
+        });
+    }
+    loadGuide();
+
+</script>
+</body>
+</html>

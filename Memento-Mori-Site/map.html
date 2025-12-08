@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Memento Mori – Map</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;600&family=Roboto+Mono:wght@300;400&display=swap" rel="stylesheet">
+</head>
+<body>
+<header class="site-header">
+    <div class="header-inner">
+        <h1 class="site-title">Memento Mori</h1>
+        <nav class="main-nav">
+            <div class="nav-item">
+                <a href="index.html" class="nav-link">Home</a>
+            </div>
+            <div class="nav-item has-dropdown">
+                <a href="about.html" class="nav-link">About</a>
+                <div class="dropdown">
+                    <a href="about.html" class="dropdown-link">About</a>
+                    <a href="guide.html" class="dropdown-link">New Survivor Guide</a>
+                </div>
+            </div>
+            <div class="nav-item has-dropdown">
+                <a href="seasons.html" class="nav-link">Seasons</a>
+                <div class="dropdown">
+                    <a href="seasons.html" class="dropdown-link">Season Dashboard</a>
+                    <a href="patch-notes.html" class="dropdown-link">Patch Notes</a>
+                    <a href="timeline.html" class="dropdown-link">Timeline</a>
+                </div>
+            </div>
+            <div class="nav-item has-dropdown">
+                <a href="players.html" class="nav-link active">Players</a>
+                <div class="dropdown">
+                    <a href="players.html" class="dropdown-link">Players Overview</a>
+                    <a href="map.html" class="dropdown-link active">Map</a>
+                    <a href="stories.html" class="dropdown-link">Stories</a>
+                    <a href="factions.html" class="dropdown-link">Factions</a>
+                    <a href="leaderboards.html" class="dropdown-link">Leaderboards</a>
+                    <a href="gallery.html" class="dropdown-link">Gallery</a>
+                </div>
+            </div>
+            <div class="nav-item">
+                <a href="join.html" class="nav-link">Join</a>
+            </div>
+            <div class="nav-item has-dropdown">
+                <a href="admin.html" class="nav-link">Admins</a>
+                <div class="dropdown">
+                    <a href="admin.html" class="dropdown-link">Admin Console</a>
+                    <a href="admin.html#seasons" class="dropdown-link">Season Admin</a>
+                    <a href="admin.html#patch-notes" class="dropdown-link">Patch Notes Admin</a>
+                    <a href="admin.html#stories" class="dropdown-link">Stories Admin</a>
+                    <a href="admin.html#factions" class="dropdown-link">Factions Admin</a>
+                    <a href="admin.html#leaderboards" class="dropdown-link">Leaderboards Admin</a>
+                </div>
+            </div>
+        </nav>
+    </div>
+</header>
+<main>
+    <section class="page-hero">
+        <div class="section-inner">
+            <h2>Community Map Workshop</h2>
+            <p class="muted">Browse the latest map images, drag markers, drop your own PNGs, and export a shareable snapshot.</p>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="section-inner map-grid">
+            <div class="map-left">
+                <div class="map-board" id="map-board">
+                    <div class="map-stage" id="map-stage">
+                        <img id="map-base" class="map-base" alt="Base map">
+                        <div id="marker-layer"></div>
+                    </div>
+                    <p class="muted map-help">Tip: left-drag to pan, scroll to zoom, click to place the selected marker.</p>
+                </div>
+                <div class="map-toolbar">
+                    <label class="stacked">Base Image
+                        <select id="base-select"></select>
+                    </label>
+                    <label class="stacked">Zoom
+                        <input type="range" id="zoom-range" min="0.5" max="2" step="0.05" value="1">
+                    </label>
+                    <button id="reset-view">Reset View</button>
+                    <button id="export-map" class="accent">Download Snapshot</button>
+                </div>
+            </div>
+
+            <div class="map-right">
+                <div class="map-card">
+                    <div class="map-card-header">
+                        <div>
+                            <p class="eyebrow">Marker Library</p>
+                            <h3>Use existing overlays</h3>
+                        </div>
+                        <span class="muted" id="marker-count">0 items</span>
+                    </div>
+                    <div id="marker-library" class="marker-library"></div>
+                </div>
+
+                <div class="map-card">
+                    <div class="map-card-header">
+                        <div>
+                            <p class="eyebrow">Custom marker</p>
+                            <h3>Drop your own PNG</h3>
+                        </div>
+                    </div>
+                    <div class="upload-box">
+                        <p class="muted">Choose a PNG to temporarily add to the library. It never leaves your browser.</p>
+                        <label class="upload-button">Choose PNG<input type="file" id="custom-marker" accept="image/png"></label>
+                        <div id="custom-preview" class="custom-preview"></div>
+                    </div>
+                </div>
+
+                <div class="map-card">
+                    <div class="map-card-header">
+                        <div>
+                            <p class="eyebrow">Selected marker</p>
+                            <h3>Adjust placement</h3>
+                        </div>
+                    </div>
+                    <div id="marker-details" class="muted">Click a marker on the map to edit its scale, rotation, or label.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+</main>
+
+<footer class="site-footer">
+    <div class="footer-inner">
+        <div class="footer-col">
+            <h4>Server</h4>
+            <ul>
+                <li>Region: NA</li>
+                <li>Style: Hardcore Survival</li>
+                <li>Mode: Seasonal / Story-Driven</li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h4>Links</h4>
+            <ul>
+                <li><a href="https://discord.gg/your-invite" target="_blank">Discord</a></li>
+                <li><a href="join.html">How to Join</a></li>
+                <li><a href="about.html">About the Team</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h4>Notes</h4>
+            <p>Memento Mori is a community-run DayZ server project.</p>
+        </div>
+    </div>
+    <div class="footer-meta">
+        <span>&copy; <span id="year"></span> Memento Mori Server</span>
+    </div>
+</footer>
+
+<script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    const manifestFallback = {
+        baseMaps: [
+            { id: 'current', name: 'Latest composite', path: 'maps/current/karta_co.png' },
+            { id: 'template', name: 'Template', path: 'maps/template/karta_co.png' }
+        ],
+        markers: [
+            { id: 'test', name: 'Test marker', path: 'maps/overlays/Test.png' }
+        ]
+    };
+
+    const state = {
+        manifest: manifestFallback,
+        baseMapId: 'current',
+        markers: [],
+        zoom: 1,
+        pan: { x: 0, y: 0 },
+        selectedDefinition: 'test',
+        selectedMarkerId: null,
+        activeTransform: null
+    };
+
+    const baseImg = document.getElementById('map-base');
+    const stage = document.getElementById('map-stage');
+    const markerLayer = document.getElementById('marker-layer');
+    const markerLibrary = document.getElementById('marker-library');
+    const markerDetails = document.getElementById('marker-details');
+    const markerCount = document.getElementById('marker-count');
+    const baseSelect = document.getElementById('base-select');
+    const zoomRange = document.getElementById('zoom-range');
+    const board = document.getElementById('map-board');
+
+    const imageCache = new Map();
+
+    async function loadManifest() {
+        try {
+            const res = await fetch('maps/manifest.json');
+            if (res.ok) {
+                state.manifest = await res.json();
+                state.baseMapId = state.manifest.baseMaps?.[0]?.id || state.baseMapId;
+                state.selectedDefinition = state.manifest.markers?.[0]?.id || state.selectedDefinition;
+                buildBaseSelect();
+                renderLibrary();
+                await setBaseImage(state.baseMapId);
+                return;
+            }
+        } catch (err) {
+            console.warn('Falling back to bundled manifest', err);
+        }
+        buildBaseSelect();
+        renderLibrary();
+        setBaseImage(state.baseMapId);
+    }
+
+    function buildBaseSelect() {
+        baseSelect.innerHTML = '';
+        (state.manifest.baseMaps || []).forEach(map => {
+            const option = document.createElement('option');
+            option.value = map.id;
+            option.textContent = map.name;
+            option.selected = map.id === state.baseMapId;
+            baseSelect.appendChild(option);
+        });
+    }
+
+    function preloadImage(src) {
+        if (imageCache.has(src)) return imageCache.get(src);
+        const img = new Image();
+        img.src = src;
+        imageCache.set(src, img);
+        return img;
+    }
+
+    async function setBaseImage(id) {
+        const baseDef = (state.manifest.baseMaps || []).find(m => m.id === id) || state.manifest.baseMaps?.[0];
+        if (!baseDef) return;
+        state.baseMapId = baseDef.id;
+        const img = preloadImage(baseDef.path);
+        if (img.complete) {
+            applyBase(img);
+        } else {
+            img.onload = () => applyBase(img);
+        }
+    }
+
+    function applyBase(img) {
+        baseImg.src = img.src;
+        stage.style.width = `${img.naturalWidth}px`;
+        stage.style.height = `${img.naturalHeight}px`;
+        resetView();
+    }
+
+    function renderLibrary() {
+        markerLibrary.innerHTML = '';
+        const markers = state.manifest.markers || [];
+        markerCount.textContent = `${markers.length} item${markers.length === 1 ? '' : 's'}`;
+        if (!markers.length) {
+            markerLibrary.innerHTML = '<p class="muted">Drop a PNG to get started.</p>';
+            return;
+        }
+        markers.forEach(marker => {
+            const card = document.createElement('button');
+            card.className = `marker-card ${state.selectedDefinition === marker.id ? 'active' : ''}`;
+            card.type = 'button';
+            card.dataset.markerId = marker.id;
+            const img = preloadImage(marker.path);
+            img.alt = marker.name;
+            img.className = 'marker-thumb';
+            card.appendChild(img);
+            const label = document.createElement('span');
+            label.textContent = marker.name;
+            card.appendChild(label);
+            card.addEventListener('click', () => {
+                state.selectedDefinition = marker.id;
+                renderLibrary();
+            });
+            markerLibrary.appendChild(card);
+        });
+    }
+
+    function resetView() {
+        state.zoom = 1;
+        state.pan = { x: 0, y: 0 };
+        zoomRange.value = '1';
+        applyTransform();
+    }
+
+    function applyTransform() {
+        stage.style.transform = `translate(${state.pan.x}px, ${state.pan.y}px) scale(${state.zoom})`;
+    }
+
+    function stageCoordsFromClient(clientX, clientY) {
+        const boardRect = board.getBoundingClientRect();
+        const x = (clientX - boardRect.left - state.pan.x) / state.zoom;
+        const y = (clientY - boardRect.top - state.pan.y) / state.zoom;
+        const width = stage.offsetWidth || 1;
+        const height = stage.offsetHeight || 1;
+        return {
+            xNorm: Math.max(0, Math.min(1, x / width)),
+            yNorm: Math.max(0, Math.min(1, y / height))
+        };
+    }
+
+    function addMarkerAt(xNorm, yNorm) {
+        const def = (state.manifest.markers || []).find(m => m.id === state.selectedDefinition);
+        if (!def) return;
+        const marker = {
+            id: `m-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            defId: def.id,
+            x: xNorm,
+            y: yNorm,
+            scale: 1,
+            rotation: 0,
+            label: def.name
+        };
+        state.markers.push(marker);
+        state.selectedMarkerId = marker.id;
+        renderMarkers();
+        renderMarkerDetails();
+    }
+
+    function applyMarkerStyles(marker, def, markerEl) {
+        const width = def?.naturalWidth || def?.width || 80;
+        const height = def?.naturalHeight || def?.height || 80;
+        markerEl.style.left = `${marker.x * 100}%`;
+        markerEl.style.top = `${marker.y * 100}%`;
+        markerEl.style.width = `${width}px`;
+        markerEl.style.height = `${height}px`;
+        markerEl.style.transform = `translate(-50%, -50%) rotate(${marker.rotation}deg) scale(${marker.scale})`;
+    }
+
+    function buildTransformBox(marker) {
+        const box = document.createElement('div');
+        box.className = 'transform-box';
+        const handles = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
+        handles.forEach(name => {
+            const handle = document.createElement('div');
+            handle.className = `handle handle-${name}`;
+            handle.title = 'Drag to resize';
+            handle.addEventListener('pointerdown', (e) => startTransform(marker.id, name, e));
+            box.appendChild(handle);
+        });
+        const rotate = document.createElement('div');
+        rotate.className = 'handle rotate-handle';
+        rotate.title = 'Drag to rotate';
+        rotate.addEventListener('pointerdown', (e) => startTransform(marker.id, 'rotate', e));
+        box.appendChild(rotate);
+        return box;
+    }
+
+    function renderMarkers() {
+        markerLayer.innerHTML = '';
+        state.markers.forEach(marker => {
+            const def = (state.manifest.markers || []).find(m => m.id === marker.defId);
+            if (!def) return;
+            const img = preloadImage(def.path);
+            const markerEl = document.createElement('div');
+            markerEl.className = `map-marker ${state.selectedMarkerId === marker.id ? 'selected' : ''}`;
+            markerEl.dataset.id = marker.id;
+            const innerImg = document.createElement('img');
+            innerImg.src = img.src;
+            innerImg.alt = def.name;
+            innerImg.onload = () => applyMarkerStyles(marker, innerImg, markerEl);
+            markerEl.appendChild(innerImg);
+            if (marker.label) {
+                const label = document.createElement('span');
+                label.className = 'marker-label';
+                label.textContent = marker.label;
+                markerEl.appendChild(label);
+            }
+            if (state.selectedMarkerId === marker.id) {
+                markerEl.appendChild(buildTransformBox(marker));
+            }
+            markerEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                state.selectedMarkerId = marker.id;
+                renderMarkers();
+                renderMarkerDetails();
+            });
+            markerLayer.appendChild(markerEl);
+            applyMarkerStyles(marker, img, markerEl);
+        });
+    }
+
+    function renderMarkerDetails() {
+        const marker = state.markers.find(m => m.id === state.selectedMarkerId);
+        if (!marker) {
+            markerDetails.innerHTML = 'Click a marker on the map to edit its scale, rotation, or label.';
+            return;
+        }
+        const def = (state.manifest.markers || []).find(m => m.id === marker.defId);
+        markerDetails.innerHTML = '';
+        const title = document.createElement('p');
+        title.className = 'muted';
+        title.textContent = def ? def.name : 'Custom marker';
+        const labelInput = document.createElement('input');
+        labelInput.type = 'text';
+        labelInput.value = marker.label || '';
+        labelInput.placeholder = 'Label';
+        labelInput.addEventListener('input', () => {
+            marker.label = labelInput.value;
+            renderMarkers();
+        });
+
+        const scaleInput = document.createElement('input');
+        scaleInput.type = 'range';
+        scaleInput.min = '0.3';
+        scaleInput.max = '3';
+        scaleInput.step = '0.05';
+        scaleInput.value = marker.scale;
+        scaleInput.addEventListener('input', () => {
+            marker.scale = Number(scaleInput.value);
+            renderMarkers();
+        });
+
+        const rotationInput = document.createElement('input');
+        rotationInput.type = 'range';
+        rotationInput.min = '-180';
+        rotationInput.max = '180';
+        rotationInput.step = '1';
+        rotationInput.value = marker.rotation;
+        rotationInput.addEventListener('input', () => {
+            marker.rotation = Number(rotationInput.value);
+            renderMarkers();
+        });
+
+        const controls = document.createElement('div');
+        controls.className = 'marker-controls';
+        controls.innerHTML = `
+            <label class="stacked">Label</label>
+            <label class="stacked">Scale (${marker.scale.toFixed(2)})</label>
+            <label class="stacked">Rotation (${marker.rotation.toFixed(0)}°)</label>
+        `;
+        const labels = controls.querySelectorAll('label');
+        labels[0].appendChild(labelInput);
+        labels[1].appendChild(scaleInput);
+        labels[2].appendChild(rotationInput);
+
+        const remove = document.createElement('button');
+        remove.textContent = 'Remove marker';
+        remove.addEventListener('click', () => {
+            state.markers = state.markers.filter(m => m.id !== marker.id);
+            state.selectedMarkerId = null;
+            renderMarkers();
+            renderMarkerDetails();
+        });
+
+        markerDetails.appendChild(title);
+        markerDetails.appendChild(controls);
+        markerDetails.appendChild(remove);
+    }
+
+    function onBoardClick(e) {
+        const targetMarker = e.target.closest('.map-marker');
+        if (targetMarker) return;
+        if (!state.selectedDefinition) return;
+        const { xNorm, yNorm } = stageCoordsFromClient(e.clientX, e.clientY);
+        addMarkerAt(xNorm, yNorm);
+    }
+
+    function setupDrag() {
+        let draggingMarker = null;
+        let draggingPan = false;
+        let panStarted = false;
+        let downPos = null;
+        let suppressClick = false;
+
+        board.addEventListener('pointerdown', (e) => {
+            const markerEl = e.target.closest('.map-marker');
+            const handle = e.target.closest('.handle');
+            if (handle) return;
+            if (markerEl) {
+                draggingMarker = markerEl.dataset.id;
+                state.selectedMarkerId = draggingMarker;
+                renderMarkerDetails();
+                return;
+            }
+            draggingPan = true;
+            downPos = { x: e.clientX, y: e.clientY };
+            panStarted = false;
+        });
+
+        window.addEventListener('pointermove', (e) => {
+            if (draggingMarker) {
+                const marker = state.markers.find(m => m.id === draggingMarker);
+                const markerEl = markerLayer.querySelector(`[data-id="${draggingMarker}"]`);
+                if (!marker || !markerEl) return;
+                const { xNorm, yNorm } = stageCoordsFromClient(e.clientX, e.clientY);
+                marker.x = xNorm;
+                marker.y = yNorm;
+                applyMarkerStyles(marker, markerEl.querySelector('img'), markerEl);
+            } else if (draggingPan) {
+                if (!panStarted && downPos) {
+                    const moved = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y);
+                    panStarted = moved > 2;
+                }
+                state.pan.x += e.movementX;
+                state.pan.y += e.movementY;
+                applyTransform();
+            }
+        });
+
+        window.addEventListener('pointerup', (e) => {
+            suppressClick = panStarted;
+            draggingMarker = null;
+            draggingPan = false;
+            downPos = null;
+            panStarted = false;
+        });
+
+        board.addEventListener('click', (e) => {
+            if (suppressClick) {
+                suppressClick = false;
+                return;
+            }
+            onBoardClick(e);
+        });
+    }
+
+    function wireControls() {
+        baseSelect.addEventListener('change', (e) => setBaseImage(e.target.value));
+        zoomRange.addEventListener('input', (e) => {
+            state.zoom = Number(e.target.value);
+            applyTransform();
+        });
+        document.getElementById('reset-view').addEventListener('click', resetView);
+        document.getElementById('export-map').addEventListener('click', downloadSnapshot);
+        board.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomDelta = e.deltaY < 0 ? 1.1 : 0.9;
+            const newZoom = Math.min(4, Math.max(0.4, state.zoom * zoomDelta));
+            const rect = board.getBoundingClientRect();
+            const point = {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+            const before = {
+                x: (point.x - state.pan.x) / state.zoom,
+                y: (point.y - state.pan.y) / state.zoom
+            };
+            state.zoom = newZoom;
+            zoomRange.value = newZoom.toFixed(2);
+            state.pan.x = point.x - before.x * state.zoom;
+            state.pan.y = point.y - before.y * state.zoom;
+            applyTransform();
+        }, { passive: false });
+        setupDrag();
+    }
+
+    async function downloadSnapshot() {
+        if (!baseImg.complete) return;
+        const canvas = document.createElement('canvas');
+        const width = baseImg.naturalWidth || stage.offsetWidth;
+        const height = baseImg.naturalHeight || stage.offsetHeight;
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(baseImg, 0, 0, width, height);
+
+        for (const marker of state.markers) {
+            const def = (state.manifest.markers || []).find(m => m.id === marker.defId);
+            if (!def) continue;
+            const img = preloadImage(def.path);
+            if (!img.complete) await img.decode();
+            const drawX = marker.x * width;
+            const drawY = marker.y * height;
+            const drawW = img.naturalWidth * marker.scale;
+            const drawH = img.naturalHeight * marker.scale;
+            ctx.save();
+            ctx.translate(drawX, drawY);
+            ctx.rotate((marker.rotation * Math.PI) / 180);
+            ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
+            if (marker.label) {
+                ctx.font = '18px "Roboto Mono", monospace';
+                ctx.fillStyle = 'white';
+                ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+                ctx.lineWidth = 3;
+                ctx.strokeText(marker.label, -drawW / 2, drawH / 2 + 22);
+                ctx.fillText(marker.label, -drawW / 2, drawH / 2 + 22);
+            }
+            ctx.restore();
+        }
+
+        const url = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'memento-mori-map.png';
+        link.click();
+    }
+
+    const customInput = document.getElementById('custom-marker');
+    const customPreview = document.getElementById('custom-preview');
+    customInput.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const url = URL.createObjectURL(file);
+        const customId = `custom-${Date.now()}`;
+        state.manifest.markers = [
+            ...(state.manifest.markers || []),
+            { id: customId, name: file.name.replace(/\.png$/i, '') || 'Custom marker', path: url }
+        ];
+        state.selectedDefinition = customId;
+        customPreview.innerHTML = `<p class="muted">Added <strong>${file.name}</strong> to the library.</p>`;
+        renderLibrary();
+    });
+
+    function startTransform(markerId, type, e) {
+        e.stopPropagation();
+        e.preventDefault();
+        const marker = state.markers.find(m => m.id === markerId);
+        const markerEl = markerLayer.querySelector(`[data-id="${markerId}"]`);
+        if (!marker || !markerEl) return;
+        const rect = markerEl.getBoundingClientRect();
+        const center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+        state.activeTransform = {
+            markerId,
+            type,
+            center,
+            startVector: { x: e.clientX - center.x, y: e.clientY - center.y },
+            startRotation: marker.rotation,
+            startScale: marker.scale
+        };
+        window.addEventListener('pointermove', onTransformMove);
+        window.addEventListener('pointerup', endTransform, { once: true });
+    }
+
+    function onTransformMove(e) {
+        const t = state.activeTransform;
+        if (!t) return;
+        const marker = state.markers.find(m => m.id === t.markerId);
+        const markerEl = markerLayer.querySelector(`[data-id="${t.markerId}"]`);
+        if (!marker || !markerEl) return;
+        const vec = { x: e.clientX - t.center.x, y: e.clientY - t.center.y };
+        if (t.type === 'rotate') {
+            const startAngle = Math.atan2(t.startVector.y, t.startVector.x);
+            const currentAngle = Math.atan2(vec.y, vec.x);
+            const delta = (currentAngle - startAngle) * (180 / Math.PI);
+            marker.rotation = (t.startRotation + delta + 360) % 360;
+        } else {
+            const startDist = Math.hypot(t.startVector.x, t.startVector.y) || 1;
+            const dist = Math.hypot(vec.x, vec.y) || startDist;
+            const ratio = dist / startDist;
+            marker.scale = Math.min(5, Math.max(0.2, t.startScale * ratio));
+        }
+        applyMarkerStyles(marker, markerEl.querySelector('img'), markerEl);
+    }
+
+    function endTransform() {
+        state.activeTransform = null;
+        renderMarkers();
+        renderMarkerDetails();
+        window.removeEventListener('pointermove', onTransformMove);
+    }
+
+    wireControls();
+    renderMarkerDetails();
+    loadManifest();
+</script>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Memento Mori – Factions</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;600&family=Roboto+Mono:wght@300;400&display=swap" rel="stylesheet">
+</head>
+<body>
+<header class="site-header">
+    <div class="header-inner">
+        <h1 class="site-title">Memento Mori</h1>
+        <nav class="main-nav">
+            <div class="nav-item">
+                <a href="index.html" class="nav-link">Home</a>
+            </div>
+            <div class="nav-item has-dropdown">
+                <a href="about.html" class="nav-link">About</a>
+                <div class="dropdown">
+                    <a href="about.html" class="dropdown-link">About</a>
+                    <a href="guide.html" class="dropdown-link">New Survivor Guide</a>
+                </div>
+            </div>
+            <div class="nav-item has-dropdown">
+                <a href="seasons.html" class="nav-link">Seasons</a>
+                <div class="dropdown">
+                    <a href="seasons.html" class="dropdown-link">Season Dashboard</a>
+                    <a href="patch-notes.html" class="dropdown-link">Patch Notes</a>
+                    <a href="timeline.html" class="dropdown-link">Timeline</a>
+                </div>
+            </div>
+            <div class="nav-item has-dropdown">
+                <a href="players.html" class="nav-link active">Players</a>
+                <div class="dropdown">
+                    <a href="players.html" class="dropdown-link">Players Overview</a>
+                    <a href="map.html" class="dropdown-link">Map</a>
+                    <a href="stories.html" class="dropdown-link">Stories</a>
+                    <a href="factions.html" class="dropdown-link active">Factions</a>
+                    <a href="leaderboards.html" class="dropdown-link">Leaderboards</a>
+                    <a href="gallery.html" class="dropdown-link">Gallery</a>
+                </div>
+            </div>
+            <div class="nav-item">
+                <a href="join.html" class="nav-link">Join</a>
+            </div>
+            <div class="nav-item has-dropdown">
+                <a href="admin.html" class="nav-link">Admins</a>
+                <div class="dropdown">
+                    <a href="admin.html" class="dropdown-link">Admin Console</a>
+                    <a href="admin.html#seasons" class="dropdown-link">Season Admin</a>
+                    <a href="admin.html#patch-notes" class="dropdown-link">Patch Notes Admin</a>
+                    <a href="admin.html#stories" class="dropdown-link">Stories Admin</a>
+                    <a href="admin.html#factions" class="dropdown-link">Factions Admin</a>
+                    <a href="admin.html#leaderboards" class="dropdown-link">Leaderboards Admin</a>
+                </div>
+            </div>
+        </nav>
+    </div>
+</header>
+<main>
+    <section class="page-hero">
+        <div class="section-inner">
+            <h2>Factions & Groups</h2>
+            <p class="muted">Find allies or rivals. Filter by playstyle and recruiting status.</p>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="section-inner">
+            <div class="card-header">
+                <div>
+                    <p class="eyebrow">Filters</p>
+                    <h3>Recruiting Now</h3>
+                </div>
+                <div class="flag-row">
+                    <span class="pill">Tag: traders</span>
+                    <span class="pill">Recruiting: yes</span>
+                </div>
+            </div>
+            <div class="card-grid">
+                <article class="info-card">
+                    <h4>The Long Walkers</h4>
+                    <p class="muted">Wandering traders and scouts. Known to roam the north forests.</p>
+                    <div class="flag-row">
+                        <span class="pill">Traders</span>
+                        <span class="pill">Recruiting</span>
+                        <span class="pill">Season 5</span>
+                    </div>
+                    <p class="muted small">Contact: @walker-lead</p>
+                </article>
+                <article class="info-card">
+                    <h4>Red Signal</h4>
+                    <p class="muted">PvP-heavy squad specializing in convoy ambushes.</p>
+                    <div class="flag-row">
+                        <span class="pill">Bandits</span>
+                        <span class="pill">PvP</span>
+                        <span class="pill">Season 5</span>
+                    </div>
+                    <p class="muted small">Contact: @signal-ops</p>
+                </article>
+                <article class="info-card">
+                    <h4>Vigil</h4>
+                    <p class="muted">RP-focused settlement builders with a foothold near Nadbor.</p>
+                    <div class="flag-row">
+                        <span class="pill">RP</span>
+                        <span class="pill">Builders</span>
+                        <span class="pill">Season 4-5</span>
+                    </div>
+                    <p class="muted small">Contact: @vigil-admin</p>
+                </article>
+            </div>
+        </div>
+    </section>
+</main>
+<footer class="site-footer">
+    <div class="footer-inner">
+        <div class="footer-col">
+            <h4>Server</h4>
+            <ul>
+                <li>Region: NA</li>
+                <li>Style: Hardcore Survival</li>
+                <li>Mode: Seasonal / Story-Driven</li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h4>Links</h4>
+            <ul>
+                <li><a href="https://discord.gg/your-invite" target="_blank">Discord</a></li>
+                <li><a href="join.html">How to Join</a></li>
+                <li><a href="about.html">About the Team</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h4>Notes</h4>
+            <p>
+                Memento Mori is a community-run DayZ server project.
+                Not affiliated with or endorsed by Bohemia Interactive.
+            </p>
+        </div>
+    </div>
+    <div class="footer-meta">
+        <span>&copy; <span id="year"></span> Memento Mori Server</span>
+        <span>Last wipe: Seasonal schedule</span>
+    </div>
+</footer>
+<script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+</script>
+</body>
+</html>

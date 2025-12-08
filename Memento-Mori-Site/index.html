@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Memento Mori – Home</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Optional fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;600&family=Roboto+Mono:wght@300;400&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header class="site-header">
+    <div class="header-inner">
+        <h1 class="site-title">Memento Mori</h1>
+        <nav class="main-nav">
+            <div class="nav-item">
+                <a href="index.html" class="nav-link active">Home</a>
+            </div>
+            <div class="nav-item has-dropdown">
+                <a href="about.html" class="nav-link">About</a>
+                <div class="dropdown">
+                    <a href="about.html" class="dropdown-link">About</a>
+                    <a href="guide.html" class="dropdown-link">New Survivor Guide</a>
+                </div>
+            </div>
+            <div class="nav-item has-dropdown">
+                <a href="seasons.html" class="nav-link">Seasons</a>
+                <div class="dropdown">
+                    <a href="seasons.html" class="dropdown-link">Season Dashboard</a>
+                    <a href="patch-notes.html" class="dropdown-link">Patch Notes</a>
+                    <a href="timeline.html" class="dropdown-link">Timeline</a>
+                </div>
+            </div>
+            <div class="nav-item has-dropdown">
+                <a href="players.html" class="nav-link">Players</a>
+                <div class="dropdown">
+                    <a href="players.html" class="dropdown-link">Players Overview</a>
+                    <a href="map.html" class="dropdown-link">Map</a>
+                    <a href="stories.html" class="dropdown-link">Stories</a>
+                    <a href="factions.html" class="dropdown-link">Factions</a>
+                    <a href="leaderboards.html" class="dropdown-link">Leaderboards</a>
+                    <a href="gallery.html" class="dropdown-link">Gallery</a>
+                </div>
+            </div>
+            <div class="nav-item">
+                <a href="join.html" class="nav-link">Join</a>
+            </div>
+            <div class="nav-item has-dropdown">
+                <a href="admin.html" class="nav-link">Admins</a>
+                <div class="dropdown">
+                    <a href="admin.html" class="dropdown-link">Admin Console</a>
+                    <a href="admin.html#seasons" class="dropdown-link">Season Admin</a>
+                    <a href="admin.html#patch-notes" class="dropdown-link">Patch Notes Admin</a>
+                    <a href="admin.html#stories" class="dropdown-link">Stories Admin</a>
+                    <a href="admin.html#factions" class="dropdown-link">Factions Admin</a>
+                    <a href="admin.html#leaderboards" class="dropdown-link">Leaderboards Admin</a>
+                </div>
+            </div>
+        </nav>
+    </div>
+</header>
+
+<main>
+    <!-- HERO / SLIDESHOW -->
+    <section class="hero">
+        <div class="hero-slider" id="hero-slider">
+            <!-- Replace image src values with your real screenshots/art -->
+            <div class="slide active" data-caption="Season-based hardcore survival. No hand-holding.">
+                <img src="Images/HomePage%20SlideShow/SLIDE1.png" alt="Three survivors with rifles around a campfire at night">
+            </div>
+            <div class="slide" data-caption="PvE that bites. PvP that matters.">
+                <img src="Images/HomePage%20SlideShow/SLIDE2.png" alt="Survivors crossing a forest river toward a watchtower">
+            </div>
+            <div class="slide" data-caption="When the season ends, only memories remain.">
+                <img src="Images/HomePage%20SlideShow/SLIDE3.png" alt="Sniper aiming over a foggy valley at sunrise">
+            </div>
+        </div>
+
+        <div class="hero-overlay">
+            <h2 class="hero-title">Welcome to Memento Mori</h2>
+            <p class="hero-caption" id="hero-caption">
+                Season-based hardcore survival. No hand-holding.
+            </p>
+            <div class="hero-cta-row">
+                <a href="join.html" class="btn btn-primary">Join the Season</a>
+                <a href="#links" class="btn btn-ghost">Scout the Links</a>
+            </div>
+        </div>
+
+        <button class="slider-control prev" aria-label="Previous slide">&#10094;</button>
+        <button class="slider-control next" aria-label="Next slide">&#10095;</button>
+        <div class="slider-dots" id="slider-dots"></div>
+    </section>
+
+    <!-- DISCORD / DAYZ LINKS -->
+    <section class="links" id="links">
+        <div class="link-card">
+            <div class="link-icon">D</div>
+            <h3>Discord</h3>
+            <p>Join the Memento Mori Discord for announcements, wipes, and support.</p>
+            <a href="https://discord.gg/your-invite" class="btn btn-outline" target="_blank">
+                Enter Discord
+            </a>
+        </div>
+
+        <div class="link-card">
+            <div class="link-icon">Z</div>
+            <h3>DayZ Server</h3>
+            <p>Direct connect info, mod list, and launcher links for the current season.</p>
+            <a href="steam://connect/your.ip.here:2302" class="btn btn-outline">
+                Connect in DayZ
+            </a>
+        </div>
+    </section>
+
+    <!-- WELCOME / LORE BLURB -->
+    <section class="welcome">
+        <div class="section-inner">
+            <p>
+                Memento Mori is a seasonal DayZ server built around tension, scarcity, and stories
+                you actually remember. Each wipe is treated like a self-contained chapter, with its
+                own map, ruleset, and world events.
+            </p>
+            <p>
+                Survive the season, carve your mark into the landscape, and then watch it all get
+                swallowed by the next reset. Only the legends – and the scars – carry forward.
+            </p>
+            <p class="signature">~ Derk</p>
+        </div>
+    </section>
+</main>
+
+<footer class="site-footer">
+    <div class="footer-inner">
+        <div class="footer-col">
+            <h4>Server</h4>
+            <ul>
+                <li>Region: NA</li>
+                <li>Style: Hardcore Survival</li>
+                <li>Mode: Seasonal / Story-Driven</li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h4>Links</h4>
+            <ul>
+                <li><a href="https://discord.gg/your-invite" target="_blank">Discord</a></li>
+                <li><a href="join.html">How to Join</a></li>
+                <li><a href="about.html">About the Team</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h4>Notes</h4>
+            <p>
+                Memento Mori is a community-run DayZ server project.  
+                Not affiliated with or endorsed by Bohemia Interactive.
+            </p>
+        </div>
+    </div>
+    <div class="footer-meta">
+        <span>&copy; <span id="year"></span> Memento Mori Server</span>
+        <span>Last wipe: Seasonal schedule</span>
+    </div>
+</footer>
+
+<script>
+    // Dynamic year in footer
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // Simple slideshow logic
+    (function () {
+        const slides = document.querySelectorAll('#hero-slider .slide');
+        const captionEl = document.getElementById('hero-caption');
+        const dotsContainer = document.getElementById('slider-dots');
+        const prevBtn = document.querySelector('.slider-control.prev');
+        const nextBtn = document.querySelector('.slider-control.next');
+
+        if (!slides.length) return;
+
+        let index = 0;
+        let intervalId;
+
+        // Create dots
+        slides.forEach((_, i) => {
+            const dot = document.createElement('button');
+            dot.className = 'slider-dot' + (i === 0 ? ' active' : '');
+            dot.setAttribute('aria-label', 'Go to slide ' + (i + 1));
+            dot.addEventListener('click', () => {
+                goToSlide(i);
+                restartInterval();
+            });
+            dotsContainer.appendChild(dot);
+        });
+
+        const dots = dotsContainer.querySelectorAll('.slider-dot');
+
+        function goToSlide(i) {
+            slides[index].classList.remove('active');
+            dots[index].classList.remove('active');
+            index = (i + slides.length) % slides.length;
+            slides[index].classList.add('active');
+            dots[index].classList.add('active');
+            const caption = slides[index].dataset.caption || '';
+            captionEl.textContent = caption;
+        }
+
+        function next() {
+            goToSlide(index + 1);
+        }
+
+        function prev() {
+            goToSlide(index - 1);
+        }
+
+        function restartInterval() {
+            clearInterval(intervalId);
+            intervalId = setInterval(next, 7000);
+        }
+
+        nextBtn.addEventListener('click', () => {
+            next();
+            restartInterval();
+        });
+
+        prevBtn.addEventListener('click', () => {
+            prev();
+            restartInterval();
+        });
+
+        intervalId = setInterval(next, 7000);
+    })();
+</script>
+
+</body>
+</html>
