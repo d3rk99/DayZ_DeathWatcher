@@ -9,7 +9,9 @@ export const execute = async (interaction) => {
   await interaction.deferReply({ ephemeral: true });
 
   try {
-    const result = await updateMemberNickname(interaction.member);
+    const member =
+      interaction.member || interaction.guild?.members?.resolve(interaction.user.id);
+    const result = await updateMemberNickname(member);
     if (result.updated) {
       await interaction.editReply(`Updated your nickname to **${result.nickname}** based on ${result.minutes} minutes played.`);
     } else if (result.reason === 'no-permission') {

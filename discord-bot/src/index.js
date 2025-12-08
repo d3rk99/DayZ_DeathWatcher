@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import {
   Client,
   Collection,
+  Events,
   GatewayIntentBits,
   REST,
   Routes,
@@ -11,8 +12,9 @@ import { data as syncNameData, execute as syncNameExecute } from './commands/syn
 dotenv.config();
 
 const token = process.env.DISCORD_TOKEN;
-const clientId = process.env.CLIENT_ID;
-const guildId = process.env.GUILD_ID;
+const guildId = process.env.GUILD_ID || process.env.DISCORD_GUILD_ID;
+let clientId =
+  process.env.CLIENT_ID || process.env.DISCORD_CLIENT_ID || process.env.APPLICATION_ID;
 
 if (!token) {
   console.error('DISCORD_TOKEN is required to run the bot.');
@@ -27,8 +29,12 @@ client.commands = new Collection();
 client.commands.set(syncNameData.name, { data: syncNameData, execute: syncNameExecute });
 
 const registerCommands = async () => {
+  if (!clientId && client.application?.id) {
+    clientId = client.application.id;
+  }
+
   if (!clientId) {
-    console.warn('CLIENT_ID is missing; slash commands will not be registered.');
+    console.warn('Client ID is missing; slash commands will not be registered.');
     return;
   }
 
@@ -48,12 +54,18 @@ const registerCommands = async () => {
   }
 };
 
-client.once('ready', async () => {
+client.once(Events.ClientReady, async () => {
   console.log(`Logged in as ${client.user.tag}`);
+  // Ensure the application is fetched so we can derive the client ID if it was not provided.
+  if (!client.application?.owner) {
+    await client.application?.fetch().catch((error) => {
+      console.warn('Unable to fetch application; command registration may fail:', error);
+    });
+  }
   await registerCommands();
 });
 
-client.on('interactionCreate', async (interaction) => {
+client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
   const command = client.commands.get(interaction.commandName);

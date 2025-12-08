@@ -10,6 +10,10 @@ const buildNickname = (baseName, tag) => {
 };
 
 export const updateMemberNickname = async (member) => {
+  if (!member) {
+    throw new Error('No member provided to update nickname.');
+  }
+
   const baseName = member?.user?.globalName || member?.user?.username;
   if (!baseName) {
     throw new Error('Unable to derive a base name for this member.');

@@ -1,3 +1,5 @@
+import fetch from 'node-fetch';
+
 export const formatPlaytimeTag = (totalMinutes = 0) => {
   const safeMinutes = Number.isFinite(totalMinutes) ? Math.max(0, Math.floor(totalMinutes)) : 0;
   const hours = Math.floor(safeMinutes / 60);
