@@ -323,9 +323,6 @@ class DayZDeathWatcher:
         return None
 
     def _handle_session_tracking(self, line: str) -> None:
-        if not self.track_playtime or not self.playtime_report_url:
-            return
-
         match = re.search(r'Player "(?P<name>[^"]+)".*\(id=(?P<guid>[^\)]+)\)', line)
         if not match:
             return
@@ -343,6 +340,10 @@ class DayZDeathWatcher:
         timestamp = self._extract_timestamp(line)
         guid = match.group("guid").strip()
         name = match.group("name").strip()
+        self._log(self._format_session_event(event, name, guid, timestamp))
+
+        if not self.track_playtime or not self.playtime_report_url:
+            return
 
         if event == "login":
             self._active_sessions[guid] = {
@@ -359,7 +360,19 @@ class DayZDeathWatcher:
         login_ts = float(session.get("login", timestamp))
         duration = max(0, int(timestamp - login_ts))
         steam_id = session.get("steam_id") if isinstance(session, dict) else None
-        self._report_play_session(guid, name or session.get("name", ""), login_ts, timestamp, duration, steam_id)
+        self._report_play_session(
+            guid,
+            name or session.get("name", ""),
+            login_ts,
+            timestamp,
+            duration,
+            steam_id,
+        )
+
+    def _format_session_event(self, event: str, name: str, guid: str, timestamp: float) -> str:
+        verb = "connected" if event == "login" else "disconnected"
+        at = datetime.datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+        return f"[session] {name} ({guid}) {verb} at {at}"
 
     def _report_play_session(
         self,

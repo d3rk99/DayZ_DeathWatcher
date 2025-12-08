@@ -874,10 +874,12 @@ class PlaytimeLeaderboardPanel(tk.Frame):
 
     def _format_hours(self, seconds_value) -> str:
         try:
-            hours = float(seconds_value) / 3600
+            total_seconds = float(seconds_value)
         except (TypeError, ValueError):
-            hours = 0.0
-        return f"{hours:.1f}"
+            total_seconds = 0.0
+        hours = int(total_seconds // 3600)
+        minutes = int((total_seconds % 3600) // 60)
+        return f"{hours}h {minutes:02d}m"
 
     def _clear_rows(self) -> None:
         for item in self._tree.get_children():

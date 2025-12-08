@@ -186,7 +186,12 @@
 <script>
     document.getElementById('year').textContent = new Date().getFullYear();
 
-    const formatHours = (seconds) => (seconds / 3600).toFixed(1);
+    const formatHours = (seconds) => {
+        const totalSeconds = Number(seconds) || 0;
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        return `${hours}h ${minutes}m`;
+    };
 
     async function loadLeaderboard() {
         const res = await fetch('/api/leaderboards/playtime');
@@ -202,7 +207,7 @@
                     tr.innerHTML = `
                         <td>${idx + 1}</td>
                         <td>${row.playerName || row.playerGuid || row.steam64Id || 'Unknown'}</td>
-                        <td>${formatHours(row.totalSeconds)} hrs</td>
+                        <td>${formatHours(row.totalSeconds)}</td>
                     `;
                     tbody.appendChild(tr);
                 });
@@ -218,7 +223,7 @@
                 myPlaytime.classList.remove('muted');
                 myPlaytime.innerHTML = `
                     <div class="stat">
-                        <div class="stat-number">${formatHours(data.me.totalSeconds)} hrs</div>
+                        <div class="stat-number">${formatHours(data.me.totalSeconds)}</div>
                         <div class="stat-label">Tracked as ${data.me.playerName || 'Unknown Survivor'}</div>
                     </div>
                 `;

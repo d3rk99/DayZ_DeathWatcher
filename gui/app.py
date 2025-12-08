@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import queue
+import re
 import threading
 import tkinter as tk
 import tkinter.ttk as ttk
@@ -139,10 +140,10 @@ class GuiApplication:
         self.main_queue.put(message)
 
     def append_death_log(self, message: str) -> None:
-        formatted = self._format_death_log(message)
+        formatted, tag = self._format_death_log(message)
         if not formatted:
             return
-        self.death_queue.put((formatted, message))
+        self.death_queue.put((formatted, message, tag))
 
     def handle_death_counter_update(self, count: int, last_reset: int) -> None:
         self.counter_queue.put((count, last_reset))
@@ -155,7 +156,7 @@ class GuiApplication:
 
     def _drain_queue(
         self,
-        q: "queue.Queue[str | tuple[str, str]]",
+        q: "queue.Queue[str | tuple[str, ...]]",
         console: ConsolePane,
         *,
         analytics: bool = False,
@@ -163,12 +164,17 @@ class GuiApplication:
         while not q.empty():
             payload = q.get_nowait()
             if isinstance(payload, tuple):
-                message, analytics_line = payload
+                if len(payload) == 3:
+                    message, analytics_line, tag = payload
+                else:
+                    message, analytics_line = payload
+                    tag = None
             else:
                 message = payload
                 analytics_line = payload if analytics else None
+                tag = None
             raw_line = analytics_line or message
-            console.append(message)
+            console.append(message, tag=tag)
             if analytics and analytics_line and self.analytics_manager.record_line(analytics_line):
                 self._analytics.refresh()
             self.notification_manager.handle_log_line(raw_line)
@@ -203,11 +209,21 @@ class GuiApplication:
         if hasattr(self, "_notifications"):
             self._notifications.apply_theme(palette)
 
-    def _format_death_log(self, message: str) -> Optional[str]:
+    def _format_death_log(self, message: str) -> tuple[Optional[str], Optional[str]]:
         if not message:
-            return None
+            return None, None
         line = message.strip()
         lowered = line.lower()
+        if lowered.startswith("[session]"):
+            tag = "connect" if " connected " in lowered else "disconnect" if " disconnected " in lowered else None
+            return line, tag
+        if "(id=" in line:
+            if any(token in lowered for token in ("connected", "has joined", "logged in")):
+                summary = self._format_session_line(line, "connected")
+                return summary, "connect"
+            if any(token in lowered for token in ("disconnected", "has been disconnected", "logged off", "has left")):
+                summary = self._format_session_line(line, "disconnected")
+                return summary, "disconnect"
         cues = (
             "killed",
             "committed suicide",
@@ -219,9 +235,9 @@ class GuiApplication:
             "was brutally murdered by that psycho timmy",
         )
         if not any(cue in lowered for cue in cues):
-            return None
+            return None, None
         if "|" not in line or "(id=" not in line:
-            return f"[{line}]"
+            return f"[{line}]", "death"
         timestamp_part, remainder = line.split("|", 1)
         timestamp_part = timestamp_part.strip()
         remainder = remainder.strip()
@@ -243,8 +259,17 @@ class GuiApplication:
                 date_part = text
         parts = [value for value in (date_part, player, cause_fragment, time_part) if value]
         if not parts:
+            return None, None
+        return "[" + " - ".join(parts) + "]", "death"
+
+    def _format_session_line(self, line: str, verb: str) -> Optional[str]:
+        match = re.search(r'Player "(?P<name>[^"]+)".*\(id=(?P<guid>[^\)]+)\)', line)
+        if not match:
             return None
-        return "[" + " - ".join(parts) + "]"
+        player = match.group("name").strip()
+        guid = match.group("guid").strip()
+        timestamp_part = line.split("|", 1)[0].strip()
+        return f"[{timestamp_part} - {player} ({guid}) {verb}]"
 
     # region setup gating
     def on_ready(self, callback: Callable[[], None]) -> None:
