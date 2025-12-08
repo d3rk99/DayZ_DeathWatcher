@@ -153,7 +153,7 @@
         const note = document.getElementById('leaderboard-note');
 
         try {
-            const res = await fetch('/api/leaderboards/playtime');
+            const res = await fetch('/api/leaderboards/playtime?limit=50');
             const data = await res.json();
             const leaderboard = Array.isArray(data?.leaderboard) ? data.leaderboard : [];
 
