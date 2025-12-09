@@ -11,6 +11,8 @@ export const APP_CONFIG = {
     clientId: process.env.DISCORD_CLIENT_ID || '',
     clientSecret: process.env.DISCORD_CLIENT_SECRET || '',
     redirectUri: process.env.DISCORD_REDIRECT_URI || 'http://localhost:3001/auth/discord/callback',
+    guildId: process.env.DISCORD_GUILD_ID || '',
+    adminRoleId: process.env.DISCORD_ADMIN_ROLE_ID || '',
     adminIds: (process.env.DISCORD_ADMIN_IDS || '').split(',').filter(Boolean),
   },
   discordWebhook: {

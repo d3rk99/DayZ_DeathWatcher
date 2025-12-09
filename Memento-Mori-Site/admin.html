@@ -5,8 +5,9 @@
     <title>Memento Mori – Admin Console</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;600&family=Roboto+Mono:wght@300;400&display=swap" rel="stylesheet">
+    <script src="auth.js" defer></script>
 </head>
-<body>
+<body data-require-admin="true">
 <header class="site-header">
     <div class="header-inner">
         <h1 class="site-title">Memento Mori</h1>
@@ -58,50 +59,60 @@
     </div>
 </header>
 <main>
-    <section class="page-hero">
-        <div class="section-inner">
-            <h2>Admin Console</h2>
-            <p class="muted">Placeholder UI for future protected tools: manage seasons, notes, stories, whitelist, and more.</p>
-        </div>
-    </section>
+    <div data-admin-content>
+        <section class="page-hero">
+            <div class="section-inner">
+                <h2>Admin Console</h2>
+                <p class="muted">Placeholder UI for future protected tools: manage seasons, notes, stories, whitelist, and more.</p>
+            </div>
+        </section>
 
-    <section class="panel">
-        <div class="section-inner admin-grid">
-            <article class="admin-card" id="seasons">
-                <h3>Seasons</h3>
-                <p class="muted">Create, edit, and activate seasons. Control map, flags, and lore blurbs.</p>
-                <button class="btn btn-primary" type="button">Open Season Manager</button>
-            </article>
-            <article class="admin-card" id="patch-notes">
-                <h3>Patch Notes</h3>
-                <p class="muted">Post devlogs, tag them, and optionally fire a Discord webhook.</p>
-                <button class="btn btn-primary" type="button">Compose Note</button>
-            </article>
-            <article class="admin-card" id="stories">
-                <h3>Player Stories</h3>
-                <p class="muted">Approve pending submissions, feature Story of the Week, flag Hall of Fame.</p>
-                <button class="btn btn-primary" type="button">Review Stories</button>
-            </article>
-            <article class="admin-card" id="whitelist">
-                <h3>Whitelist</h3>
-                <p class="muted">Validate join requests and send approvals. Capture admin notes.</p>
-                <button class="btn btn-primary" type="button">View Queue</button>
-            </article>
-            <article class="admin-card" id="timeline">
-                <h3>Timeline</h3>
-                <p class="muted">Record wipes, events, and system changes per season.</p>
-                <button class="btn btn-primary" type="button">Log Event</button>
-            </article>
-            <article class="admin-card" id="factions">
-                <h3>Factions & Media</h3>
-                <p class="muted">Maintain the faction directory, gallery items, and cinematic media.</p>
-                <button class="btn btn-primary" type="button">Manage Content</button>
-            </article>
-            <article class="admin-card" id="leaderboards">
-                <h3>Leaderboards</h3>
-                <p class="muted">Import stats, audit categories, and publish seasonal rankings.</p>
-                <button class="btn btn-primary" type="button">Adjust Leaderboards</button>
-            </article>
+        <section class="panel">
+            <div class="section-inner admin-grid">
+                <article class="admin-card" id="seasons">
+                    <h3>Seasons</h3>
+                    <p class="muted">Create, edit, and activate seasons. Control map, flags, and lore blurbs.</p>
+                    <button class="btn btn-primary" type="button">Open Season Manager</button>
+                </article>
+                <article class="admin-card" id="patch-notes">
+                    <h3>Patch Notes</h3>
+                    <p class="muted">Post devlogs, tag them, and optionally fire a Discord webhook.</p>
+                    <button class="btn btn-primary" type="button">Compose Note</button>
+                </article>
+                <article class="admin-card" id="stories">
+                    <h3>Player Stories</h3>
+                    <p class="muted">Approve pending submissions, feature Story of the Week, flag Hall of Fame.</p>
+                    <button class="btn btn-primary" type="button">Review Stories</button>
+                </article>
+                <article class="admin-card" id="whitelist">
+                    <h3>Whitelist</h3>
+                    <p class="muted">Validate join requests and send approvals. Capture admin notes.</p>
+                    <button class="btn btn-primary" type="button">View Queue</button>
+                </article>
+                <article class="admin-card" id="timeline">
+                    <h3>Timeline</h3>
+                    <p class="muted">Record wipes, events, and system changes per season.</p>
+                    <button class="btn btn-primary" type="button">Log Event</button>
+                </article>
+                <article class="admin-card" id="factions">
+                    <h3>Factions & Media</h3>
+                    <p class="muted">Maintain the faction directory, gallery items, and cinematic media.</p>
+                    <button class="btn btn-primary" type="button">Manage Content</button>
+                </article>
+                <article class="admin-card" id="leaderboards">
+                    <h3>Leaderboards</h3>
+                    <p class="muted">Import stats, audit categories, and publish seasonal rankings.</p>
+                    <button class="btn btn-primary" type="button">Adjust Leaderboards</button>
+                </article>
+            </div>
+        </section>
+    </div>
+
+    <section class="panel" data-admin-locked>
+        <div class="section-inner">
+            <h3>Admins only</h3>
+            <p class="muted">Log in with your Discord account to verify you have admin access before opening the console.</p>
+            <button class="btn btn-primary" type="button" onclick="window.location.href='/auth/discord'">Log in with Discord</button>
         </div>
     </section>
 </main>
