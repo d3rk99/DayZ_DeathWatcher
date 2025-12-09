@@ -1,6 +1,8 @@
 @echo off
 setlocal DisableDelayedExpansion
 
+set "EXIT_CODE=0"
+
 :: Change to the directory of this script
 cd /d "%~dp0"
 
@@ -19,7 +21,8 @@ if not errorlevel 1 set "PY_CMD=py"
 :found_python
 if "%PY_CMD%"=="" (
     echo Python is not installed or not available on PATH.
-    exit /b 1
+    set "EXIT_CODE=1"
+    goto :finish
 )
 
 echo Using Python command: %PY_CMD%
@@ -39,7 +42,8 @@ if not defined NPM_CMD for /f "delims=" %%N in ('where npm 2^>nul') do (
 :found_npm
 if "%NPM_CMD%"=="" (
     echo Node.js and npm are required to run the backend API but were not found on PATH.
-    exit /b 1
+    set "EXIT_CODE=1"
+    goto :finish
 )
 
 set "BACKEND_DIR=Memento-Mori-Site\backend"
@@ -51,7 +55,8 @@ set "BACKEND_LOG=%BACKEND_DIR%\backend.log"
 
 if not exist "%BACKEND_DIR%\package.json" (
     echo Backend directory not found at %BACKEND_DIR%.
-    exit /b 1
+    set "EXIT_CODE=1"
+    goto :finish
 )
 
 echo Preparing backend server dependencies...
@@ -60,7 +65,8 @@ call "%NPM_CMD%" install --no-fund --no-audit
 if errorlevel 1 (
     echo Failed to install backend dependencies.
     popd
-    exit /b 1
+    set "EXIT_CODE=1"
+    goto :finish
 )
 
 echo Building backend server...
@@ -68,7 +74,8 @@ call "%NPM_CMD%" run build
 if errorlevel 1 (
     echo Failed to build backend server.
     popd
-    exit /b 1
+    set "EXIT_CODE=1"
+    goto :finish
 )
 popd
 
@@ -78,7 +85,7 @@ if errorlevel 1 (
     echo Starting backend server (npm run dev) on port %BACKEND_PORT% ...
     if exist "%BACKEND_LOG%" del "%BACKEND_LOG%"
     echo A backend window will stay open so any crash output is visible.
-    start "Memento Mori Backend" /d "%BACKEND_DIR%" cmd /k "setlocal EnableDelayedExpansion ^& echo Backend log at %BACKEND_LOG% ^& echo. ^& ""%NPM_CMD%" run dev ^>^> "%BACKEND_LOG%" 2^>^&1 ^& echo. ^& echo Backend process exited with code !errorlevel! ^& pause"
+    start "Memento Mori Backend" /d "%BACKEND_DIR%" powershell -NoProfile -NoExit -Command "Write-Host 'Backend log at %BACKEND_LOG%'; Write-Host 'Output below is also written to the log.'; & '%NPM_CMD%' run dev 2^>^&1 ^| Tee-Object -FilePath '%BACKEND_LOG%' -Append; \$code=\$LASTEXITCODE; Write-Host ('Backend process exited with code ' ^+ \$code); Write-Host 'Press Enter to close this window...'; Read-Host"
     for /l %%I in (1,1,12) do (
         powershell -NoProfile -Command "\$ErrorActionPreference='SilentlyContinue'; if (Test-NetConnection -ComputerName 'localhost' -Port %BACKEND_PORT% -InformationLevel Quiet) { exit 0 } else { exit 1 }" >nul 2>&1
         if not errorlevel 1 goto :backend_ready
@@ -86,7 +93,8 @@ if errorlevel 1 (
     )
     echo Backend server failed to start. Showing recent backend log output...
     powershell -NoProfile -Command "if (Test-Path -Path ^\"%BACKEND_LOG%^\") { Get-Content -Path ^\"%BACKEND_LOG%^\" -Tail 50 } else { Write-Host 'No backend log was created.' }"
-    exit /b 1
+    set "EXIT_CODE=1"
+    goto :finish
 ) else (
     echo Backend server already running on port %BACKEND_PORT%.
 )
@@ -101,7 +109,8 @@ if not exist "%VENV_DIR%\Scripts\python.exe" (
     "%PY_CMD%" -m venv "%VENV_DIR%"
     if errorlevel 1 (
         echo Failed to create virtual environment.
-        exit /b 1
+        set "EXIT_CODE=1"
+        goto :finish
     )
 )
 
@@ -109,7 +118,8 @@ if not exist "%VENV_DIR%\Scripts\python.exe" (
 call "%VENV_DIR%\Scripts\activate"
 if errorlevel 1 (
     echo Failed to activate virtual environment.
-    exit /b 1
+    set "EXIT_CODE=1"
+    goto :finish
 )
 
 :: Install dependencies
@@ -117,9 +127,18 @@ if errorlevel 1 (
 "%VENV_DIR%\Scripts\python.exe" -m pip install -r requirements.txt
 if errorlevel 1 (
     echo Failed to install dependencies.
-    exit /b 1
+    set "EXIT_CODE=1"
+    goto :finish
 )
 
 :: Run the main application
 "%VENV_DIR%\Scripts\python.exe" main.py %*
-exit /b %errorlevel%
+set "EXIT_CODE=%errorlevel%"
+
+:finish
+if not "%EXIT_CODE%"=="0" (
+    echo Launcher finished with exit code %EXIT_CODE%.
+    echo Press any key to close this window after reviewing the messages above.
+    pause >nul
+)
+exit /b %EXIT_CODE%
