@@ -78,7 +78,7 @@ if errorlevel 1 (
     echo Starting backend server on port %BACKEND_PORT% ...
     if exist "%BACKEND_LOG%" del "%BACKEND_LOG%"
     echo A backend window will stay open so any crash output is visible.
-    start "Memento Mori Backend" cmd /k "pushd \"%BACKEND_DIR%\" ^&^& call \"%NPM_CMD%\" run start ^>^> \"%BACKEND_LOG%\" 2^>^&1"
+    start "Memento Mori Backend" /d "%BACKEND_DIR%" cmd /k ""%NPM_CMD%" run start ^>^> \"%BACKEND_LOG%\" 2^>^&1"
     for /l %%I in (1,1,12) do (
         powershell -NoProfile -Command "\$ErrorActionPreference='SilentlyContinue'; if (Test-NetConnection -ComputerName 'localhost' -Port %BACKEND_PORT% -InformationLevel Quiet) { exit 0 } else { exit 1 }" >nul 2>&1
         if not errorlevel 1 goto :backend_ready
