@@ -127,7 +127,7 @@ set "EXIT_CODE=%errorlevel%"
 :finish
 if not "%EXIT_CODE%"=="0" (
     echo Launcher finished with exit code %EXIT_CODE%.
-    echo Press any key to close this window after reviewing the messages above.
-    pause >nul
 )
+echo Press any key to close this window after reviewing the messages above.
+pause >nul
 exit /b %EXIT_CODE%
