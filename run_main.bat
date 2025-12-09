@@ -44,6 +44,7 @@ if "%NPM_CMD%"=="" (
 
 set "BACKEND_DIR=Memento-Mori-Site\backend"
 set "BACKEND_PORT=3001"
+set "BACKEND_LOG=%BACKEND_DIR%\backend.log"
 
 if not exist "%BACKEND_DIR%\package.json" (
     echo Backend directory not found at %BACKEND_DIR%.
@@ -72,11 +73,21 @@ popd
 powershell -NoProfile -Command "if ((Test-NetConnection -ComputerName 'localhost' -Port %BACKEND_PORT% -WarningAction SilentlyContinue).TcpTestSucceeded) { exit 0 } else { exit 1 }" >nul 2>&1
 if errorlevel 1 (
     echo Starting backend server on port %BACKEND_PORT% ...
-    start "Memento Mori Backend" cmd /c "cd /d ^\"%BACKEND_DIR%^\" ^&^& ^\"%NPM_CMD%^\" run start"
-    timeout /t 5 >nul
+    if exist "%BACKEND_LOG%" del "%BACKEND_LOG%"
+    start "Memento Mori Backend" cmd /c "cd /d ^\"%BACKEND_DIR%^\" ^&^& ^\"%NPM_CMD%^\" run start ^>^> ^\"%BACKEND_LOG%^\" 2^>^&1"
+    for /l %%I in (1,1,12) do (
+        powershell -NoProfile -Command "if ((Test-NetConnection -ComputerName 'localhost' -Port %BACKEND_PORT% -WarningAction SilentlyContinue).TcpTestSucceeded) { exit 0 } else { exit 1 }" >nul 2>&1
+        if not errorlevel 1 goto :backend_ready
+        timeout /t 1 >nul
+    )
+    echo Backend server failed to start. Showing recent backend log output...
+    powershell -NoProfile -Command "if (Test-Path -Path ^\"%BACKEND_LOG%^\") { Get-Content -Path ^\"%BACKEND_LOG%^\" -Tail 50 } else { Write-Host 'No backend log was created.' }"
+    exit /b 1
 ) else (
     echo Backend server already running on port %BACKEND_PORT%.
 )
+
+:backend_ready
 
 set "VENV_DIR=.venv"
 
