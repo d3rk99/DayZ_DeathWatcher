@@ -20,9 +20,12 @@ Create a `.env` file under `backend/` (or set environment variables):
 - `DB_PATH` – path to the SQLite database (defaults to `data/memento.db`)
 - `SESSION_SECRET` – cookie/session secret
 - `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI` – Discord OAuth2 details (if `DISCORD_REDIRECT_URI` is
-  omitted, the server will derive the callback from the incoming request host)
+  omitted, the server will derive the callback from the incoming request host; if it is set to a localhost placeholder but the
+  site is accessed via another host, the server will prefer the request host to avoid Discord redirect errors and respects
+  `X-Forwarded-Proto` when behind a proxy)
 - `DISCORD_GUILD_ID`, `DISCORD_ADMIN_ROLE_ID` – Discord server + role used to grant admin access on login
-- `DISCORD_ADMIN_IDS` – comma-separated Discord user IDs that should be treated as admins (legacy override)
+- `DISCORD_ADMIN_IDS` – comma-separated Discord user IDs that should be treated as admins (legacy override when a role is not
+  available)
 - `DISCORD_WEBHOOK_URL_patch_notes`, `DISCORD_WEBHOOK_URL_map`, `DISCORD_WEBHOOK_URL_whitelist` – optional webhook URLs
 - `BOT_SYNC_TOKEN` – shared secret token used by the Discord bot to poll `/bot-sync` bridge endpoints
 - `MAP_BASE_DIR`, `GENERATED_DIR`, `UPLOADS_DIR` – legacy locations for base map PNGs, generated composites, and marker uploads

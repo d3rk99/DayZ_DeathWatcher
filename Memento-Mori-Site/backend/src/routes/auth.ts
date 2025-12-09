@@ -41,20 +41,35 @@ const getDiscordGuildMember = async (accessToken: string, guildId: string): Prom
   return (await memberResp.json()) as DiscordMember;
 };
 
-const userIsAdmin = (roles: string[] | undefined | null, adminRoleId: string) => {
+const userIsAdmin = (discordId: string, roles: string[] | undefined | null, adminRoleId: string) => {
+  const allowlisted = APP_CONFIG.discord.adminIds.includes(discordId);
+  if (allowlisted) return true;
   if (!roles || !adminRoleId) return false;
   return roles.includes(adminRoleId);
 };
 
-const resolveRedirectUri = (req: any) => {
-  if (APP_CONFIG.discord.redirectUri) return APP_CONFIG.discord.redirectUri;
+const deriveRedirectUriFromRequest = (req: any) => {
   const host = req?.get?.('host');
-  const protocol = req?.protocol || 'http';
+  const forwardedProto = (req?.headers?.['x-forwarded-proto'] as string) || '';
+  const protocol = forwardedProto.split(',')[0]?.trim() || req?.protocol || 'http';
   if (!host) {
     console.warn('Missing host header when resolving Discord redirect URI');
     return 'http://localhost:3001/auth/discord/callback';
   }
   return `${protocol}://${host}/auth/discord/callback`;
+};
+
+const resolveRedirectUri = (req: any) => {
+  const configured = APP_CONFIG.discord.redirectUri;
+  const derived = deriveRedirectUriFromRequest(req);
+  const isLocalConfigured = configured?.includes('localhost');
+  const requestHost = req?.get?.('host') || '';
+
+  if (configured && (!isLocalConfigured || requestHost.includes('localhost'))) {
+    return configured;
+  }
+
+  return derived;
 };
 
 const router = Router();
@@ -99,7 +114,7 @@ router.get('/discord/callback', async (req, res) => {
     const discordUser = await getDiscordUser(accessToken);
     const member = await getDiscordGuildMember(accessToken, APP_CONFIG.discord.guildId);
 
-    const hasAdminRole = userIsAdmin(member?.roles, APP_CONFIG.discord.adminRoleId);
+    const hasAdminRole = userIsAdmin(discordUser.id, member?.roles, APP_CONFIG.discord.adminRoleId);
     const resolvedRole = hasAdminRole ? 'admin' : 'player';
     const now = nowIso();
     const displayName = discordUser.global_name || discordUser.username;

@@ -11,6 +11,7 @@ import botSyncRouter from './routes/botSync';
 ensureEnvReady();
 
 const app = express();
+app.set('trust proxy', true);
 app.use(express.json({ limit: '5mb' }));
 app.use(morgan('dev'));
 app.use(
