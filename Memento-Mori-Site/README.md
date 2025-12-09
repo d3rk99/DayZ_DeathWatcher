@@ -19,7 +19,8 @@ Create a `.env` file under `backend/` (or set environment variables):
 - `PORT` – server port
 - `DB_PATH` – path to the SQLite database (defaults to `data/memento.db`)
 - `SESSION_SECRET` – cookie/session secret
-- `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI` – Discord OAuth2 details
+- `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI` – Discord OAuth2 details (if `DISCORD_REDIRECT_URI` is
+  omitted, the server will derive the callback from the incoming request host)
 - `DISCORD_GUILD_ID`, `DISCORD_ADMIN_ROLE_ID` – Discord server + role used to grant admin access on login
 - `DISCORD_ADMIN_IDS` – comma-separated Discord user IDs that should be treated as admins (legacy override)
 - `DISCORD_WEBHOOK_URL_patch_notes`, `DISCORD_WEBHOOK_URL_map`, `DISCORD_WEBHOOK_URL_whitelist` – optional webhook URLs

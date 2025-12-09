@@ -46,14 +46,26 @@ const userIsAdmin = (roles: string[] | undefined | null, adminRoleId: string) =>
   return roles.includes(adminRoleId);
 };
 
+const resolveRedirectUri = (req: any) => {
+  if (APP_CONFIG.discord.redirectUri) return APP_CONFIG.discord.redirectUri;
+  const host = req?.get?.('host');
+  const protocol = req?.protocol || 'http';
+  if (!host) {
+    console.warn('Missing host header when resolving Discord redirect URI');
+    return 'http://localhost:3001/auth/discord/callback';
+  }
+  return `${protocol}://${host}/auth/discord/callback`;
+};
+
 const router = Router();
 
-router.get('/discord', (_req, res) => {
+router.get('/discord', (req, res) => {
+  const redirectUri = resolveRedirectUri(req);
   const params = new URLSearchParams({
     client_id: APP_CONFIG.discord.clientId,
     response_type: 'code',
     scope: 'identify guilds.members.read',
-    redirect_uri: APP_CONFIG.discord.redirectUri,
+    redirect_uri: redirectUri,
   });
   res.redirect(`https://discord.com/api/oauth2/authorize?${params.toString()}`);
 });
@@ -68,7 +80,7 @@ router.get('/discord/callback', async (req, res) => {
   params.append('client_secret', APP_CONFIG.discord.clientSecret);
   params.append('grant_type', 'authorization_code');
   params.append('code', code);
-  params.append('redirect_uri', APP_CONFIG.discord.redirectUri);
+  params.append('redirect_uri', resolveRedirectUri(req));
   try {
     const tokenResp = await fetch('https://discord.com/api/oauth2/token', {
       method: 'POST',
