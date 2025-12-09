@@ -48,6 +48,7 @@ if "%NPM_CMD%"=="" (
 
 set "BACKEND_DIR=Memento-Mori-Site\backend"
 set "BACKEND_PORT=3001"
+set "BACKEND_START=%BACKEND_DIR%\start_backend.ps1"
 
 :: Resolve absolute backend paths to avoid issues with spaces or special characters
 for %%I in ("%BACKEND_DIR%") do set "BACKEND_DIR=%%~fI"
@@ -84,8 +85,19 @@ powershell -NoProfile -Command "\$ErrorActionPreference='SilentlyContinue'; if (
 if errorlevel 1 (
     echo Starting backend server (npm run dev) on port %BACKEND_PORT% ...
     if exist "%BACKEND_LOG%" del "%BACKEND_LOG%"
+    (
+        echo Set-Location -Path "%BACKEND_DIR%"
+        echo Write-Host "Backend log at %BACKEND_LOG%"
+        echo Write-Host "Output below is also written to the log."
+        echo $npmCmd = "%NPM_CMD%"
+        echo ^& $npmCmd run dev 2^^>^^&1 ^| Tee-Object -FilePath "%BACKEND_LOG%" -Append
+        echo $code = $LASTEXITCODE
+        echo Write-Host ^("Backend process exited with code " ^+ $code^\)
+        echo Write-Host "Press Enter to close this window..."
+        echo [void][System.Console]::ReadLine^(^)
+    ) > "%BACKEND_START%"
     echo A backend window will stay open so any crash output is visible.
-    start "Memento Mori Backend" /d "%BACKEND_DIR%" powershell -NoProfile -NoExit -Command "Write-Host 'Backend log at %BACKEND_LOG%'; Write-Host 'Output below is also written to the log.'; & '%NPM_CMD%' run dev 2^>^&1 ^| Tee-Object -FilePath '%BACKEND_LOG%' -Append; \$code=\$LASTEXITCODE; Write-Host ('Backend process exited with code ' ^+ \$code); Write-Host 'Press Enter to close this window...'; Read-Host"
+    start "Memento Mori Backend" powershell -NoProfile -NoExit -File "%BACKEND_START%"
     for /l %%I in (1,1,12) do (
         powershell -NoProfile -Command "\$ErrorActionPreference='SilentlyContinue'; if (Test-NetConnection -ComputerName 'localhost' -Port %BACKEND_PORT% -InformationLevel Quiet) { exit 0 } else { exit 1 }" >nul 2>&1
         if not errorlevel 1 goto :backend_ready
