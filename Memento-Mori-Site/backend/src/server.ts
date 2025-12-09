@@ -22,8 +22,10 @@ app.use(
   }),
 );
 
+const staticRoot = path.resolve(__dirname, '..', '..');
+
 app.use('/uploads', express.static(path.join(APP_CONFIG.uploadsDir)));
-app.use(express.static(path.join(process.cwd())));
+app.use(express.static(staticRoot));
 
 app.use('/auth', authRouter);
 app.use('/api', featuresRouter);
