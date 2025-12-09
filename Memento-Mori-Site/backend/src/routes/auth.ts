@@ -1,6 +1,50 @@
 import { Router } from 'express';
 import { APP_CONFIG } from '../config';
 import { db, nowIso } from '../db';
+import { SessionUser } from '../middleware/auth';
+
+type DiscordUser = {
+  id: string;
+  username: string;
+  global_name?: string | null;
+  avatar?: string | null;
+};
+
+type DiscordMember = {
+  roles?: string[];
+} | null;
+
+const getDiscordUser = async (accessToken: string): Promise<DiscordUser> => {
+  const userResp = await fetch('https://discord.com/api/users/@me', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!userResp.ok) {
+    throw new Error(`Failed to fetch Discord user: ${userResp.status}`);
+  }
+
+  return (await userResp.json()) as DiscordUser;
+};
+
+const getDiscordGuildMember = async (accessToken: string, guildId: string): Promise<DiscordMember> => {
+  if (!guildId) return null;
+
+  const memberResp = await fetch(`https://discord.com/api/users/@me/guilds/${guildId}/member`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!memberResp.ok) {
+    console.warn('Discord member lookup failed', memberResp.status);
+    return null;
+  }
+
+  return (await memberResp.json()) as DiscordMember;
+};
+
+const userIsAdmin = (roles: string[] | undefined | null, adminRoleId: string) => {
+  if (!roles || !adminRoleId) return false;
+  return roles.includes(adminRoleId);
+};
 
 const router = Router();
 
@@ -31,48 +75,53 @@ router.get('/discord/callback', async (req, res) => {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: params,
     });
+    if (!tokenResp.ok) {
+      const errorBody = await tokenResp.text();
+      console.error('Token exchange failed', tokenResp.status, errorBody);
+      return res.status(400).send('Discord authorization failed');
+    }
+
     const tokenJson: any = await tokenResp.json();
-    const userResp = await fetch('https://discord.com/api/users/@me', {
-      headers: { Authorization: `${tokenJson.token_type} ${tokenJson.access_token}` },
-    });
-    const discordUser: any = await userResp.json();
-    let member: any = null;
-    if (APP_CONFIG.discord.guildId) {
-      const memberResp = await fetch(
-        `https://discord.com/api/users/@me/guilds/${APP_CONFIG.discord.guildId}/member`,
-        {
-          headers: { Authorization: `${tokenJson.token_type} ${tokenJson.access_token}` },
-        },
-      );
-      if (memberResp.ok) {
-        member = await memberResp.json();
-      } else {
-        console.warn('Discord member lookup failed', memberResp.status);
-      }
-    }
-    const existing = db.prepare('SELECT * FROM users WHERE discord_id = ?').get(discordUser.id);
+    const accessToken = tokenJson.access_token as string;
+
+    const discordUser = await getDiscordUser(accessToken);
+    const member = await getDiscordGuildMember(accessToken, APP_CONFIG.discord.guildId);
+
+    const hasAdminRole = userIsAdmin(member?.roles, APP_CONFIG.discord.adminRoleId);
+    const resolvedRole = hasAdminRole ? 'admin' : 'player';
     const now = nowIso();
-    const hasAdminRole = Boolean(
-      APP_CONFIG.discord.adminRoleId && member?.roles?.includes(APP_CONFIG.discord.adminRoleId),
-    );
-    const isAdminId = APP_CONFIG.discord.adminIds.includes(discordUser.id);
-    const resolvedRole = hasAdminRole || isAdminId ? 'admin' : 'player';
+    const displayName = discordUser.global_name || discordUser.username;
+    const avatarUrl = discordUser.avatar
+      ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png?size=64`
+      : null;
+
+    const existing = db.prepare('SELECT * FROM users WHERE discord_id = ?').get(discordUser.id);
+
     if (existing) {
-      db.prepare('UPDATE users SET discord_username = ?, display_name = ?, role = ?, last_login_at = ? WHERE id = ?')
-        .run(
-          discordUser.username,
-          discordUser.global_name || discordUser.username,
-          resolvedRole,
-          now,
-          existing.id,
-        );
-      (req as any).session.userId = existing.id;
+      db.prepare('UPDATE users SET discord_username = ?, display_name = ?, role = ?, last_login_at = ? WHERE id = ?').run(
+        discordUser.username,
+        displayName,
+        resolvedRole,
+        now,
+        existing.id,
+      );
     } else {
-      const result = db
-        .prepare('INSERT INTO users (discord_id, discord_username, display_name, role, created_at, last_login_at) VALUES (?, ?, ?, ?, ?, ?)')
-        .run(discordUser.id, discordUser.username, discordUser.global_name || discordUser.username, resolvedRole, now, now);
-      (req as any).session.userId = result.lastInsertRowid;
+      db.prepare(
+        'INSERT INTO users (discord_id, discord_username, display_name, role, created_at, last_login_at) VALUES (?, ?, ?, ?, ?, ?)',
+      ).run(discordUser.id, discordUser.username, displayName, resolvedRole, now, now);
     }
+
+    const sessionUser: SessionUser = {
+      discordId: discordUser.id,
+      username: displayName,
+      avatar: avatarUrl,
+      isAdmin: hasAdminRole,
+    };
+
+    if ((req as any).session) {
+      (req as any).session.user = sessionUser as any;
+    }
+
     res.redirect('/');
   } catch (err) {
     console.error(err);
@@ -81,17 +130,16 @@ router.get('/discord/callback', async (req, res) => {
 });
 
 router.get('/me', (req, res) => {
-  const sessionUserId = (req as any).session?.userId;
-  if (!sessionUserId) return res.json(null);
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(sessionUserId);
-  res.json(user || null);
+  const user = (req as any).session?.user as SessionUser | undefined;
+  if (!user) return res.json({ user: null });
+  res.json({ user });
 });
 
-router.post('/logout', (req, res) => {
+router.get('/logout', (req, res) => {
   if ((req as any).session) {
     (req as any).session.destroy(() => {});
   }
-  res.json({ ok: true });
+  res.redirect('/');
 });
 
 export default router;

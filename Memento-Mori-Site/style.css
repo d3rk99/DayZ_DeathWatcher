@@ -166,6 +166,16 @@ body {
     min-height: 40px;
 }
 
+.pill-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    background-color: var(--bg-elevated);
+    border: 1px solid var(--border-soft);
+}
+
 .pill-text {
     display: flex;
     flex-direction: column;

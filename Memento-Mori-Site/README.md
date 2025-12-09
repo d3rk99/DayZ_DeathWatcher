@@ -21,7 +21,7 @@ Create a `.env` file under `backend/` (or set environment variables):
 - `SESSION_SECRET` – cookie/session secret
 - `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI` – Discord OAuth2 details
 - `DISCORD_GUILD_ID`, `DISCORD_ADMIN_ROLE_ID` – Discord server + role used to grant admin access on login
-- `DISCORD_ADMIN_IDS` – comma-separated Discord user IDs that should be treated as admins
+- `DISCORD_ADMIN_IDS` – comma-separated Discord user IDs that should be treated as admins (legacy override)
 - `DISCORD_WEBHOOK_URL_patch_notes`, `DISCORD_WEBHOOK_URL_map`, `DISCORD_WEBHOOK_URL_whitelist` – optional webhook URLs
 - `BOT_SYNC_TOKEN` – shared secret token used by the Discord bot to poll `/bot-sync` bridge endpoints
 - `MAP_BASE_DIR`, `GENERATED_DIR`, `UPLOADS_DIR` – legacy locations for base map PNGs, generated composites, and marker uploads
@@ -36,4 +36,4 @@ Map asset flow:
 - Approved placements are composited on the base template found under `maps/template`.
 
 ## Auth & sessions
-Use `/auth/discord` to start the login flow. After successful login, `/auth/me` returns the current user. Admin-only routes require the user role to be `admin` or listed in `DISCORD_ADMIN_IDS`.
+Use `/auth/discord` to start the login flow. After successful login, `/auth/me` returns `{ user: { discordId, username, avatar, isAdmin } }` or `{ user: null }` if not authenticated. Admin-only routes require the user to hold the configured Discord admin role in the configured guild; logout via `/auth/logout`.

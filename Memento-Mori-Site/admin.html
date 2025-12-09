@@ -5,7 +5,7 @@
     <title>Memento Mori – Admin Console</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;600&family=Roboto+Mono:wght@300;400&display=swap" rel="stylesheet">
-    <script src="auth.js" defer></script>
+    <script src="public/js/discord-auth.js" defer></script>
 </head>
 <body data-require-admin="true">
 <header class="site-header">
@@ -111,7 +111,7 @@
     <section class="panel" data-admin-locked>
         <div class="section-inner">
             <h3>Admins only</h3>
-            <p class="muted">Log in with your Discord account to verify you have admin access before opening the console.</p>
+            <p class="muted" data-admin-message>Log in with your Discord account to verify you have admin access before opening the console.</p>
             <button class="btn btn-primary" type="button" onclick="window.location.href='/auth/discord'">Log in with Discord</button>
         </div>
     </section>
