@@ -74,7 +74,7 @@ powershell -NoProfile -Command "\$ErrorActionPreference='SilentlyContinue'; if (
 if errorlevel 1 (
     echo Starting backend server (npm run dev) on port %BACKEND_PORT% ...
     echo A backend window will stay open so any crash output is visible.
-    set "BACKEND_RUN=cd /d \"%BACKEND_DIR%\" && \"%NPM_CMD%\" run dev"
+    set "BACKEND_RUN=cd /d \"%BACKEND_DIR%\" && \"%NPM_CMD%\" run dev ^& echo. ^& echo Backend process exited. Press any key to review the output. ^& pause"
     start "Memento Mori Backend" cmd /k "%BACKEND_RUN%"
     for /l %%I in (1,1,12) do (
         powershell -NoProfile -Command "\$ErrorActionPreference='SilentlyContinue'; if (Test-NetConnection -ComputerName 'localhost' -Port %BACKEND_PORT% -InformationLevel Quiet) { exit 0 } else { exit 1 }" >nul 2>&1
