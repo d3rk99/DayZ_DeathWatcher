@@ -44,6 +44,9 @@ if "%NPM_CMD%"=="" (
 
 set "BACKEND_DIR=Memento-Mori-Site\backend"
 set "BACKEND_PORT=3001"
+
+:: Resolve absolute backend paths to avoid issues with spaces or special characters
+for %%I in ("%BACKEND_DIR%") do set "BACKEND_DIR=%%~fI"
 set "BACKEND_LOG=%BACKEND_DIR%\backend.log"
 
 if not exist "%BACKEND_DIR%\package.json" (
@@ -75,7 +78,7 @@ if errorlevel 1 (
     echo Starting backend server on port %BACKEND_PORT% ...
     if exist "%BACKEND_LOG%" del "%BACKEND_LOG%"
     echo A backend window will stay open so any crash output is visible.
-    start "Memento Mori Backend" cmd /k "cd /d ^\"%BACKEND_DIR%^\" ^&^& ^\"%NPM_CMD%^\" run start ^>^> ^\"%BACKEND_LOG%^\" 2^>^&1"
+    start "Memento Mori Backend" cmd /k "pushd \"%BACKEND_DIR%\" ^&^& call \"%NPM_CMD%\" run start ^>^> \"%BACKEND_LOG%\" 2^>^&1"
     for /l %%I in (1,1,12) do (
         powershell -NoProfile -Command "\$ErrorActionPreference='SilentlyContinue'; if (Test-NetConnection -ComputerName 'localhost' -Port %BACKEND_PORT% -InformationLevel Quiet) { exit 0 } else { exit 1 }" >nul 2>&1
         if not errorlevel 1 goto :backend_ready
