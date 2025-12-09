@@ -2,6 +2,21 @@ const AUTH_STATE = {
   user: null,
 };
 
+const API_BASE =
+  window.__AUTH_API_BASE__ ||
+  (window.location.protocol === 'file:' || window.location.origin === 'null'
+    ? 'http://localhost:3001'
+    : '');
+
+function buildUrl(path) {
+  try {
+    if (API_BASE) return new URL(path, API_BASE).toString();
+  } catch (err) {
+    console.warn('Could not build auth URL', err);
+  }
+  return path;
+}
+
 function buildAuthContainer() {
   const headerInner = document.querySelector('.header-inner');
   if (!headerInner) return null;
@@ -13,14 +28,14 @@ function buildAuthContainer() {
   container.className = 'auth-controls';
   container.setAttribute('data-auth-container', '');
   container.innerHTML = `
-    <a class="btn btn-ghost" href="/auth/discord" data-auth-login>Login with Discord</a>
+    <a class="btn btn-ghost" href="${buildUrl('/auth/discord')}" data-auth-login>Login with Discord</a>
     <div class="auth-pill" data-auth-user hidden>
       <div class="pill-avatar" data-auth-avatar hidden></div>
       <div class="pill-text">
         <span class="pill-name" data-auth-name></span>
         <span class="pill-role" data-auth-role></span>
       </div>
-      <a class="pill-action" href="/auth/logout" data-auth-logout aria-label="Logout">&times;</a>
+      <a class="pill-action" href="${buildUrl('/auth/logout')}" data-auth-logout aria-label="Logout">&times;</a>
     </div>
   `;
 
@@ -110,7 +125,7 @@ function applyAuthState() {
 
 async function fetchCurrentUser() {
   try {
-    const res = await fetch('/auth/me', { credentials: 'same-origin' });
+    const res = await fetch(buildUrl('/auth/me'), { credentials: 'same-origin' });
     if (!res.ok) throw new Error('Failed to fetch user');
     const payload = await res.json();
     AUTH_STATE.user = payload?.user || null;
