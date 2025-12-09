@@ -235,6 +235,34 @@ body.admin-access [data-admin-locked] {
     display: none !important;
 }
 
+.auth-cta {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.auth-cta h3 {
+    margin: 0;
+}
+
+.auth-cta .btn {
+    margin-left: auto;
+}
+
+@media (max-width: 900px) {
+    .auth-cta {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .auth-cta .btn {
+        margin-left: 0;
+        width: 100%;
+        text-align: center;
+    }
+}
+
 /* Give content room under sticky header */
 main {
     padding-top: var(--header-height);

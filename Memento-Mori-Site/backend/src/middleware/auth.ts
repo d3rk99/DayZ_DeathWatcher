@@ -21,6 +21,12 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction) => 
     return res.status(401).json({ message: 'Unauthorized' });
   }
 
+  const isAdmin = sessionUser.isAdmin || user.role === 'admin';
+  if (isAdmin !== sessionUser.isAdmin && (req as any).session) {
+    sessionUser.isAdmin = isAdmin;
+    (req as any).session.user = sessionUser as any;
+  }
+
   sessionUser.userId = user.id;
   (req as any).user = user;
   return next();

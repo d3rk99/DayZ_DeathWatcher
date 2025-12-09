@@ -7,7 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;600&family=Roboto+Mono:wght@300;400&display=swap" rel="stylesheet">
     <script src="public/js/discord-auth.js" defer></script>
 </head>
-<body>
+<body data-require-auth="true">
 <header class="site-header">
     <div class="header-inner">
         <h1 class="site-title">Memento Mori</h1>
@@ -66,7 +66,15 @@
         </div>
     </section>
 
-    <section class="panel">
+    <section class="panel" data-login-prompt>
+        <div class="section-inner auth-cta">
+            <h3>Login required</h3>
+            <p class="muted">Sign in with Discord to view and interact with the community map.</p>
+            <a class="btn btn-ghost" data-auth-login-cta href="auth/discord">Login with Discord</a>
+        </div>
+    </section>
+
+    <section class="panel is-hidden" data-requires-login>
         <div class="section-inner map-grid">
             <div class="map-left">
                 <div class="map-board" id="map-board">

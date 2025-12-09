@@ -82,6 +82,29 @@ function applyAdminGate(user) {
   }
 }
 
+function applyLoginRequirement(user) {
+  const requiresAuth = document.body.dataset.requireAuth === 'true';
+  if (!requiresAuth) return;
+
+  const gatedSections = document.querySelectorAll('[data-requires-login]');
+  const prompts = document.querySelectorAll('[data-login-prompt]');
+  const isAuthed = Boolean(user);
+
+  prompts.forEach((prompt) => {
+    prompt.querySelectorAll('[data-auth-login-cta]').forEach((cta) => {
+      cta.setAttribute('href', buildUrl('/auth/discord'));
+    });
+  });
+
+  gatedSections.forEach((section) => {
+    section.classList.toggle('is-hidden', !isAuthed);
+  });
+
+  prompts.forEach((prompt) => {
+    prompt.classList.toggle('is-hidden', isAuthed);
+  });
+}
+
 function applyAuthState() {
   const container = buildAuthContainer();
   if (!container) return;
@@ -120,6 +143,7 @@ function applyAuthState() {
     hideAdminNav();
   }
 
+  applyLoginRequirement(user);
   applyAdminGate(user);
 }
 

@@ -43,9 +43,8 @@ const getDiscordGuildMember = async (accessToken: string, guildId: string): Prom
 
 const userIsAdmin = (discordId: string, roles: string[] | undefined | null, adminRoleId: string) => {
   const allowlisted = APP_CONFIG.discord.adminIds.includes(discordId);
-  if (allowlisted) return true;
-  if (!roles || !adminRoleId) return false;
-  return roles.includes(adminRoleId);
+  const hasRole = !!adminRoleId && !!roles?.includes(adminRoleId);
+  return allowlisted || hasRole;
 };
 
 const deriveRedirectUriFromRequest = (req: any) => {
@@ -157,9 +156,21 @@ router.get('/discord/callback', async (req, res) => {
 });
 
 router.get('/me', (req, res) => {
-  const user = (req as any).session?.user as SessionUser | undefined;
-  if (!user) return res.json({ user: null });
-  res.json({ user });
+  const sessionUser = (req as any).session?.user as SessionUser | undefined;
+  if (!sessionUser) return res.json({ user: null });
+
+  const dbUser = db.prepare('SELECT role FROM users WHERE discord_id = ?').get(sessionUser.discordId);
+  if (!dbUser) {
+    return res.json({ user: null });
+  }
+
+  const isAdmin = sessionUser.isAdmin || dbUser.role === 'admin';
+  if (isAdmin !== sessionUser.isAdmin && (req as any).session) {
+    sessionUser.isAdmin = isAdmin;
+    (req as any).session.user = sessionUser as any;
+  }
+
+  res.json({ user: sessionUser });
 });
 
 router.get('/logout', (req, res) => {
