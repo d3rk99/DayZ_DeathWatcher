@@ -52,7 +52,7 @@ if not exist "%BACKEND_DIR%\package.json" (
 
 echo Preparing backend server dependencies...
 pushd "%BACKEND_DIR%"
-"%NPM_CMD%" install --no-fund --no-audit
+call "%NPM_CMD%" install --no-fund --no-audit
 if errorlevel 1 (
     echo Failed to install backend dependencies.
     popd
@@ -60,7 +60,7 @@ if errorlevel 1 (
 )
 
 echo Building backend server...
-"%NPM_CMD%" run build
+call "%NPM_CMD%" run build
 if errorlevel 1 (
     echo Failed to build backend server.
     popd
