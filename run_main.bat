@@ -25,6 +25,7 @@ if "!PY_CMD!"=="" (
 echo Using Python command: !PY_CMD!
 
 set "VENV_DIR=.venv"
+set "BACKEND_DIR=Memento-Mori-Site\backend"
 
 :: Create the virtual environment if it does not exist
 if not exist "%VENV_DIR%\Scripts\python.exe" (
@@ -41,6 +42,39 @@ call "%VENV_DIR%\Scripts\activate"
 if errorlevel 1 (
     echo Failed to activate virtual environment.
     exit /b 1
+)
+
+:: Start the backend dev server if npm is available
+set "NPM_CMD="
+for %%N in (npm.cmd npm.exe npm) do (
+    where %%N >nul 2>&1
+    if not errorlevel 1 (
+        set "NPM_CMD=%%N"
+        goto :found_npm
+    )
+)
+
+:found_npm
+if not "!NPM_CMD!"=="" (
+    if exist "%BACKEND_DIR%" (
+        pushd "%BACKEND_DIR%"
+        if not exist "node_modules" (
+            echo Installing backend dependencies in %BACKEND_DIR% ...
+            "!NPM_CMD!" install
+            if errorlevel 1 (
+                echo Failed to install backend dependencies.
+                popd
+                exit /b 1
+            )
+        )
+        echo Starting backend dev server with npm run dev ...
+        start "Memento Mori Backend" "!NPM_CMD!" run dev
+        popd
+    ) else (
+        echo Backend directory not found: %BACKEND_DIR%
+    )
+) else (
+    echo npm was not found on PATH; skipping backend dev server startup.
 )
 
 :: Install dependencies
