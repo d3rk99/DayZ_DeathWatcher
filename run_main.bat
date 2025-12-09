@@ -48,11 +48,9 @@ if "%NPM_CMD%"=="" (
 
 set "BACKEND_DIR=Memento-Mori-Site\backend"
 set "BACKEND_PORT=3001"
-set "BACKEND_START=%BACKEND_DIR%\start_backend.ps1"
 
 :: Resolve absolute backend paths to avoid issues with spaces or special characters
 for %%I in ("%BACKEND_DIR%") do set "BACKEND_DIR=%%~fI"
-set "BACKEND_LOG=%BACKEND_DIR%\backend.log"
 
 if not exist "%BACKEND_DIR%\package.json" (
     echo Backend directory not found at %BACKEND_DIR%.
@@ -69,42 +67,21 @@ if errorlevel 1 (
     set "EXIT_CODE=1"
     goto :finish
 )
-
-echo Building backend server...
-call "%NPM_CMD%" run build
-if errorlevel 1 (
-    echo Failed to build backend server.
-    popd
-    set "EXIT_CODE=1"
-    goto :finish
-)
 popd
 
 :: Start the backend server in dev mode if it is not already listening
 powershell -NoProfile -Command "\$ErrorActionPreference='SilentlyContinue'; if (Test-NetConnection -ComputerName 'localhost' -Port %BACKEND_PORT% -InformationLevel Quiet) { exit 0 } else { exit 1 }" >nul 2>&1
 if errorlevel 1 (
     echo Starting backend server (npm run dev) on port %BACKEND_PORT% ...
-    if exist "%BACKEND_LOG%" del "%BACKEND_LOG%"
-    (
-        echo Set-Location -Path "%BACKEND_DIR%"
-        echo Write-Host "Backend log at %BACKEND_LOG%"
-        echo Write-Host "Output below is also written to the log."
-        echo $npmCmd = "%NPM_CMD%"
-        echo ^& $npmCmd run dev 2^^>^^&1 ^| Tee-Object -FilePath "%BACKEND_LOG%" -Append
-        echo $code = $LASTEXITCODE
-        echo Write-Host ^("Backend process exited with code " ^+ $code^\)
-        echo Write-Host "Press Enter to close this window..."
-        echo [void][System.Console]::ReadLine^(^)
-    ) > "%BACKEND_START%"
     echo A backend window will stay open so any crash output is visible.
-    start "Memento Mori Backend" powershell -NoProfile -NoExit -File "%BACKEND_START%"
+    set "BACKEND_RUN=cd /d \"%BACKEND_DIR%\" && \"%NPM_CMD%\" run dev"
+    start "Memento Mori Backend" cmd /k "%BACKEND_RUN%"
     for /l %%I in (1,1,12) do (
         powershell -NoProfile -Command "\$ErrorActionPreference='SilentlyContinue'; if (Test-NetConnection -ComputerName 'localhost' -Port %BACKEND_PORT% -InformationLevel Quiet) { exit 0 } else { exit 1 }" >nul 2>&1
         if not errorlevel 1 goto :backend_ready
         timeout /t 1 >nul
     )
-    echo Backend server failed to start. Showing recent backend log output...
-    powershell -NoProfile -Command "if (Test-Path -Path ^\"%BACKEND_LOG%^\") { Get-Content -Path ^\"%BACKEND_LOG%^\" -Tail 50 } else { Write-Host 'No backend log was created.' }"
+    echo Backend server failed to start. Check the backend window for error details.
     set "EXIT_CODE=1"
     goto :finish
 ) else (
