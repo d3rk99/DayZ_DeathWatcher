@@ -24,6 +24,58 @@ if "!PY_CMD!"=="" (
 
 echo Using Python command: !PY_CMD!
 
+:: Locate npm for the website backend
+set "NPM_CMD="
+for %%N in (npm.cmd npm.exe npm) do (
+    where %%N >nul 2>&1
+    if not errorlevel 1 (
+        set "NPM_CMD=%%N"
+        goto :found_npm
+    )
+)
+
+:found_npm
+if "!NPM_CMD!"=="" (
+    echo Node.js and npm are required to run the backend API but were not found on PATH.
+    exit /b 1
+)
+
+set "BACKEND_DIR=Memento-Mori-Site\backend"
+set "BACKEND_PORT=3001"
+
+if not exist "%BACKEND_DIR%\package.json" (
+    echo Backend directory not found at %BACKEND_DIR%.
+    exit /b 1
+)
+
+echo Preparing backend server dependencies...
+pushd "%BACKEND_DIR%"
+"!NPM_CMD!" install --no-fund --no-audit
+if errorlevel 1 (
+    echo Failed to install backend dependencies.
+    popd
+    exit /b 1
+)
+
+echo Building backend server...
+"!NPM_CMD!" run build
+if errorlevel 1 (
+    echo Failed to build backend server.
+    popd
+    exit /b 1
+)
+popd
+
+:: Start the backend server if it is not already listening
+powershell -NoProfile -Command "if ((Test-NetConnection -ComputerName 'localhost' -Port %BACKEND_PORT% -WarningAction SilentlyContinue).TcpTestSucceeded) { exit 0 } else { exit 1 }" >nul 2>&1
+if errorlevel 1 (
+    echo Starting backend server on port %BACKEND_PORT% ...
+    start "Memento Mori Backend" cmd /c "cd /d \"%BACKEND_DIR%\" ^&^& \"!NPM_CMD!\" run start"
+    timeout /t 5 >nul
+) else (
+    echo Backend server already running on port %BACKEND_PORT%.
+)
+
 set "VENV_DIR=.venv"
 
 :: Create the virtual environment if it does not exist
