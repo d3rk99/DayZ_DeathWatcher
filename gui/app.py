@@ -231,14 +231,11 @@ class GuiApplication:
             return None, None
         line = message.strip()
         lowered = line.lower()
-        if lowered.startswith("[session]"):
-            if " disconnected " in lowered:
-                tag = "disconnect"
-            elif " connected " in lowered:
-                tag = "connect"
-            else:
-                tag = None
-            return line, tag
+        connection = self._format_connection_line(line)
+        if connection:
+            summary, status = connection
+            tag = "disconnect" if status == "disconnected" else "connect"
+            return summary, tag
         if "(id=" in line:
             if any(token in lowered for token in ("disconnected", "has been disconnected", "logged off", "has left")):
                 summary = self._format_session_line(line, "disconnected")
@@ -292,6 +289,31 @@ class GuiApplication:
         guid = match.group("guid").strip()
         timestamp_part = line.split("|", 1)[0].strip()
         return f"[{timestamp_part} - {player} ({guid}) {verb}]"
+
+    def _format_connection_line(self, line: str) -> Optional[tuple[str, str]]:
+        """Return a simplified connection message and status, if applicable."""
+
+        simple_match = re.search(
+            r"^\[\[\d+\]\s+(?P<time>\d{2}:\d{2}:\d{2})\s+-\s+(?P<name>.+?)\s+\([^\)]*\)\s+(?P<status>connected|disconnected)\]$",
+            line,
+            re.IGNORECASE,
+        )
+        if simple_match:
+            name = simple_match.group("name").strip()
+            status = simple_match.group("status").lower()
+            return f"{name} {status.capitalize()}", status
+
+        session_match = re.search(
+            r"^\[session\]\s*(?P<name>.+?)\s+\([^\)]*\)\s+(?P<status>connected|disconnected)\b",
+            line,
+            re.IGNORECASE,
+        )
+        if session_match:
+            name = session_match.group("name").strip()
+            status = session_match.group("status").lower()
+            return f"{name} {status.capitalize()}", status
+
+        return None
 
     # region setup gating
     def on_ready(self, callback: Callable[[], None]) -> None:
