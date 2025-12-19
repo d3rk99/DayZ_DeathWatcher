@@ -1,4 +1,3 @@
-import glob
 import json
 import os
 import threading
@@ -6,6 +5,8 @@ import time
 import traceback
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple
+
+from dayz_dev_tools import guid as GUID
 
 DEFAULT_CACHE_CONTENT = {
     "prev_log_read": {"line": ""},
@@ -263,12 +264,18 @@ class DayZDeathWatcher:
         except json.JSONDecodeError:
             return None
 
-    @staticmethod
-    def _get_id_from_log(log_entry: dict) -> str:
+    def _get_id_from_log(self, log_entry: dict) -> str:
         steam_id = log_entry.get("player", {}).get("steamId")
         if not steam_id:
             return ""
-        return str(steam_id)
+
+        try:
+            return str(GUID.guid_for_steamid64(str(steam_id)))
+        except Exception as exc:
+            self._log(
+                f"Failed to convert steam ID {steam_id} to GUID; skipping ban entry. ({exc})"
+            )
+            return ""
 
     @staticmethod
     def _get_lifetime_seconds(log_entry: dict) -> Optional[float]:
@@ -342,11 +349,11 @@ def main() -> None:
     try:
         watcher.run_blocking()
     except KeyboardInterrupt:
-        self._log("Closing program...")
+        print("Closing program...")
         time.sleep(1.0)
     except Exception:
-        self._log("Ran into an unexpected exception. Printing traceback below:\n")
-        self._log(traceback.format_exc())
+        print("Ran into an unexpected exception. Printing traceback below:\n")
+        print(traceback.format_exc())
         input("Press enter to close this window.")
 
 

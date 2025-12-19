@@ -10,8 +10,8 @@ coordinates temporary bans whenever the death watcher script detects a death eve
   the blacklist when they leave voice.
 - **Death-driven bans** – the `death_watcher/new_dayz_death_watcher.py` script tails the latest DayZ
   `.ljson` log in `profiles/DetailedLogs`, looks for `event: "PLAYER_DEATH"` entries, and adds the
-  Steam64 ID from `player.steamId` to `death_watcher/deaths.txt`. The bot monitors that file and
-  moves users to a "dead" state for `wait_time_new_life_seconds`.
+  player's DayZ GUID (derived from `player.steamId`) to `death_watcher/deaths.txt`. The bot monitors
+  that file and moves users to a "dead" state for `wait_time_new_life_seconds`.
 - **Discord slash commands** – administrators can inspect or delete entries with `/userdata` and
   `/delete_user_from_database`, while players self-register via `/validatesteamid` (restricted to the
   configured validation channel).
@@ -116,7 +116,8 @@ dropping new cogs in that folder.
 The `death_watcher/new_dayz_death_watcher.py` script can run on the same host as the DayZ server. It
 looks for the most recent `.ljson` file in `path_to_logs_directory` (for example
 `E:/DayZ MM/servers/MementoMori/profiles/DetailedLogs`), reads each JSON log entry, and when it sees
-`"event": "PLAYER_DEATH"` it writes the embedded `player.steamId` to `deaths.txt`. Start it in a
+`"event": "PLAYER_DEATH"` it writes the player's DayZ GUID (converted from `player.steamId`) to
+`deaths.txt`. Start it in a
 dedicated console:
 ```bash
 cd death_watcher
