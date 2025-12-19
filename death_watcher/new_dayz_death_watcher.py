@@ -80,7 +80,6 @@ class DayZDeathWatcher:
             self._log("Waiting for DayZ log files to appear...\n")
         self._sleep(1)
 
-        log_number = 0
         while not self._stop_event.is_set():
             try:
                 latest_file = self._get_latest_file()
@@ -107,15 +106,10 @@ class DayZDeathWatcher:
                     self.current_cache["log_label"] = log_label
 
             new_lines = self._read_new_lines(latest_file, logs)
-            if self.verbose_logs and new_lines:
-                self._log(f"Found {len(new_lines)} new logs")
-
             for line in new_lines:
                 parsed_log = self._parse_log_line(line)
-                if self.verbose_logs:
-                    self._log(f"[{log_number}] {line}")
-
-                if parsed_log and self._is_death_log(parsed_log):
+                is_death_log = parsed_log and self._is_death_log(parsed_log)
+                if is_death_log:
                     player_id = self._get_id_from_log(parsed_log)
                     lifetime_seconds = self._get_lifetime_seconds(parsed_log)
                     if self.verbose_logs:
@@ -133,10 +127,6 @@ class DayZDeathWatcher:
 
                 self.current_cache["prev_log_read"]["line"] = line
                 self._update_cache()
-                log_number += 1
-
-            if self.verbose_logs and new_lines:
-                self._log("")
 
             self._try_to_ban_players()
             self._sleep(self.search_logs_interval)
@@ -222,8 +212,6 @@ class DayZDeathWatcher:
         assert self.path_to_cache is not None
         with self.path_to_cache.open("w", encoding="utf-8") as json_file:
             json.dump(self.current_cache, json_file, indent=4)
-        if self.verbose_logs:
-            self._log(f"Updated cache file:\n    {self.current_cache}")
 
     # ------------------------------------------------------------------
     # log helpers
