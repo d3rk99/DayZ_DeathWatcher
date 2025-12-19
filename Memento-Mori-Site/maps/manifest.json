@@ -1,9 +1,0 @@
-{
-  "baseMaps": [
-    { "id": "current", "name": "Latest composite", "path": "maps/current/karta_co.png" },
-    { "id": "template", "name": "Template", "path": "maps/template/karta_co.png" }
-  ],
-  "markers": [
-    { "id": "test", "name": "Test marker", "path": "maps/overlays/Test.png" }
-  ]
-}

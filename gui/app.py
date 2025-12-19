@@ -8,20 +8,18 @@ import tkinter as tk
 import tkinter.ttk as ttk
 from typing import Callable, Optional
 
-from gui.analytics import AnalyticsPane
 from gui.config_editor import ConfigEditor
 from gui.console_pane import ConsolePane
 from gui.notification_pane import NotificationPane
 from gui.path_setup import BotSetupDialog, PathSetupDialog
 from gui.sidebar import SidebarPane
 from gui.theme import ThemePalette, get_theme
-from services.analytics_service import AnalyticsManager
 from services.config_manager import ConfigManager
 from services.notification_manager import NotificationManager
 
 
 class GuiApplication:
-    """Tkinter front-end that visualizes bot output and server analytics."""
+    """Tkinter front-end that visualizes bot output and server activity."""
 
     def __init__(self, *, config_path: str = "config.json", on_close=None) -> None:
         self.root = tk.Tk()
@@ -44,7 +42,6 @@ class GuiApplication:
 
         self.config_manager = ConfigManager(config_path)
         self._needs_full_setup = self.config_manager.needs_initial_setup
-        self.analytics_manager = AnalyticsManager()
         self.notification_manager = NotificationManager(
             self.config_manager.data, on_status=self.append_main_log
         )
@@ -90,15 +87,10 @@ class GuiApplication:
             title="Death Watcher",
             description=(
                 "Watcher log that tracks deaths from your DayZ server for "
-                "revival timers and analytics."
+                "revival timers."
             ),
         )
         self._death_console.grid(row=0, column=1, sticky="nsew", padx=(5, 10), pady=10)
-
-        analytics_tab = tk.Frame(notebook)
-        notebook.add(analytics_tab, text="Analytics")
-        self._analytics = AnalyticsPane(analytics_tab, self.analytics_manager)
-        self._analytics.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
 
         notifications_tab = NotificationPane(
             notebook, self.config_manager, self.notification_manager
@@ -167,7 +159,7 @@ class GuiApplication:
 
     def _poll_logs(self) -> None:
         self._drain_queue(self.main_queue, self._main_console)
-        self._drain_queue(self.death_queue, self._death_console, analytics=True)
+        self._drain_queue(self.death_queue, self._death_console)
         self._process_counter_updates()
         self.root.after(100, self._poll_logs)
 
@@ -175,8 +167,6 @@ class GuiApplication:
         self,
         q: "queue.Queue[str | tuple[str, ...]]",
         console: ConsolePane,
-        *,
-        analytics: bool = False,
     ) -> None:
         while not q.empty():
             payload = q.get_nowait()
@@ -188,12 +178,10 @@ class GuiApplication:
                     tag = None
             else:
                 message = payload
-                analytics_line = payload if analytics else None
+                analytics_line = None
                 tag = None
             raw_line = analytics_line or message
             console.append(message, tag=tag)
-            if analytics and analytics_line and self.analytics_manager.record_line(analytics_line):
-                self._analytics.refresh()
             self.notification_manager.handle_log_line(raw_line)
 
     def _process_counter_updates(self) -> None:
@@ -221,8 +209,6 @@ class GuiApplication:
             self._death_console.apply_theme(palette)
         if hasattr(self, "_sidebar"):
             self._sidebar.apply_theme(palette)
-        if hasattr(self, "_analytics"):
-            self._analytics.apply_theme(palette)
         if hasattr(self, "_notifications"):
             self._notifications.apply_theme(palette)
 
@@ -231,14 +217,11 @@ class GuiApplication:
             return None, None
         line = message.strip()
         lowered = line.lower()
-        if lowered.startswith("[session]"):
-            if " disconnected " in lowered:
-                tag = "disconnect"
-            elif " connected " in lowered:
-                tag = "connect"
-            else:
-                tag = None
-            return line, tag
+        connection = self._format_connection_line(line)
+        if connection:
+            summary, status = connection
+            tag = "disconnect" if status == "disconnected" else "connect"
+            return summary, tag
         if "(id=" in line:
             if any(token in lowered for token in ("disconnected", "has been disconnected", "logged off", "has left")):
                 summary = self._format_session_line(line, "disconnected")
@@ -292,6 +275,31 @@ class GuiApplication:
         guid = match.group("guid").strip()
         timestamp_part = line.split("|", 1)[0].strip()
         return f"[{timestamp_part} - {player} ({guid}) {verb}]"
+
+    def _format_connection_line(self, line: str) -> Optional[tuple[str, str]]:
+        """Return a simplified connection message and status, if applicable."""
+
+        simple_match = re.search(
+            r"^\[\[\d+\]\s+(?P<time>\d{2}:\d{2}:\d{2})\s+-\s+(?P<name>.+?)\s+\([^\)]*\)\s+(?P<status>connected|disconnected)\]$",
+            line,
+            re.IGNORECASE,
+        )
+        if simple_match:
+            name = simple_match.group("name").strip()
+            status = simple_match.group("status").lower()
+            return f"{name} {status.capitalize()}", status
+
+        session_match = re.search(
+            r"^\[session\]\s*(?P<name>.+?)\s+\([^\)]*\)\s+(?P<status>connected|disconnected)\b",
+            line,
+            re.IGNORECASE,
+        )
+        if session_match:
+            name = session_match.group("name").strip()
+            status = session_match.group("status").lower()
+            return f"{name} {status.capitalize()}", status
+
+        return None
 
     # region setup gating
     def on_ready(self, callback: Callable[[], None]) -> None:

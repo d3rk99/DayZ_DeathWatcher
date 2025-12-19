@@ -40,7 +40,7 @@
             "username": "willis007",
             "steam_id": "76561198076842142",
             "guid": "LreMpmgPrz9j_BJ9GwNO1SOb1s_5TjDn777XBpeKYeQ=",
-            "is_alive": 0,
+            "is_alive": 1,
             "time_of_death": 1764537691,
             "can_revive": 0,
             "is_admin": 0
@@ -940,7 +940,7 @@
             "username": "bananacars",
             "steam_id": "76561198848887138",
             "guid": "WArWbZKq5hZ2uMn_ayIb_ZTwkv9huNCw9CTuVuO4jZA=",
-            "is_alive": 0,
+            "is_alive": 1,
             "time_of_death": 1764456496,
             "can_revive": 0,
             "is_admin": 0
@@ -1327,7 +1327,7 @@
             "username": "dirtyernie227",
             "steam_id": "76561199165652669",
             "guid": "Dtyw6GLt5AOPWdx1PJ6oMRblElSk-cL_hJpptFTkex0=",
-            "is_alive": 0,
+            "is_alive": 1,
             "time_of_death": 1764562377,
             "can_revive": 0,
             "is_admin": 0
@@ -1552,7 +1552,7 @@
             "username": "dna_upper162",
             "steam_id": "76561199001109965",
             "guid": "rToRdVVPDuBSd-2htPtlfxFAcNN-TuJkZ1-wFNfk8lA=",
-            "is_alive": 0,
+            "is_alive": 1,
             "time_of_death": 1764450036,
             "can_revive": 0,
             "is_admin": 0
@@ -1597,7 +1597,7 @@
             "username": "oskar91pl",
             "steam_id": "76561198193224259",
             "guid": "_a9NuaMUMMT4eBR6wQbWN0W6N6nE16xd7VzSFgK9U3c=",
-            "is_alive": 0,
+            "is_alive": 1,
             "time_of_death": 1764182482,
             "can_revive": 0,
             "is_admin": 0
@@ -1624,7 +1624,7 @@
             "username": "ingalbesto",
             "steam_id": "76561198006497841",
             "guid": "lgAXdrefzLXMd5WBPm708RMwFnsrOwgaegeH9ivQUXk=",
-            "is_alive": 0,
+            "is_alive": 1,
             "time_of_death": 1764341691,
             "can_revive": 0,
             "is_admin": 0
