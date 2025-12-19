@@ -1,13 +1,9 @@
 {
-  "path_to_logs_directory" : "E:/DayZ MM/servers/MementoMori/profiles",
-  "path_to_bans" : "E:/DayZ MM/servers/MementoMori/ban.txt",
+  "path_to_logs_directory" : "../../profiles",
+  "path_to_bans" : "./deaths.txt",
   "path_to_cache" : "./death_watcher_cache.json",
-  "userdata_db_path" : "../userdata_db.json",
   "death_cues" : ["killed by", "committed suicide", "bled out", "died.", "(DEAD)", "was brutally murdered by that psycho Timmy"],
   "ban_delay" : 5,
   "search_logs_interval" : 1,
-  "verbose_logs" : 1,
-  "track_playtime" : 1,
-  "playtime_report_url" : "http://localhost:3001/bot-sync/playtime",
-  "playtime_bridge_token" : "memento-mori-bot-bridge"
+  "verbose_logs" : 1
 }

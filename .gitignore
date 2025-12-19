@@ -1,9 +1,0 @@
-__pycache__/
-*.pyc
-.cache.json
-cache.json
-userdata_db.json
-ban.txt
-whitelist.txt
-bot.log
-.env

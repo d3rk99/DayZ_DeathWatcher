@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import tkinter as tk
 from tkinter import filedialog, messagebox
-from typing import List, Optional, Tuple
+from typing import List
 
 from gui.theme import LIGHT_THEME, ThemePalette
 
@@ -14,7 +14,7 @@ class ConsolePane(tk.Frame):
         super().__init__(master, **kwargs)
         self.title = title
         self.description = description
-        self._log_buffer: List[Tuple[str, Optional[str]]] = []
+        self._log_buffer: List[str] = []
         self._auto_scroll = tk.BooleanVar(value=True)
         self._filter_var = tk.StringVar()
         self._cleared_index = 0
@@ -67,28 +67,26 @@ class ConsolePane(tk.Frame):
         self._scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self._text.configure(yscrollcommand=self._scrollbar.set)
 
-    def append(self, message: str, *, tag: Optional[str] = None) -> None:
+    def append(self, message: str) -> None:
         if not message:
             return
         if not message.endswith("\n"):
             message += "\n"
         lines = message.splitlines(True)
-        for line in lines:
-            self._log_buffer.append((line, tag))
+        self._log_buffer.extend(lines)
         if self._filter_active:
             self._refresh_display()
         else:
-            self._append_visible([(line, tag) for line in lines])
+            self._append_visible("".join(lines))
 
     @property
     def _filter_active(self) -> bool:
         text = self._filter_var.get().strip()
         return bool(text and text != "Filter output…")
 
-    def _append_visible(self, lines: List[Tuple[str, Optional[str]]]) -> None:
+    def _append_visible(self, text: str) -> None:
         self._text.configure(state="normal")
-        for text, tag in lines:
-            self._text.insert(tk.END, text, tag)
+        self._text.insert(tk.END, text)
         if self._auto_scroll.get():
             self._text.see(tk.END)
         self._text.configure(state="disabled")
@@ -100,12 +98,11 @@ class ConsolePane(tk.Frame):
         lines = self._log_buffer[self._cleared_index :]
         if filter_text:
             lower = filter_text.lower()
-            lines = [(line, tag) for line, tag in lines if lower in line.lower()]
+            lines = [line for line in lines if lower in line.lower()]
         self._text.configure(state="normal")
         self._text.delete("1.0", tk.END)
         if lines:
-            for text, tag in lines:
-                self._text.insert(tk.END, text, tag)
+            self._text.insert(tk.END, "".join(lines))
         if self._auto_scroll.get():
             self._text.see(tk.END)
         self._text.configure(state="disabled")
@@ -128,7 +125,7 @@ class ConsolePane(tk.Frame):
             return
         try:
             visible_text = self._text.get("1.0", tk.END)
-            full_buffer = "".join([text for text, _tag in self._log_buffer])
+            full_buffer = "".join(self._log_buffer)
             if messagebox.askyesno("Save Log", "Save the full buffer instead of the visible text?"):
                 to_write = full_buffer
             else:
@@ -184,13 +181,3 @@ class ConsolePane(tk.Frame):
         )
         self._scrollbar.configure(bg=theme.panel_bg, troughcolor=theme.bg)
         self._update_filter_entry_colors()
-        self._configure_tags()
-
-    def _configure_tags(self) -> None:
-        tags = {
-            "death": "#ef4444",  # red
-            "connect": "#a855f7",  # purple
-            "disconnect": "#fb923c",  # orange
-        }
-        for name, color in tags.items():
-            self._text.tag_configure(name, foreground=color)
