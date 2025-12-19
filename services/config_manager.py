@@ -33,11 +33,6 @@ def _default_config() -> Dict[str, Any]:
         "error_dump_mention_tag": "",
         "wait_time_new_life_seconds": 1209600,
         "wait_time_new_life_seconds_season_pass": 300,
-        "restart_notification_sound_path": "",
-        "restart_notification_triggers": [],
-        "bot_sync_api_url": "",
-        "bot_sync_token": "",
-        "leaderboard_api_url": "",
     }
 
 
@@ -71,9 +66,7 @@ class ConfigManager:
                 self._data = _default_config()
                 self._is_new_file = True
             else:
-                merged = _default_config()
-                merged.update(json.loads(self.path.read_text()))
-                self._data = merged
+                self._data = json.loads(self.path.read_text())
                 self._is_new_file = False
         self._notify_listeners()
         return self.data

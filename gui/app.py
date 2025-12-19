@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import queue
-from collections import deque
-import re
 import threading
 import tkinter as tk
 import tkinter.ttk as ttk
@@ -11,13 +9,11 @@ from typing import Callable, Optional
 from gui.analytics import AnalyticsPane
 from gui.config_editor import ConfigEditor
 from gui.console_pane import ConsolePane
-from gui.notification_pane import NotificationPane
 from gui.path_setup import BotSetupDialog, PathSetupDialog
 from gui.sidebar import SidebarPane
 from gui.theme import ThemePalette, get_theme
 from services.analytics_service import AnalyticsManager
 from services.config_manager import ConfigManager
-from services.notification_manager import NotificationManager
 
 
 class GuiApplication:
@@ -38,16 +34,10 @@ class GuiApplication:
         self._ready_callbacks: list[Callable[[], None]] = []
         self._path_dialog: Optional[PathSetupDialog] = None
         self._bot_dialog: Optional[BotSetupDialog] = None
-        self._recent_death_logs: deque[str] = deque()
-        self._recent_death_limit = 400
-        self._recent_death_seen: set[str] = set()
 
         self.config_manager = ConfigManager(config_path)
         self._needs_full_setup = self.config_manager.needs_initial_setup
         self.analytics_manager = AnalyticsManager()
-        self.notification_manager = NotificationManager(
-            self.config_manager.data, on_status=self.append_main_log
-        )
 
         self._build_ui()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -100,12 +90,6 @@ class GuiApplication:
         self._analytics = AnalyticsPane(analytics_tab, self.analytics_manager)
         self._analytics.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
 
-        notifications_tab = NotificationPane(
-            notebook, self.config_manager, self.notification_manager
-        )
-        notebook.add(notifications_tab, text="Notifications")
-        self._notifications = notifications_tab
-
         self._apply_theme()
 
     def _create_menus(self) -> None:
@@ -135,32 +119,16 @@ class GuiApplication:
 
     def _on_config_update(self, data: dict) -> None:
         self._sidebar.reload_paths(data)
-        if hasattr(self, "_notifications"):
-            self._notifications.reload(data)
-        self.notification_manager.update_config(data)
         self._ensure_initial_paths()
 
     def append_main_log(self, message: str) -> None:
         self.main_queue.put(message)
 
     def append_death_log(self, message: str) -> None:
-        formatted, tag = self._format_death_log(message)
+        formatted = self._format_death_log(message)
         if not formatted:
             return
-        if not self._remember_death_log(formatted):
-            return
-        self.death_queue.put((formatted, message, tag))
-
-    def _remember_death_log(self, line: str) -> bool:
-        if line in self._recent_death_seen:
-            return False
-        self._recent_death_logs.append(line)
-        self._recent_death_seen.add(line)
-        if len(self._recent_death_logs) > self._recent_death_limit:
-            oldest = self._recent_death_logs.popleft()
-            if oldest != line:
-                self._recent_death_seen.discard(oldest)
-        return True
+        self.death_queue.put((formatted, message))
 
     def handle_death_counter_update(self, count: int, last_reset: int) -> None:
         self.counter_queue.put((count, last_reset))
@@ -173,7 +141,7 @@ class GuiApplication:
 
     def _drain_queue(
         self,
-        q: "queue.Queue[str | tuple[str, ...]]",
+        q: "queue.Queue[str | tuple[str, str]]",
         console: ConsolePane,
         *,
         analytics: bool = False,
@@ -181,20 +149,13 @@ class GuiApplication:
         while not q.empty():
             payload = q.get_nowait()
             if isinstance(payload, tuple):
-                if len(payload) == 3:
-                    message, analytics_line, tag = payload
-                else:
-                    message, analytics_line = payload
-                    tag = None
+                message, analytics_line = payload
             else:
                 message = payload
                 analytics_line = payload if analytics else None
-                tag = None
-            raw_line = analytics_line or message
-            console.append(message, tag=tag)
+            console.append(message)
             if analytics and analytics_line and self.analytics_manager.record_line(analytics_line):
                 self._analytics.refresh()
-            self.notification_manager.handle_log_line(raw_line)
 
     def _process_counter_updates(self) -> None:
         while not self.counter_queue.empty():
@@ -223,29 +184,12 @@ class GuiApplication:
             self._sidebar.apply_theme(palette)
         if hasattr(self, "_analytics"):
             self._analytics.apply_theme(palette)
-        if hasattr(self, "_notifications"):
-            self._notifications.apply_theme(palette)
 
-    def _format_death_log(self, message: str) -> tuple[Optional[str], Optional[str]]:
+    def _format_death_log(self, message: str) -> Optional[str]:
         if not message:
-            return None, None
+            return None
         line = message.strip()
         lowered = line.lower()
-        if lowered.startswith("[session]"):
-            if " disconnected " in lowered:
-                tag = "disconnect"
-            elif " connected " in lowered:
-                tag = "connect"
-            else:
-                tag = None
-            return line, tag
-        if "(id=" in line:
-            if any(token in lowered for token in ("disconnected", "has been disconnected", "logged off", "has left")):
-                summary = self._format_session_line(line, "disconnected")
-                return summary, "disconnect"
-            if any(token in lowered for token in ("connected", "has joined", "logged in")):
-                summary = self._format_session_line(line, "connected")
-                return summary, "connect"
         cues = (
             "killed",
             "committed suicide",
@@ -257,9 +201,9 @@ class GuiApplication:
             "was brutally murdered by that psycho timmy",
         )
         if not any(cue in lowered for cue in cues):
-            return None, None
+            return None
         if "|" not in line or "(id=" not in line:
-            return f"[{line}]", "death"
+            return f"[{line}]"
         timestamp_part, remainder = line.split("|", 1)
         timestamp_part = timestamp_part.strip()
         remainder = remainder.strip()
@@ -281,17 +225,8 @@ class GuiApplication:
                 date_part = text
         parts = [value for value in (date_part, player, cause_fragment, time_part) if value]
         if not parts:
-            return None, None
-        return "[" + " - ".join(parts) + "]", "death"
-
-    def _format_session_line(self, line: str, verb: str) -> Optional[str]:
-        match = re.search(r'Player "(?P<name>[^"]+)".*\(id=(?P<guid>[^\)]+)\)', line)
-        if not match:
             return None
-        player = match.group("name").strip()
-        guid = match.group("guid").strip()
-        timestamp_part = line.split("|", 1)[0].strip()
-        return f"[{timestamp_part} - {player} ({guid}) {verb}]"
+        return "[" + " - ".join(parts) + "]"
 
     # region setup gating
     def on_ready(self, callback: Callable[[], None]) -> None:
