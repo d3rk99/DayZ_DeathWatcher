@@ -1,4 +1,3 @@
-import glob
 import json
 import os
 import threading
@@ -7,26 +6,21 @@ import traceback
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple
 
+from dayz_dev_tools import guid as GUID
+
 DEFAULT_CACHE_CONTENT = {
     "prev_log_read": {"line": ""},
     "log_label": "2022-01-01 at 00:00:00",
 }
 
 DEFAULT_CONFIG = {
-    "path_to_logs_directory": "../../profiles",
+    "path_to_logs_directory": "E:/DayZ MM/servers/MementoMori/profiles/DetailedLogs",
     "path_to_bans": "./deaths.txt",
     "path_to_cache": "./death_watcher_cache.json",
-    "death_cues": [
-        "killed by",
-        "committed suicide",
-        "bled out",
-        "died.",
-        "(DEAD)",
-        "was brutally murdered by that psycho Timmy",
-    ],
     "ban_delay": 5,
     "search_logs_interval": 1,
     "verbose_logs": 1,
+    "death_event_name": "PLAYER_DEATH",
 }
 
 
@@ -53,7 +47,7 @@ class DayZDeathWatcher:
         self.logs_directory: Optional[Path] = None
         self.path_to_bans: Optional[Path] = None
         self.path_to_cache: Optional[Path] = None
-        self.death_cues: List[str] = []
+        self.death_event_name: str = "PLAYER_DEATH"
         self.search_logs_interval: float = 1.0
         self.verbose_logs: bool = False
         self.ban_delay: float = 5.0
@@ -86,12 +80,11 @@ class DayZDeathWatcher:
             self._log("Waiting for DayZ log files to appear...\n")
         self._sleep(1)
 
-        log_number = 0
         while not self._stop_event.is_set():
             try:
                 latest_file = self._get_latest_file()
             except Exception as exc:
-                self._log(f"Unable to locate .adm logs: {exc}")
+                self._log(f"Unable to locate .ljson logs: {exc}")
                 self._sleep(10)
                 continue
 
@@ -113,27 +106,27 @@ class DayZDeathWatcher:
                     self.current_cache["log_label"] = log_label
 
             new_lines = self._read_new_lines(latest_file, logs)
-            if self.verbose_logs and new_lines:
-                self._log(f"Found {len(new_lines)} new logs")
-
             for line in new_lines:
-                if self.verbose_logs:
-                    self._log(f"[{log_number}] {line}")
-
-                if self._is_death_log(line):
-                    player_id = self._get_id_from_line(line)
+                parsed_log = self._parse_log_line(line)
+                is_death_log = parsed_log and self._is_death_log(parsed_log)
+                if is_death_log:
+                    player_id = self._get_id_from_log(parsed_log)
+                    lifetime_seconds = self._get_lifetime_seconds(parsed_log)
                     if self.verbose_logs:
-                        self._log(f"Found death log:\n    {line} Victim id: {player_id}")
+                        lifetime_text = (
+                            f" Lived for {lifetime_seconds} seconds"
+                            if lifetime_seconds is not None
+                            else ""
+                        )
+                        self._log(
+                            f"Found death log:\n    {line} Victim id: {player_id}{lifetime_text}"
+                        )
 
                     if player_id and not self._player_is_queued_for_ban(player_id):
                         self._queue_player_for_ban(player_id)
 
                 self.current_cache["prev_log_read"]["line"] = line
                 self._update_cache()
-                log_number += 1
-
-            if self.verbose_logs and new_lines:
-                self._log("")
 
             self._try_to_ban_players()
             self._sleep(self.search_logs_interval)
@@ -180,10 +173,12 @@ class DayZDeathWatcher:
             self.logs_directory = resolve_path(self.config["path_to_logs_directory"])
             self.path_to_bans = resolve_path(self.config["path_to_bans"])
             self.path_to_cache = resolve_path(self.config["path_to_cache"])
-            self.death_cues = list(self.config["death_cues"])
             self.search_logs_interval = float(self.config["search_logs_interval"])
             self.verbose_logs = bool(int(self.config["verbose_logs"]))
             self.ban_delay = float(self.config["ban_delay"])
+            self.death_event_name = str(
+                self.config.get("death_event_name", "PLAYER_DEATH")
+            )
         except KeyError as exc:
             raise RuntimeError(f"Missing config entry: {exc}")
 
@@ -217,18 +212,20 @@ class DayZDeathWatcher:
         assert self.path_to_cache is not None
         with self.path_to_cache.open("w", encoding="utf-8") as json_file:
             json.dump(self.current_cache, json_file, indent=4)
-        if self.verbose_logs:
-            self._log(f"Updated cache file:\n    {self.current_cache}")
 
     # ------------------------------------------------------------------
     # log helpers
     # ------------------------------------------------------------------
     def _get_latest_file(self) -> Optional[Path]:
         assert self.logs_directory is not None
-        adm_files = glob.glob(str(self.logs_directory / "*.adm"))
-        if not adm_files:
+        ljson_files = [
+            entry
+            for entry in self.logs_directory.glob("*")
+            if entry.is_file() and entry.suffix.lower() == ".ljson"
+        ]
+        if not ljson_files:
             return None
-        latest_file = max(adm_files, key=os.path.getmtime)
+        latest_file = max(ljson_files, key=os.path.getmtime)
         return Path(latest_file)
 
     def _read_new_lines(self, log_file: Path, cached_lines: List[str]) -> List[str]:
@@ -245,22 +242,38 @@ class DayZDeathWatcher:
             new_lines.insert(0, line)
         return new_lines
 
-    def _is_death_log(self, line: str) -> bool:
-        for cue in self.death_cues:
-            if cue in line and f'"{cue}' not in line and f"'{cue}" not in line:
-                return True
-        return False
+    def _is_death_log(self, log_entry: dict) -> bool:
+        return log_entry.get("event") == self.death_event_name
 
     @staticmethod
-    def _get_id_from_line(line: str) -> str:
-        index = line.find("(id=")
-        start_index = index + 4
-        if index == -1 or len(line) < (start_index + 44):
+    def _parse_log_line(line: str) -> Optional[dict]:
+        try:
+            return json.loads(line)
+        except json.JSONDecodeError:
+            return None
+
+    def _get_id_from_log(self, log_entry: dict) -> str:
+        steam_id = log_entry.get("player", {}).get("steamId")
+        if not steam_id:
             return ""
-        player_id = line[start_index:start_index + 44]
-        if "Unknown" in player_id:
+
+        try:
+            return str(GUID.guid_for_steamid64(str(steam_id)))
+        except Exception as exc:
+            self._log(
+                f"Failed to convert steam ID {steam_id} to GUID; skipping ban entry. ({exc})"
+            )
             return ""
-        return player_id
+
+    @staticmethod
+    def _get_lifetime_seconds(log_entry: dict) -> Optional[float]:
+        lifetime = log_entry.get("player", {}).get("aliveSec")
+        if lifetime is None:
+            return None
+        try:
+            return float(lifetime)
+        except (TypeError, ValueError):
+            return None
 
     # ------------------------------------------------------------------
     # ban helpers
@@ -324,11 +337,11 @@ def main() -> None:
     try:
         watcher.run_blocking()
     except KeyboardInterrupt:
-        self._log("Closing program...")
+        print("Closing program...")
         time.sleep(1.0)
     except Exception:
-        self._log("Ran into an unexpected exception. Printing traceback below:\n")
-        self._log(traceback.format_exc())
+        print("Ran into an unexpected exception. Printing traceback below:\n")
+        print(traceback.format_exc())
         input("Press enter to close this window.")
 
 

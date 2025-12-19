@@ -9,8 +9,9 @@ coordinates temporary bans whenever the death watcher script detects a death eve
   authorized voice channel before their Steam ID is whitelisted, and automatically re-adds IDs to
   the blacklist when they leave voice.
 - **Death-driven bans** – the `death_watcher/new_dayz_death_watcher.py` script tails the latest DayZ
-  `.ADM` log, looks for death cues, and adds the matching GUID to `death_watcher/deaths.txt`. The
-  bot monitors that file and moves users to a "dead" state for `wait_time_new_life_seconds`.
+  `.ljson` log in `profiles/DetailedLogs`, looks for `event: "PLAYER_DEATH"` entries, and adds the
+  player's DayZ GUID (derived from `player.steamId`) to `death_watcher/deaths.txt`. The bot monitors
+  that file and moves users to a "dead" state for `wait_time_new_life_seconds`.
 - **Discord slash commands** – administrators can inspect or delete entries with `/userdata` and
   `/delete_user_from_database`, while players self-register via `/validatesteamid` (restricted to the
   configured validation channel).
@@ -32,7 +33,7 @@ requirements.txt         # Python dependencies needed by both scripts
 ## Prerequisites
 - Python 3.11 (matches the version used in CI)
 - A Discord bot application with privileged intents enabled
-- Access to the DayZ server's `.ADM` logs, whitelist, and blacklist files
+- Access to the DayZ server's `.ljson` detailed logs, whitelist, and blacklist files
 - A Windows host (optional) if you rely on `os.system("title …")` console titles for the provided scripts
 
 ## Local setup
@@ -49,6 +50,23 @@ requirements.txt         # Python dependencies needed by both scripts
    with the values that match your environment. **Never commit a real bot token.**
 3. Review the DayZ whitelist (`whitelist_path`), blacklist (`blacklist_path`), and `death_watcher`
    paths to make sure the bot can read and write to them from the same machine where it runs.
+
+### If Windows blocks `run_main.bat`
+Windows Smart App Control sometimes flags unsigned batch files. You can still launch the bot by
+running the same steps manually:
+
+```cmd
+python -m venv .venv
+.venv\Scripts\activate
+pip install --upgrade pip
+pip install -r requirements.txt
+python main.py
+```
+
+If you prefer to keep using the batch file, right-click `run_main.bat` → **Properties** → check
+**Unblock** (if available) and apply. Smart App Control does not support per-file exceptions, so you
+may need to temporarily disable it in **Windows Security → App & browser control → Smart App Control**
+to run the script.
 
 ### Configuration reference
 All of the bot's knobs live in `config.json`:
@@ -96,8 +114,11 @@ dropping new cogs in that folder.
 
 ## Running the death watcher
 The `death_watcher/new_dayz_death_watcher.py` script can run on the same host as the DayZ server. It
-continuously scans the newest `.ADM` log in `path_to_logs_directory`, detects death cues, and writes
-matching GUIDs to `deaths.txt`. Start it in a dedicated console:
+looks for the most recent `.ljson` file in `path_to_logs_directory` (for example
+`E:/DayZ MM/servers/MementoMori/profiles/DetailedLogs`), reads each JSON log entry, and when it sees
+`"event": "PLAYER_DEATH"` it writes the player's DayZ GUID (converted from `player.steamId`) to
+`deaths.txt`. Start it in a
+dedicated console:
 ```bash
 cd death_watcher
 python new_dayz_death_watcher.py
