@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Optional
 
-from nextcord import Message, TextChannel
+from nextcord import Embed, Message, TextChannel
 from nextcord.ext import commands, tasks
 
 from services.alive_time_service import AliveTimeLogWatcher
@@ -114,25 +114,29 @@ class AliveTimeTracker(commands.Cog):
 
         message = await self._get_leaderboard_message(channel)
         if message:
-            await message.edit(content=content)
+            await message.edit(content=None, embed=content)
         else:
-            sent = await channel.send(content)
+            sent = await channel.send(embed=content)
             self.leaderboard_message_id = sent.id
 
-    def _build_message(self, leaderboard: list[dict]) -> str:
-        if not leaderboard:
-            return (
-                "**Alive Time Leaderboard**\n"
-                "No disconnects have been recorded yet."
-            )
+    def _build_message(self, leaderboard: list[dict]) -> Embed:
+        embed = Embed(title="Alive Time Leaderboard", colour=0x5865F2)
 
-        lines = ["**Alive Time Leaderboard**\nTop 10 longest runs:"]
+        if not leaderboard:
+            embed.description = "No disconnects have been recorded yet."
+            return embed
+
+        lines = ["Top 10 longest runs:", "```diff"]
         for idx, entry in enumerate(leaderboard, start=1):
             name = entry.get("username") or entry.get("discord_id")
             duration = _format_duration(int(entry.get("alive_time_seconds", 0)))
-            lines.append(f"{idx}. {name} - {duration}")
+            is_alive = int(entry.get("is_alive", 1)) == 1
+            status_label = "+ Alive" if is_alive else "- Dead"
+            lines.append(f"{idx}. {status_label} - {name} - {duration}")
 
-        return "\n".join(lines)
+        lines.append("```")
+        embed.description = "\n".join(lines)
+        return embed
 
     async def _get_channel(self) -> Optional[TextChannel]:
         channel = self.bot.get_channel(self.leaderboard_channel_id)
@@ -158,7 +162,10 @@ class AliveTimeTracker(commands.Cog):
         async for message in channel.history(limit=50):
             if (
                 message.author.id == self.bot.user.id
-                and "Alive Time Leaderboard" in message.content
+                and (
+                    (message.content and "Alive Time Leaderboard" in message.content)
+                    or any(embed.title == "Alive Time Leaderboard" for embed in message.embeds)
+                )
             ):
                 self.leaderboard_message_id = message.id
                 return message

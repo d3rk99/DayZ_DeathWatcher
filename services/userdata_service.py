@@ -196,6 +196,7 @@ def get_alive_time_leaderboard(path: str, top_n: int = 10) -> List[Dict[str, str
                 "username": user.get("username", "Unknown"),
                 "steam_id": user.get("steam_id", ""),
                 "alive_time_seconds": duration,
+                "is_alive": int(user.get("is_alive", 1)),
             }
         )
 
