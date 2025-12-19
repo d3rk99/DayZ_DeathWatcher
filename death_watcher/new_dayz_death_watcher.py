@@ -77,6 +77,36 @@ def death_event_player_id(line: str, cues: Iterable[str]) -> str:
     return player_id
 
 
+def death_event_player_name(line: str, cues: Iterable[str]) -> str:
+    """Return the player name for a valid death line when the id is missing.
+
+    The helper mirrors :func:`death_event_player_id`'s safeguards, but extracts
+    the victim's name instead of the GUID. This is useful for log formats that
+    omit the ``id`` field on death lines.
+    """
+
+    if not line:
+        return ""
+
+    normalized = line.casefold()
+    if not any(cue.casefold() in normalized for cue in cues):
+        return ""
+
+    for cue in cues:
+        lowered = cue.casefold()
+        if lowered in normalized:
+            quoted_double = f'"{cue}' in line
+            quoted_single = f"'{cue}" in line
+            if quoted_double or quoted_single:
+                continue
+            break
+    else:
+        return ""
+
+    match = re.search(r'Player "(?P<name>[^"]+)"', line)
+    return match.group("name").strip() if match else ""
+
+
 @dataclass
 class _LogFileState:
     path: Path
@@ -117,6 +147,7 @@ class DayZDeathWatcher:
         self.playtime_bridge_token: Optional[str] = None
         self.userdata_db_path: Optional[Path] = None
         self._active_sessions: Dict[str, Dict[str, object]] = {}
+        self._guid_by_name: Dict[str, str] = {}
         self._userdata_cache: Dict[str, Dict[str, object]] = {}
         self._userdata_loaded_at: float = 0.0
 
@@ -175,14 +206,7 @@ class DayZDeathWatcher:
                 if self.verbose_logs:
                     self._log(f"[{log_number}] {line}")
 
-                player_id = death_event_player_id(line, self.death_cues)
-                if player_id:
-                    if self.verbose_logs:
-                        self._log(f"Found death log:\n    {line} Victim id: {player_id}")
-
-                    if not self._player_is_queued_for_ban(player_id):
-                        self._queue_player_for_ban(player_id)
-
+                self._process_death_line(line)
                 self._handle_session_tracking(line)
 
                 self.current_cache["prev_log_read"]["line"] = line
@@ -345,6 +369,10 @@ class DayZDeathWatcher:
         name = match.group("name").strip()
         self._log(self._format_session_event(event, name, guid, timestamp))
 
+        normalized_name = name.casefold()
+        if guid.casefold() != "unknown":
+            self._guid_by_name[normalized_name] = guid
+
         if not self.track_playtime or not self.playtime_report_url:
             return
 
@@ -355,6 +383,8 @@ class DayZDeathWatcher:
                 "steam_id": self._lookup_steam_id(guid),
             }
             return
+
+        self._guid_by_name.pop(normalized_name, None)
 
         session = self._active_sessions.pop(guid, None)
         if not session:
@@ -534,6 +564,38 @@ class DayZDeathWatcher:
                 self._log(f"Added player with id: {player_id} to ban file: {self.path_to_bans}")
         else:
             self._log(f"Player: {player_id} could not be added to the ban file: {self.path_to_bans}")
+
+    def _process_death_line(self, line: str) -> None:
+        player_id = death_event_player_id(line, self.death_cues)
+        if player_id:
+            if self.verbose_logs:
+                self._log(f"Found death log:\n    {line} Victim id: {player_id}")
+
+            if not self._player_is_queued_for_ban(player_id):
+                self._queue_player_for_ban(player_id)
+            return
+
+        name = death_event_player_name(line, self.death_cues)
+        if not name:
+            return
+
+        guid = self._guid_by_name.get(name.casefold())
+        if not guid:
+            if self.verbose_logs:
+                self._log(
+                    f"Found death log for '{name}' but could not resolve GUID; skipping ban."
+                )
+            return
+
+        if self._player_is_queued_for_ban(guid):
+            return
+
+        if self.verbose_logs:
+            self._log(
+                f"Found death log without GUID; banning '{name}' using tracked id {guid}."
+            )
+
+        self._queue_player_for_ban(guid)
 
     # ------------------------------------------------------------------
     # misc helpers

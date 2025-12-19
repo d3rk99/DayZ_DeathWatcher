@@ -7,7 +7,12 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 import pytest
 
-from death_watcher.new_dayz_death_watcher import DEFAULT_CONFIG, DayZDeathWatcher, death_event_player_id
+from death_watcher.new_dayz_death_watcher import (
+    DEFAULT_CONFIG,
+    DayZDeathWatcher,
+    death_event_player_id,
+    death_event_player_name,
+)
 
 
 @pytest.fixture
@@ -39,6 +44,12 @@ def test_death_event_player_id_rejects_unknown_and_short_ids(sample_cues):
     assert death_event_player_id(short_id_line, sample_cues) == ""
 
 
+def test_death_event_player_name_extracts_when_id_missing(sample_cues):
+    line = '2024-01-01 12:00:00 Player "Test User" bled out in a bunker'
+
+    assert death_event_player_name(line, sample_cues) == "Test User"
+
+
 def test_log_rotation_reads_tail_and_new_file(tmp_path, sample_cues):
     watcher = DayZDeathWatcher()
     watcher.logs_directory = tmp_path
@@ -68,3 +79,19 @@ def test_log_rotation_reads_tail_and_new_file(tmp_path, sample_cues):
 
     assert rotation_lines == ["tail line", "new header", "second line"]
     assert watcher._log_state.path == second_log
+
+
+def test_process_death_line_falls_back_to_session_name(tmp_path, sample_cues):
+    watcher = DayZDeathWatcher()
+    watcher.death_cues = sample_cues
+    watcher.current_cache = {"prev_log_read": {"line": ""}, "log_label": ""}
+    watcher.path_to_cache = tmp_path / "cache.json"
+    watcher.path_to_bans = tmp_path / "bans.txt"
+
+    guid = "12345678901234567890123456789012345678901234"
+    watcher._guid_by_name["test user"] = guid
+
+    line = '2024-01-01 12:00:00 Player "Test User" (DEAD) died.'
+    watcher._process_death_line(line)
+
+    assert watcher._player_is_queued_for_ban(guid)
