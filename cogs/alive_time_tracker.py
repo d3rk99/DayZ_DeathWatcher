@@ -126,15 +126,14 @@ class AliveTimeTracker(commands.Cog):
             embed.description = "No disconnects have been recorded yet."
             return embed
 
-        lines = ["Top 10 longest runs:", "```diff"]
+        lines = ["**Top 10 longest runs:**", ""]
         for idx, entry in enumerate(leaderboard, start=1):
             name = entry.get("username") or entry.get("discord_id")
             duration = _format_duration(int(entry.get("alive_time_seconds", 0)))
             is_alive = int(entry.get("is_alive", 1)) == 1
-            status_label = "+ Alive" if is_alive else "- Dead"
-            lines.append(f"{idx}. {status_label} - {name} - {duration}")
+            status_label = "🟢 Alive" if is_alive else "🔴 Dead"
+            lines.append(f"**{idx}. {status_label} — {name} — {duration}**")
 
-        lines.append("```")
         embed.description = "\n".join(lines)
         return embed
 
