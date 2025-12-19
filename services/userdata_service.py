@@ -141,6 +141,69 @@ def remove_user(path: str, discord_id: str) -> bool:
     return True
 
 
+def _match_user_by_identifier(data: Dict, steam_id: Optional[str], guid: Optional[str]):
+    userdata = data.get("userdata", {})
+    for discord_id, user in userdata.items():
+        if steam_id and str(user.get("steam_id")) == str(steam_id):
+            return discord_id, user
+        if guid and user.get("guid") == guid:
+            return discord_id, user
+    return None, None
+
+
+def set_alive_time_seconds(
+    path: str,
+    *,
+    steam_id: Optional[str] = None,
+    guid: Optional[str] = None,
+    alive_seconds: Optional[int] = None,
+) -> bool:
+    """Persist the latest recorded alive time for a player."""
+
+    if alive_seconds is None:
+        return False
+
+    data = _read_json(Path(path))
+    _, user = _match_user_by_identifier(data, steam_id, guid)
+    if not user:
+        return False
+
+    try:
+        user["alive_time_seconds"] = max(0, int(alive_seconds))
+    except (TypeError, ValueError):
+        return False
+
+    _save_userdata(Path(path), data)
+    return True
+
+
+def get_alive_time_leaderboard(path: str, top_n: int = 10) -> List[Dict[str, str]]:
+    """Return the top players by recorded alive time."""
+
+    data = _read_json(Path(path))
+    entries: List[Dict[str, str]] = []
+    for discord_id, user in data.get("userdata", {}).items():
+        alive_seconds = user.get("alive_time_seconds")
+        if alive_seconds in (None, ""):
+            continue
+        try:
+            duration = int(alive_seconds)
+        except (TypeError, ValueError):
+            continue
+        entries.append(
+            {
+                "discord_id": discord_id,
+                "username": user.get("username", "Unknown"),
+                "steam_id": user.get("steam_id", ""),
+                "alive_time_seconds": duration,
+                "is_alive": int(user.get("is_alive", 1)),
+            }
+        )
+
+    entries.sort(key=lambda entry: entry["alive_time_seconds"], reverse=True)
+    return entries[:top_n]
+
+
 def wipe_database(path: str) -> bool:
     """Completely reset the userdata database file."""
     try:
