@@ -50,6 +50,23 @@ requirements.txt         # Python dependencies needed by both scripts
 3. Review the DayZ whitelist (`whitelist_path`), blacklist (`blacklist_path`), and `death_watcher`
    paths to make sure the bot can read and write to them from the same machine where it runs.
 
+### If Windows blocks `run_main.bat`
+Windows Smart App Control sometimes flags unsigned batch files. You can still launch the bot by
+running the same steps manually:
+
+```cmd
+python -m venv .venv
+.venv\Scripts\activate
+pip install --upgrade pip
+pip install -r requirements.txt
+python main.py
+```
+
+If you prefer to keep using the batch file, right-click `run_main.bat` → **Properties** → check
+**Unblock** (if available) and apply. Smart App Control does not support per-file exceptions, so you
+may need to temporarily disable it in **Windows Security → App & browser control → Smart App Control**
+to run the script.
+
 ### Configuration reference
 All of the bot's knobs live in `config.json`:
 
