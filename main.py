@@ -132,6 +132,27 @@ def load_cogs():
         client.load_extension(f"cogs.{cog_name}")
 
 
+def is_valid_steam_id(value: str) -> bool:
+    return value.isdigit() and len(value) == 17
+
+
+def sanitize_steam_id_list(values: List[str]) -> List[str]:
+    cleaned: List[str] = []
+    seen = set()
+    for value in values:
+        trimmed = value.strip()
+        if not is_valid_steam_id(trimmed) or trimmed in seen:
+            continue
+        cleaned.append(trimmed)
+        seen.add(trimmed)
+    return cleaned
+
+
+def remove_steam_id_occurrences(values: List[str], steam_id: str) -> List[str]:
+    target = str(steam_id)
+    return [value for value in values if value != target]
+
+
 def get_death_counter_path() -> str:
     if not config:
         return "./death_counter.json"
@@ -317,9 +338,15 @@ async def vc_check():
             userdata_json = json.load(json_file)
         
         with open(config["whitelist_path"], "r") as file:
-            whitelist_list = file.read().split('\n')
+            whitelist_list_raw = file.read().split('\n')
         with open(config["blacklist_path"], "r") as file:
-            blacklist_list = file.read().split('\n')
+            blacklist_list_raw = file.read().split('\n')
+
+        whitelist_list = sanitize_steam_id_list(whitelist_list_raw)
+        blacklist_list = sanitize_steam_id_list(blacklist_list_raw)
+
+        blacklist_updated = len(blacklist_list) != len(blacklist_list_raw)
+        whitelist_updated = len(whitelist_list) != len(whitelist_list_raw)
         
         
         try:
@@ -349,9 +376,8 @@ async def vc_check():
         except Exception as e:
             print(f"Error creating a new Voice Channel: \"{e}\"")
         
-        updated_users = 0
         for user_id, userdata in userdata_json["userdata"].items():
-            
+
             try:
                 member = guild.get_member(int(user_id))
             except:
@@ -361,27 +387,32 @@ async def vc_check():
                 continue
             
             is_admin = int(userdata["is_admin"])
-            
+
             try:
                 category_id = int(member.voice.channel.category_id)
             except:
                 category_id = 0
-            
+
             if (is_admin != 0):
                 if (userdata["steam_id"] in blacklist_list):
                     print(f"Removed admin's ({userdata['username']}) Steam ID from blacklist ({userdata['steam_id']})")
-                    blacklist_list.remove(userdata["steam_id"])
-                    updated_users += 1
+                    blacklist_list = remove_steam_id_occurrences(blacklist_list, userdata["steam_id"])
+                    blacklist_updated = True
             elif (member != None and userdata["steam_id"] in blacklist_list and category_id == int(config["join_vc_category_id"])):
                 print(f"User ({userdata['username']}) joined channel. Removing Steam ID from blacklist ({userdata['steam_id']})")
-                blacklist_list.remove(userdata["steam_id"])
-                updated_users += 1
+                blacklist_list = remove_steam_id_occurrences(blacklist_list, userdata["steam_id"])
+                blacklist_updated = True
             elif ((not userdata["steam_id"] in blacklist_list) and (member == None or category_id != int(config["join_vc_category_id"]))):
                 print(f"User ({userdata['username']}) left channel. Adding Steam ID to blacklist ({userdata['steam_id']})")
+                blacklist_list = remove_steam_id_occurrences(blacklist_list, userdata["steam_id"])
                 blacklist_list.append(userdata["steam_id"])
-                updated_users += 1
-        
-        if (updated_users > 0):
+                blacklist_updated = True
+
+        if whitelist_updated:
+            with open(config["whitelist_path"], "w") as file:
+                file.write('\n'.join(whitelist_list))
+
+        if blacklist_updated:
             with open(config["blacklist_path"], "w") as file:
                 file.write('\n'.join(blacklist_list))
     
@@ -558,11 +589,12 @@ async def set_user_as_dead(user_id):
         
         # add to blacklist
         with open(config["blacklist_path"], "r") as file:
-            blacklist_list = file.read().split('\n')
-        if (not str(userdata["steam_id"]) in blacklist_list):
-            blacklist_list.append(str(userdata["steam_id"]))
-            with open(config["blacklist_path"], "w") as file:
-                file.write('\n'.join(blacklist_list))
+            blacklist_list_raw = file.read().split('\n')
+        blacklist_list = sanitize_steam_id_list(blacklist_list_raw)
+        blacklist_list = remove_steam_id_occurrences(blacklist_list, userdata["steam_id"])
+        blacklist_list.append(str(userdata["steam_id"]))
+        with open(config["blacklist_path"], "w") as file:
+            file.write('\n'.join(blacklist_list))
         
         # update discord roles
         member = guild.get_member(int(user_id))
@@ -660,14 +692,22 @@ async def unban_user(user_id):
             
         
         # update user's roles
+        with open(config["blacklist_path"], "r") as file:
+            blacklist_list_raw = file.read().split('\n')
+        blacklist_list = sanitize_steam_id_list(blacklist_list_raw)
+        updated_blacklist = remove_steam_id_occurrences(blacklist_list, userdata["steam_id"])
+        if (len(updated_blacklist) != len(blacklist_list)):
+            with open(config["blacklist_path"], "w") as file:
+                file.write('\n'.join(updated_blacklist))
+
         guild = client.get_guild(config["guild_id"])
         member = guild.get_member(int(user_id))
         if (member == None):
-            text = f"[UnbanUser] Found user in database but not in server. ({user_id}) Maybe they left the server?"
+            text = f"[UnbanUser] Found user in database but not in server. ({user_id}) Maybe they left the server?)"
             print(text)
             await dump_error_discord(text, "Warning")
             return
-        
+
         alive_role = nextcord.utils.get(guild.roles, id = config["alive_role"])
         dead_role = nextcord.utils.get(guild.roles, id = config["dead_role"])
         #can_revive_role = nextcord.utils.get(guild.roles, id = config["can_revive_role"])
