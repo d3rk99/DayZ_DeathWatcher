@@ -130,8 +130,9 @@ class ValidateSteamId(commands.Cog):
                     await self.dump_error_discord(f"Error validating user: `{user_id}`\nCould not open blacklist file. (likely file permission error?)", "Unexpected error")
                     return
                     
-                if (userdata["steam_id"] in blacklist_list):
-                    blacklist_list.remove(userdata["steam_id"])
+                blacklist_list = sanitize_steam_id_list(blacklist_list)
+                blacklist_list = remove_steam_id_occurrences(blacklist_list, userdata["steam_id"])
+                blacklist_list = remove_steam_id_occurrences(blacklist_list, steam_id)
                 blacklist_list.append(str(steam_id))
                 with open(config["blacklist_path"], "w") as file:
                     file.write('\n'.join(blacklist_list))
@@ -168,8 +169,13 @@ class ValidateSteamId(commands.Cog):
                 json.dump(userdata_json, json_file, indent = 4)
             
             # add them to the server whitelist
-            with open(config["whitelist_path"], "a") as file:
-                file.write('\n' + str(steam_id))
+            with open(config["whitelist_path"], "r") as file:
+                whitelist_list_raw = file.read().split('\n')
+            whitelist_list = sanitize_steam_id_list(whitelist_list_raw)
+            whitelist_list = remove_steam_id_occurrences(whitelist_list, steam_id)
+            whitelist_list.append(str(steam_id))
+            with open(config["whitelist_path"], "w") as file:
+                file.write('\n'.join(whitelist_list))
 
             # don't assign alive role if they already have it, or has the dead role
             alive_role = nextcord.utils.get(interaction.guild.roles, id = int(config["alive_role"]))
@@ -181,15 +187,20 @@ class ValidateSteamId(commands.Cog):
             tries = 0
             while not success and tries < 10:
                 try:
-                    with open(config["blacklist_path"], "a") as file:
-                        file.write('\n' + str(steam_id))    
+                    with open(config["blacklist_path"], "r") as file:
+                        blacklist_list_raw = file.read().split('\n')
+                    blacklist_list = sanitize_steam_id_list(blacklist_list_raw)
+                    blacklist_list = remove_steam_id_occurrences(blacklist_list, steam_id)
+                    blacklist_list.append(str(steam_id))
+                    with open(config["blacklist_path"], "w") as file:
+                        file.write('\n'.join(blacklist_list))
                     success = True
 
                 except Exception as e:
                     print(f"[UnbanUser] Attempt {tries + 1} - Failed to open deaths list file: {config['blacklist_path']} '{e}'")
                     tries += 1
                     time.sleep(0.25)
-        
+
             if not success:
                 print(f"Could not validate user: {user_id} after 10 tries.")
                 await dump_error_discord(f"Could not validate user: `{user_id}` after 10 tries.\n(likely file permission error?)", "Unexpected error")
