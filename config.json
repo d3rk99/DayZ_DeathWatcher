@@ -1,6 +1,6 @@
 {
     "prefix" : "*",
-    "token" : "MTM2NDUwNzM4MjE2NzkwMDIwMA.G4OkTQ.3lfFIXzwZ1V7uHpEdk373k2_gw0BTiDR5wmMNk",
+    "token" : "",
     "whitelist_path" : "../whitelist.txt",
     "blacklist_path" : "E:/DayZ MM/servers/MementoMori/ban.txt",
     "userdata_db_path" : "./userdata_db.json",
@@ -13,6 +13,7 @@
     "dead_role" : 997382529910837318,
     "can_revive_role" : 1054272626832449556,
     "season_pass_role" : 997382529910837318,
+
     "watch_death_watcher" : 1,
     "death_watcher_death_path" : "./death_watcher/deaths.txt",
     "death_counter_path" : "./death_counter.json",
