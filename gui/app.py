@@ -14,6 +14,7 @@ from gui.sidebar import SidebarPane
 from gui.theme import ThemePalette, get_theme
 from services.analytics_service import AnalyticsManager
 from services.config_manager import ConfigManager
+from services.server_config import get_enabled_servers, normalize_servers
 
 
 class GuiApplication:
@@ -38,6 +39,9 @@ class GuiApplication:
         self.config_manager = ConfigManager(config_path)
         self._needs_full_setup = self.config_manager.needs_initial_setup
         self.analytics_manager = AnalyticsManager()
+        self._servers = normalize_servers(self.config_manager.data)
+        self._active_server_id: Optional[str] = None
+        self._server_log_queues: dict[str, queue.Queue[str]] = {}
 
         self._build_ui()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -48,6 +52,14 @@ class GuiApplication:
     # region UI
     def _build_ui(self) -> None:
         self._create_menus()
+        self._header = tk.Frame(self.root)
+        self._header.pack(fill=tk.X, padx=8, pady=(6, 0))
+        tk.Label(self._header, text="Server View:").pack(side=tk.LEFT)
+        self._server_selector = ttk.Combobox(self._header, state="readonly")
+        self._server_selector.pack(side=tk.LEFT, padx=(6, 0))
+        self._server_selector.bind("<<ComboboxSelected>>", self._on_server_selected)
+        self._refresh_server_selector()
+
         paned = tk.PanedWindow(self.root, orient=tk.HORIZONTAL)
         paned.pack(fill=tk.BOTH, expand=True)
 
@@ -60,13 +72,19 @@ class GuiApplication:
         notebook.pack(fill=tk.BOTH, expand=True)
 
         logs_tab = tk.Frame(notebook)
-        logs_tab.columnconfigure(0, weight=1)
-        logs_tab.columnconfigure(1, weight=1)
-        logs_tab.rowconfigure(0, weight=1)
         notebook.add(logs_tab, text="Logs")
 
+        logs_notebook = ttk.Notebook(logs_tab)
+        logs_notebook.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+
+        summary_tab = tk.Frame(logs_notebook)
+        summary_tab.columnconfigure(0, weight=1)
+        summary_tab.columnconfigure(1, weight=1)
+        summary_tab.rowconfigure(0, weight=1)
+        logs_notebook.add(summary_tab, text="Bot Logs")
+
         self._main_console = ConsolePane(
-            logs_tab,
+            summary_tab,
             title="Life and Death Bot",
             description=(
                 "Stream of Discord bot activity including command output "
@@ -76,7 +94,7 @@ class GuiApplication:
         self._main_console.grid(row=0, column=0, sticky="nsew", padx=(10, 5), pady=10)
 
         self._death_console = ConsolePane(
-            logs_tab,
+            summary_tab,
             title="Death Watcher",
             description=(
                 "Watcher log that tracks deaths from your DayZ server for "
@@ -84,6 +102,10 @@ class GuiApplication:
             ),
         )
         self._death_console.grid(row=0, column=1, sticky="nsew", padx=(5, 10), pady=10)
+
+        self._server_logs_tab = tk.Frame(logs_notebook)
+        logs_notebook.add(self._server_logs_tab, text="Server Activity")
+        self._build_server_log_panels()
 
         analytics_tab = tk.Frame(notebook)
         notebook.add(analytics_tab, text="Analytics")
@@ -119,12 +141,17 @@ class GuiApplication:
 
     def _on_config_update(self, data: dict) -> None:
         self._sidebar.reload_paths(data)
+        self._servers = normalize_servers(data)
+        self._refresh_server_selector()
+        self._build_server_log_panels()
         self._ensure_initial_paths()
 
     def append_main_log(self, message: str) -> None:
         self.main_queue.put(message)
 
-    def append_death_log(self, message: str) -> None:
+    def append_death_log(self, message: str, server_id: Optional[str] = None) -> None:
+        if server_id and server_id in self._server_log_queues:
+            self._server_log_queues[server_id].put(message)
         formatted = self._format_death_log(message)
         if not formatted:
             return
@@ -136,6 +163,10 @@ class GuiApplication:
     def _poll_logs(self) -> None:
         self._drain_queue(self.main_queue, self._main_console)
         self._drain_queue(self.death_queue, self._death_console, analytics=True)
+        for server_id, q in self._server_log_queues.items():
+            console = getattr(self, "_server_log_panels", {}).get(server_id)
+            if console:
+                self._drain_queue(q, console)
         self._process_counter_updates()
         self.root.after(100, self._poll_logs)
 
@@ -184,6 +215,78 @@ class GuiApplication:
             self._sidebar.apply_theme(palette)
         if hasattr(self, "_analytics"):
             self._analytics.apply_theme(palette)
+        if hasattr(self, "_header"):
+            self._header.configure(bg=palette.bg)
+        if hasattr(self, "_server_selector"):
+            self._server_selector.configure(background=palette.bg)
+        if hasattr(self, "_server_log_panels"):
+            for panel in self._server_log_panels.values():
+                panel.apply_theme(palette)
+
+    def _refresh_server_selector(self) -> None:
+        enabled = get_enabled_servers(self._servers)
+        self._server_selector_ids = [None] + [str(server["server_id"]) for server in enabled]
+        labels = ["All Servers"] + [
+            f"{server.get('display_name') or server['server_id']}"
+            for server in enabled
+        ]
+        self._server_selector["values"] = labels
+        if not labels:
+            self._server_selector.set("")
+            return
+        if self._active_server_id in self._server_selector_ids:
+            idx = self._server_selector_ids.index(self._active_server_id)
+        else:
+            idx = 0
+            self._active_server_id = None
+        self._server_selector.current(idx)
+        if hasattr(self, "_sidebar"):
+            self._sidebar.set_active_server(self._active_server_id)
+
+    def _on_server_selected(self, _event=None) -> None:
+        idx = self._server_selector.current()
+        if idx < 0 or idx >= len(self._server_selector_ids):
+            return
+        self._active_server_id = self._server_selector_ids[idx]
+        if hasattr(self, "_sidebar"):
+            self._sidebar.set_active_server(self._active_server_id)
+
+    def _build_server_log_panels(self) -> None:
+        if not hasattr(self, "_server_logs_tab"):
+            return
+        for child in self._server_logs_tab.winfo_children():
+            child.destroy()
+        enabled = get_enabled_servers(self._servers)
+        self._server_log_panels = {}
+        self._server_log_queues = {str(server["server_id"]): queue.Queue() for server in enabled}
+        if not enabled:
+            tk.Label(
+                self._server_logs_tab,
+                text="No enabled servers configured.",
+            ).pack(pady=10)
+            return
+
+        count = len(enabled)
+        columns = 2 if count <= 4 else 3
+        rows = (count + columns - 1) // columns
+        for col in range(columns):
+            self._server_logs_tab.columnconfigure(col, weight=1)
+        for row in range(rows):
+            self._server_logs_tab.rowconfigure(row, weight=1)
+
+        for idx, server in enumerate(enabled):
+            server_id = str(server["server_id"])
+            title = server.get("display_name") or f"Server {server_id}"
+            panel = ConsolePane(
+                self._server_logs_tab,
+                title=title,
+                description="Latest log activity for this server.",
+            )
+            row = idx // columns
+            col = idx % columns
+            panel.grid(row=row, column=col, sticky="nsew", padx=8, pady=8)
+            panel.apply_theme(self._theme)
+            self._server_log_panels[server_id] = panel
 
     def _format_death_log(self, message: str) -> Optional[str]:
         if not message:

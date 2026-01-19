@@ -7,6 +7,7 @@ from nextcord.ext import commands
 from nextcord import Webhook
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from main import *
+from services.file_utils import atomic_write_lines, atomic_write_text, read_lines
 import asyncio
 import time
 import traceback
@@ -83,76 +84,123 @@ class ValidateSteamId(commands.Cog):
             guid = GUID.guid_for_steamid64(steam_id)
             
             # prevent users from registering a steam_id/guid that had previously been banned
-            success = False
-            tries = 0
-            while not success and tries < 10:
-                try:
-                    with open (config["death_watcher_death_path"], "r") as file:
-                        deaths_list = file.read().split('\n')
-                    success = True
-                except Exception as e:
-                    print(f"[ValidateSteamId] Attempt {tries + 1} - Failed to open deaths list file: {config['death_watcher_death_path']} '{e}'")
-                    tries += 1
-                    time.sleep(0.25)
-            
-            if not success:
+            enabled_servers = get_enabled_servers(get_servers())
+            death_check_failed = False
+            for server in enabled_servers:
+                death_path = server.get("death_watcher_death_path", "")
+                if not death_path:
+                    continue
+                success = False
+                tries = 0
+                while not success and tries < 10:
+                    try:
+                        deaths_list = read_lines(death_path)
+                        success = True
+                    except Exception as e:
+                        print(
+                            "[ValidateSteamId] Attempt "
+                            f"{tries + 1} - Failed to open deaths list file: {death_path} '{e}'"
+                        )
+                        tries += 1
+                        time.sleep(0.25)
+                if not success:
+                    death_check_failed = True
+                    break
+                if str(guid) in deaths_list:
+                    embedVar = nextcord.Embed(
+                        title=f"Steam ID is already dead on {server.get('display_name')}! ({steam_id})",
+                        color=0xFF0000,
+                    )
+                    await interaction.response.send_message(embed=embedVar)
+                    return
+
+            if death_check_failed:
                 print(f"Could not verify that user: {user_id} is in death list after 10 tries.")
-                embedVar = nextcord.Embed(title=f"Internal error. Please try again later.", color=0xFF0000)
-                await interaction.response.send_message(embed = embedVar)
-                await self.dump_error_discord(f"Error validating user: `{user_id}`\nCould not verify death status in deaths file. (likely file permission error?)", "Unexpected error")
-                return
-            
-            if (str(guid) in deaths_list):
-                embedVar = nextcord.Embed(title=f"Steam ID is already dead! ({steam_id})", color=0xFF0000)
-                await interaction.response.send_message(embed = embedVar)
+                embedVar = nextcord.Embed(
+                    title="Internal error. Please try again later.",
+                    color=0xFF0000,
+                )
+                await interaction.response.send_message(embed=embedVar)
+                await self.dump_error_discord(
+                    f"Error validating user: `{user_id}`\nCould not verify death status in deaths file. "
+                    "(likely file permission error?)",
+                    "Unexpected error",
+                )
                 return
             
             # try updating existing userdata
             if (str(user_id) in keys):
                 userdata = userdata_json["userdata"][str(user_id)]
+
+                if not userdata.get("active_server_id"):
+                    userdata["active_server_id"] = get_default_server_id_value()
                 
-                # remove instances of old steam_id and guid
-                success = False
-                tries = 0
-                while not success and tries < 10:
-                    try:
-                        with open(config["blacklist_path"], "r") as file:
-                            blacklist_list = file.read().split('\n')
-                        success = True
-                    except Exception as e:
-                        print(f"[ValidateSteamId] Attempt {tries + 1} - Failed to open blacklist file: {config['blacklist_path']} '{e}'")
-                        tries += 1
-                        time.sleep(0.25)
-                if not success:
-                    print(f"Could not open blacklist file: {config['blacklist_path']} after 10 tries.")
-                    embedVar = nextcord.Embed(title=f"Internal error. Please try again later.", color=0xFF0000)
-                    await interaction.response.send_message(embed = embedVar)
-                    await self.dump_error_discord(f"Error validating user: `{user_id}`\nCould not open blacklist file. (likely file permission error?)", "Unexpected error")
-                    return
-                    
-                blacklist_list = sanitize_steam_id_list(blacklist_list)
-                blacklist_list = remove_steam_id_occurrences(blacklist_list, userdata["steam_id"])
-                blacklist_list = remove_steam_id_occurrences(blacklist_list, steam_id)
-                blacklist_list.append(str(steam_id))
-                with open(config["blacklist_path"], "w") as file:
-                    file.write('\n'.join(blacklist_list))
-                
-                with open(config["whitelist_path"], "r") as file:
-                    whitelist_contents = file.read()
-                whitelist_contents = whitelist_contents.replace(userdata["steam_id"], str(steam_id))
-                with open(config["whitelist_path"], "w") as file:
-                    file.write(whitelist_contents)
+                validate_scope = get_validate_scope(config)
+                scope_servers = resolve_user_scope_servers(userdata, scope=validate_scope)
+
+                # remove instances of old steam_id and guid per server
+                for server_id in scope_servers:
+                    server = get_server_by_id(server_id)
+                    if not server:
+                        continue
+                    blacklist_path = server.get("path_to_bans", "")
+                    whitelist_path = server.get("path_to_whitelist", "")
+                    success = False
+                    tries = 0
+                    while not success and tries < 10:
+                        try:
+                            blacklist_list = read_lines(blacklist_path)
+                            success = True
+                        except Exception as e:
+                            print(
+                                "[ValidateSteamId] Attempt "
+                                f"{tries + 1} - Failed to open blacklist file: {blacklist_path} '{e}'"
+                            )
+                            tries += 1
+                            time.sleep(0.25)
+                    if not success:
+                        print(f"Could not open blacklist file: {blacklist_path} after 10 tries.")
+                        embedVar = nextcord.Embed(
+                            title="Internal error. Please try again later.",
+                            color=0xFF0000,
+                        )
+                        await interaction.response.send_message(embed=embedVar)
+                        await self.dump_error_discord(
+                            f"Error validating user: `{user_id}`\nCould not open blacklist file. "
+                            "(likely file permission error?)",
+                            "Unexpected error",
+                        )
+                        return
+
+                    blacklist_list = sanitize_steam_id_list(blacklist_list)
+                    blacklist_list = remove_steam_id_occurrences(
+                        blacklist_list, userdata["steam_id"]
+                    )
+                    blacklist_list = remove_steam_id_occurrences(blacklist_list, steam_id)
+                    blacklist_list.append(str(steam_id))
+                    atomic_write_lines(blacklist_path, blacklist_list)
+
+                    whitelist_list = read_lines(whitelist_path)
+                    whitelist_list = sanitize_steam_id_list(whitelist_list)
+                    whitelist_list = remove_steam_id_occurrences(
+                        whitelist_list, userdata["steam_id"]
+                    )
+                    whitelist_list = remove_steam_id_occurrences(whitelist_list, steam_id)
+                    whitelist_list.append(str(steam_id))
+                    atomic_write_lines(whitelist_path, whitelist_list)
                 
                 userdata["steam_id"] = str(steam_id)
                 userdata["guid"] = str(guid)
-                with open(config["userdata_db_path"], "w") as json_file:
-                    json.dump(userdata_json, json_file, indent = 4)
+                atomic_write_text(
+                    config["userdata_db_path"], json.dumps(userdata_json, indent=4)
+                )
                 print (f"Updated Steam ID ({steam_id}) for discord user: {userdata['username']}!")
                 embedVar = nextcord.Embed(title=f"Updated your Steam ID ({steam_id})!", color=0x00FF00)
                 await interaction.response.send_message(embed = embedVar)
                 return
             
             # store discord user's data
+            default_server_id = get_default_server_id_value()
             new_userdata = {
                 'username' : author.name,
                 'steam_id' : str(steam_id),
@@ -160,22 +208,31 @@ class ValidateSteamId(commands.Cog):
                 'is_alive' : 1,
                 'time_of_death' : 0,
                 'can_revive' : 0,
-                'is_admin' : 0
+                'is_admin' : 0,
+                'active_server_id': default_server_id,
+                'home_server_id': "",
             }
             
             # store their userdata in db
             userdata_json["userdata"][str(user_id)] = new_userdata
-            with open(config["userdata_db_path"], "w") as json_file:
-                json.dump(userdata_json, json_file, indent = 4)
+            atomic_write_text(
+                config["userdata_db_path"], json.dumps(userdata_json, indent=4)
+            )
             
+            validate_scope = get_validate_scope(config)
+            scope_servers = resolve_user_scope_servers(new_userdata, scope=validate_scope)
+
             # add them to the server whitelist
-            with open(config["whitelist_path"], "r") as file:
-                whitelist_list_raw = file.read().split('\n')
-            whitelist_list = sanitize_steam_id_list(whitelist_list_raw)
-            whitelist_list = remove_steam_id_occurrences(whitelist_list, steam_id)
-            whitelist_list.append(str(steam_id))
-            with open(config["whitelist_path"], "w") as file:
-                file.write('\n'.join(whitelist_list))
+            for server_id in scope_servers:
+                server = get_server_by_id(server_id)
+                if not server:
+                    continue
+                whitelist_path = server.get("path_to_whitelist", "")
+                whitelist_list_raw = read_lines(whitelist_path)
+                whitelist_list = sanitize_steam_id_list(whitelist_list_raw)
+                whitelist_list = remove_steam_id_occurrences(whitelist_list, steam_id)
+                whitelist_list.append(str(steam_id))
+                atomic_write_lines(whitelist_path, whitelist_list)
 
             # don't assign alive role if they already have it, or has the dead role
             alive_role = nextcord.utils.get(interaction.guild.roles, id = int(config["alive_role"]))
@@ -183,29 +240,41 @@ class ValidateSteamId(commands.Cog):
             if ((not alive_role in author.roles) and (not dead_role in author.roles)):
                 await interaction.user.add_roles(alive_role)
             
-            success = False
-            tries = 0
-            while not success and tries < 10:
-                try:
-                    with open(config["blacklist_path"], "r") as file:
-                        blacklist_list_raw = file.read().split('\n')
-                    blacklist_list = sanitize_steam_id_list(blacklist_list_raw)
-                    blacklist_list = remove_steam_id_occurrences(blacklist_list, steam_id)
-                    blacklist_list.append(str(steam_id))
-                    with open(config["blacklist_path"], "w") as file:
-                        file.write('\n'.join(blacklist_list))
-                    success = True
+            for server_id in scope_servers:
+                server = get_server_by_id(server_id)
+                if not server:
+                    continue
+                blacklist_path = server.get("path_to_bans", "")
+                success = False
+                tries = 0
+                while not success and tries < 10:
+                    try:
+                        blacklist_list_raw = read_lines(blacklist_path)
+                        blacklist_list = sanitize_steam_id_list(blacklist_list_raw)
+                        blacklist_list = remove_steam_id_occurrences(
+                            blacklist_list, steam_id
+                        )
+                        blacklist_list.append(str(steam_id))
+                        atomic_write_lines(blacklist_path, blacklist_list)
+                        success = True
 
-                except Exception as e:
-                    print(f"[UnbanUser] Attempt {tries + 1} - Failed to open deaths list file: {config['blacklist_path']} '{e}'")
-                    tries += 1
-                    time.sleep(0.25)
+                    except Exception as e:
+                        print(
+                            "[UnbanUser] Attempt "
+                            f"{tries + 1} - Failed to open deaths list file: {blacklist_path} '{e}'"
+                        )
+                        tries += 1
+                        time.sleep(0.25)
 
-            if not success:
-                print(f"Could not validate user: {user_id} after 10 tries.")
-                await dump_error_discord(f"Could not validate user: `{user_id}` after 10 tries.\n(likely file permission error?)", "Unexpected error")
-                await interaction.send("An error occurred. Please try again.", )
-                return
+                if not success:
+                    print(f"Could not validate user: {user_id} after 10 tries.")
+                    await dump_error_discord(
+                        f"Could not validate user: `{user_id}` after 10 tries.\n"
+                        "(likely file permission error?)",
+                        "Unexpected error",
+                    )
+                    await interaction.send("An error occurred. Please try again.")
+                    return
             
             print (f"Registered Steam ID ({steam_id}) for discord user: {new_userdata['username']}!")
             embedVar = nextcord.Embed(title=f"Registered your Steam ID ({steam_id})!", color=0x00FF00)

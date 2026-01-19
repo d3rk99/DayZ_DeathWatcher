@@ -8,6 +8,7 @@ from typing import Callable, Dict, Iterable, List
 from services.bot_fields import BOT_FIELDS, BotField
 from services.config_manager import ConfigManager
 from services.path_fields import PATH_FIELDS, PathField
+from services.server_config import get_default_server_id, normalize_servers, server_map
 
 
 class PathSetupDialog(tk.Toplevel):
@@ -28,15 +29,28 @@ class PathSetupDialog(tk.Toplevel):
         self.config_manager = config_manager
         self._on_complete = on_complete
         self._entries: Dict[str, tk.StringVar] = {}
-        self._missing = set(missing_keys or [])
+        self._missing = self._parse_missing(missing_keys or [])
         self._field_keys: List[str] = list(PATH_FIELDS.keys())
         self._button_text = button_text or "Save"
+        self._server_var = tk.StringVar()
+        self._servers = normalize_servers(self.config_manager.data)
+        self._server_lookup = server_map(self._servers)
 
         self.transient(master)
         self.grab_set()
         self.protocol("WM_DELETE_WINDOW", self._on_cancel)
 
         self._build_form()
+
+    def _parse_missing(self, keys: Iterable[str]) -> Dict[str, List[str]]:
+        parsed: Dict[str, List[str]] = {}
+        for key in keys:
+            if ":" in key:
+                base, server_id = key.split(":", 1)
+                parsed.setdefault(base, []).append(server_id)
+            else:
+                parsed.setdefault(key, [])
+        return parsed
 
     def _build_form(self) -> None:
         container = ttk.Frame(self)
@@ -55,6 +69,31 @@ class PathSetupDialog(tk.Toplevel):
         form = ttk.Frame(container)
         form.pack(fill=tk.BOTH, expand=True)
 
+        if any(field.scope == "server" for field in PATH_FIELDS.values()):
+            server_row = ttk.Frame(form)
+            server_row.pack(fill=tk.X, pady=4)
+            ttk.Label(server_row, text="Server").pack(anchor=tk.W)
+            server_ids = [server["server_id"] for server in self._servers]
+            default_id = get_default_server_id(self.config_manager.data, self._servers)
+            self._server_var.set(default_id if default_id in server_ids else (server_ids[0] if server_ids else ""))
+            server_names = [
+                f"{server['display_name']} ({server['server_id']})" for server in self._servers
+            ]
+            self._server_display = ttk.Combobox(
+                server_row,
+                values=server_names,
+                state="readonly",
+            )
+            if server_names:
+                selected_idx = 0
+                for idx, server in enumerate(self._servers):
+                    if server["server_id"] == self._server_var.get():
+                        selected_idx = idx
+                        break
+                self._server_display.current(selected_idx)
+            self._server_display.pack(fill=tk.X, pady=(2, 6))
+            self._server_display.bind("<<ComboboxSelected>>", self._on_server_change)
+
         for key in self._field_keys:
             self._add_row(form, PATH_FIELDS[key])
 
@@ -72,7 +111,13 @@ class PathSetupDialog(tk.Toplevel):
         entry_row = ttk.Frame(row)
         entry_row.pack(fill=tk.X, expand=True)
 
-        initial = str(self.config_manager.data.get(field.key, ""))
+        initial = ""
+        if field.scope == "server":
+            server_id = self._server_var.get()
+            server = self._server_lookup.get(server_id, {})
+            initial = str(server.get(field.key, ""))
+        else:
+            initial = str(self.config_manager.data.get(field.key, ""))
         var = tk.StringVar(value=initial)
         entry = ttk.Entry(entry_row, textvariable=var)
         entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -101,22 +146,35 @@ class PathSetupDialog(tk.Toplevel):
 
     def _save(self) -> None:
         updated: Dict[str, str] = {}
+        server_updates: Dict[str, str] = {}
         errors = []
         for key, var in self._entries.items():
             value = var.get().strip()
-            updated[key] = value
             field = PATH_FIELDS[key]
+            if field.scope == "server":
+                server_updates[key] = value
+            else:
+                updated[key] = value
             if field.must_exist:
                 if not value:
                     errors.append(f"{field.label} is required.")
                     continue
                 expanded = os.path.abspath(os.path.expanduser(value))
-                if not os.path.isfile(expanded):
+                exists = os.path.isdir(expanded) if field.kind == "dir" else os.path.isfile(expanded)
+                if not exists:
                     errors.append(f"Unable to find {field.label} at {value}.")
         if errors:
             messagebox.showerror("Missing information", "\n".join(errors), parent=self)
             return
         try:
+            if server_updates:
+                server_id = self._server_var.get()
+                servers = normalize_servers(self.config_manager.data)
+                for server in servers:
+                    if server["server_id"] == server_id:
+                        server.update(server_updates)
+                        break
+                updated["servers"] = servers
             self.config_manager.update(updated)
         except Exception as exc:
             messagebox.showerror("Save failed", str(exc), parent=self)
@@ -130,6 +188,19 @@ class PathSetupDialog(tk.Toplevel):
         # window to be closed if necessary.
         self.grab_release()
         self.destroy()
+
+    def _on_server_change(self, _event=None) -> None:
+        selected = self._server_display.current()
+        if selected is None or selected < 0:
+            return
+        server_id = self._servers[selected]["server_id"]
+        self._server_var.set(server_id)
+        for key, var in self._entries.items():
+            field = PATH_FIELDS[key]
+            if field.scope != "server":
+                continue
+            server = self._server_lookup.get(server_id, {})
+            var.set(str(server.get(field.key, "")))
 
 
 class BotSetupDialog(tk.Toplevel):

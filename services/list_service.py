@@ -4,6 +4,8 @@ import sys
 from pathlib import Path
 from typing import List
 
+from services.file_utils import atomic_write_text
+
 
 def load_list(path: str) -> List[str]:
     file_path = Path(path)
@@ -25,6 +27,6 @@ def open_in_system_editor(path: str) -> None:
 def force_sync(path: str) -> None:
     file_path = Path(path)
     if not file_path.exists():
-        file_path.touch()
+        atomic_write_text(file_path, "")
     else:
-        file_path.write_text("\n".join(load_list(path)))
+        atomic_write_text(file_path, "\n".join(load_list(path)))

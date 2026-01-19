@@ -8,6 +8,7 @@ from typing import Callable
 
 from gui.theme import LIGHT_THEME, ThemePalette
 from services import bot_control_service, list_service, userdata_service
+from services.server_config import normalize_servers, server_map
 
 
 class DeadPlayersPanel(tk.Frame):
@@ -16,11 +17,15 @@ class DeadPlayersPanel(tk.Frame):
         master,
         *,
         userdata_path: str,
+        servers: list[dict],
         wait_time_seconds: int | None = None,
         refresh_interval: int = 5_000,
     ) -> None:
         super().__init__(master)
         self.userdata_path = userdata_path
+        self.servers = servers
+        self._server_lookup = server_map(servers)
+        self._active_server_id: str | None = None
         self.refresh_interval = refresh_interval
         self._default_wait_seconds = self._normalize_wait_time(wait_time_seconds)
         self._theme: ThemePalette = LIGHT_THEME
@@ -30,9 +35,10 @@ class DeadPlayersPanel(tk.Frame):
         self._poll()
 
     def _build_tree(self) -> ttk.Treeview:
-        columns = ("discord", "steam", "death", "status", "revive")
+        columns = ("server", "discord", "steam", "death", "status", "revive")
         tree = ttk.Treeview(self, columns=columns, show="headings", height=14)
         headings = {
+            "server": "Server",
             "discord": "Discord Name",
             "steam": "Steam64",
             "death": "Time Of Death",
@@ -41,7 +47,8 @@ class DeadPlayersPanel(tk.Frame):
         }
         for key, text in headings.items():
             tree.heading(key, text=text)
-            tree.column(key, width=140 if key != "death" else 160, anchor=tk.CENTER)
+            width = 140 if key not in ("death", "server") else 160
+            tree.column(key, width=width, anchor=tk.CENTER)
         tree.pack(fill=tk.BOTH, expand=True)
         tree.bind("<Button-3>", self._show_context_menu)
         return tree
@@ -133,11 +140,12 @@ class DeadPlayersPanel(tk.Frame):
             return
         values = self._tree.item(selection[0], "values")
         message = (
-            f"Discord: {values[0]}\n"
-            f"Steam64: {values[1]}\n"
-            f"Time of Death: {values[2]}\n"
-            f"Status: {values[3]}\n"
-            f"Revival ETA: {values[4]}"
+            f"Server: {values[0]}\n"
+            f"Discord: {values[1]}\n"
+            f"Steam64: {values[2]}\n"
+            f"Time of Death: {values[3]}\n"
+            f"Status: {values[4]}\n"
+            f"Revival ETA: {values[5]}"
         )
         messagebox.showinfo("Death Details", message)
 
@@ -150,6 +158,16 @@ class DeadPlayersPanel(tk.Frame):
         for entry in userdata_service.list_dead_players(
             self.userdata_path, default_wait_seconds=self._default_wait_seconds
         ):
+            death_servers = entry.get("death_servers", [])
+            if self._active_server_id:
+                if self._active_server_id not in death_servers:
+                    continue
+            server_labels = []
+            for server_id in death_servers:
+                server = self._server_lookup.get(str(server_id), {})
+                label = server.get("display_name") or server_id
+                server_labels.append(label)
+            server_label = ", ".join(server_labels) if server_labels else "Unknown"
             timestamp = entry.get("time_of_death")
             if timestamp:
                 display_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp))
@@ -161,6 +179,7 @@ class DeadPlayersPanel(tk.Frame):
                 tk.END,
                 iid=iid,
                 values=(
+                    server_label,
                     entry["discord_name"],
                     entry["steam64"],
                     display_time,
@@ -190,6 +209,10 @@ class DeadPlayersPanel(tk.Frame):
         if seconds and seconds > 0:
             return seconds
         return None
+
+    def set_active_server(self, server_id: str | None) -> None:
+        self._active_server_id = server_id
+        self.refresh()
 
     def apply_theme(self, theme: ThemePalette) -> None:
         self._theme = theme
@@ -228,9 +251,12 @@ class DeadPlayersPanel(tk.Frame):
 
 
 class DeathCounterPanel(tk.Frame):
-    def __init__(self, master, *, death_counter_path: str) -> None:
+    def __init__(self, master, *, death_counter_path: str, servers: list[dict]) -> None:
         super().__init__(master)
         self.death_counter_path = death_counter_path
+        self.servers = servers
+        self._server_lookup = server_map(servers)
+        self._active_server_id: str | None = None
         self._theme: ThemePalette = LIGHT_THEME
         self._count_var = tk.StringVar(value="0")
         self._status_var = tk.StringVar(value="")
@@ -313,19 +339,38 @@ class DeathCounterPanel(tk.Frame):
 
     def refresh(self) -> None:
         try:
-            count, last_reset, synced = bot_control_service.get_death_counter(self.death_counter_path)
+            summary = bot_control_service.get_death_counter_summary(self.death_counter_path)
         except Exception as exc:
             messagebox.showerror("Death Counter", str(exc))
             return
-        self._count_var.set(str(count))
+        count = int(summary.get("count", 0))
+        last_reset = int(summary.get("last_reset", 0))
+        per_server = summary.get("per_server", {})
+        synced = bool(summary.get("synced", False))
+        display_count = count
+        if self._active_server_id:
+            server_state = per_server.get(self._active_server_id, {})
+            display_count = int(server_state.get("count", 0))
+        self._count_var.set(str(display_count))
         self._since_var.set(self._format_since_text(last_reset))
         status_parts: list[str] = []
         if synced:
             status_parts.append("Synced with the running bot.")
         else:
             status_parts.append("Bot offline. Showing the saved file value.")
+        breakdown = []
+        for server_id, state in per_server.items():
+            server = self._server_lookup.get(server_id, {})
+            label = server.get("display_name") or server_id
+            breakdown.append(f"{label}: {state.get('count', 0)}")
+        if breakdown:
+            status_parts.append("Per-server: " + ", ".join(breakdown))
         if self._since_var.get():
             status_parts.append(self._since_var.get())
+        if self._active_server_id and breakdown:
+            server = self._server_lookup.get(self._active_server_id, {})
+            label = server.get("display_name") or self._active_server_id
+            status_parts.insert(0, f"Viewing {label}")
         self._status_var.set(" ".join(status_parts))
 
     def _apply_value(self) -> None:
@@ -334,23 +379,34 @@ class DeathCounterPanel(tk.Frame):
         except ValueError:
             messagebox.showerror("Death Counter", "Please enter a valid integer value.")
             return
-        self._update_counter(lambda: bot_control_service.set_death_counter(self.death_counter_path, value))
+        self._update_counter(
+            lambda: bot_control_service.set_death_counter(self.death_counter_path, value)
+        )
 
     def _adjust(self, delta: int) -> None:
-        self._update_counter(lambda: bot_control_service.adjust_death_counter(self.death_counter_path, delta))
+        self._update_counter(
+            lambda: bot_control_service.adjust_death_counter(self.death_counter_path, delta)
+        )
 
     def _update_counter(
         self,
-        updater: Callable[[], tuple[int, int, bool]],
+        updater: Callable[[], dict],
         *,
         success_messages: tuple[str, str] | None = None,
     ) -> None:
         try:
-            count, last_reset, synced = updater()
+            summary = updater()
         except Exception as exc:
             messagebox.showerror("Death Counter", str(exc))
             return
-        self._count_var.set(str(count))
+        count = int(summary.get("count", 0))
+        last_reset = int(summary.get("last_reset", 0))
+        synced = bool(summary.get("synced", False))
+        display_count = count
+        if self._active_server_id:
+            server_state = summary.get("per_server", {}).get(self._active_server_id, {})
+            display_count = int(server_state.get("count", 0))
+        self._count_var.set(str(display_count))
         self._since_var.set(self._format_since_text(last_reset))
         if success_messages:
             self._status_var.set(success_messages[0] if synced else success_messages[1])
@@ -433,6 +489,12 @@ class DeathCounterPanel(tk.Frame):
         self._count_var.set(str(count))
         self._since_var.set(self._format_since_text(last_reset))
         self._status_var.set("Counter auto-refreshed from the latest event.")
+        if self._active_server_id:
+            self.refresh()
+
+    def set_active_server(self, server_id: str | None) -> None:
+        self._active_server_id = server_id
+        self.refresh()
 
 
 class AdminManagerPanel(tk.Frame):
@@ -668,26 +730,37 @@ class AdminManagerPanel(tk.Frame):
 
 
 class ListViewerPanel(tk.Frame):
-    def __init__(self, master, *, title: str, path: str) -> None:
+    def __init__(
+        self,
+        master,
+        *,
+        title: str,
+        server_paths: dict[str, str],
+        server_lookup: dict[str, dict],
+    ) -> None:
         super().__init__(master)
         self.title = title
-        self.path = path
+        self.server_paths = server_paths
+        self.server_lookup = server_lookup
+        self._active_server_id: str | None = None
         self._theme: ThemePalette = LIGHT_THEME
         self._label = tk.Label(self, text=title, font=("Segoe UI", 11, "bold"))
         self._label.pack(anchor="w", padx=6, pady=(6, 0))
-        self._listbox = tk.Listbox(self)
-        self._listbox.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
+
+        columns = ("server", "steam")
+        self._tree = ttk.Treeview(self, columns=columns, show="headings", height=10)
+        self._tree.heading("server", text="Server")
+        self._tree.heading("steam", text="Steam64")
+        self._tree.column("server", width=140, anchor=tk.CENTER)
+        self._tree.column("steam", width=160, anchor=tk.CENTER)
+        self._tree.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
 
         self._button_frame = tk.Frame(self)
         self._button_frame.pack(fill=tk.X, padx=6, pady=(0, 6))
         self._buttons: list[tk.Button] = []
-        self._buttons.append(
-            tk.Button(self._button_frame, text="Reload", command=self.reload)
-        )
+        self._buttons.append(tk.Button(self._button_frame, text="Reload", command=self.reload))
         self._buttons[-1].pack(side=tk.LEFT)
-        self._buttons.append(
-            tk.Button(self._button_frame, text="Open File", command=self._open)
-        )
+        self._buttons.append(tk.Button(self._button_frame, text="Open File", command=self._open))
         self._buttons[-1].pack(side=tk.LEFT, padx=(6, 0))
         self._buttons.append(
             tk.Button(self._button_frame, text="Force Sync", command=self._force_sync)
@@ -697,22 +770,46 @@ class ListViewerPanel(tk.Frame):
         self.reload()
 
     def reload(self) -> None:
-        self._listbox.delete(0, tk.END)
-        for entry in list_service.load_list(self.path):
-            self._listbox.insert(tk.END, entry)
+        self._tree.delete(*self._tree.get_children())
+        if self._active_server_id:
+            path = self.server_paths.get(self._active_server_id, "")
+            for entry in list_service.load_list(path):
+                server_label = self._server_label(self._active_server_id)
+                self._tree.insert("", tk.END, values=(server_label, entry))
+            return
+        for server_id, path in self.server_paths.items():
+            for entry in list_service.load_list(path):
+                server_label = self._server_label(server_id)
+                self._tree.insert("", tk.END, values=(server_label, entry))
+
+    def _server_label(self, server_id: str) -> str:
+        server = self.server_lookup.get(server_id, {})
+        return server.get("display_name") or server_id
 
     def _open(self) -> None:
+        if not self._active_server_id:
+            messagebox.showinfo("Open File", "Select a single server to open its list file.")
+            return
+        path = self.server_paths.get(self._active_server_id, "")
         try:
-            list_service.open_in_system_editor(self.path)
+            list_service.open_in_system_editor(path)
         except Exception as exc:
             messagebox.showerror("Open File", str(exc))
 
     def _force_sync(self) -> None:
+        if not self._active_server_id:
+            messagebox.showinfo("Force Sync", "Select a single server to sync its list file.")
+            return
+        path = self.server_paths.get(self._active_server_id, "")
         try:
-            list_service.force_sync(self.path)
+            list_service.force_sync(path)
             self.reload()
         except Exception as exc:
             messagebox.showerror("Force Sync", str(exc))
+
+    def set_active_server(self, server_id: str | None) -> None:
+        self._active_server_id = server_id
+        self.reload()
 
     def apply_theme(self, theme: ThemePalette) -> None:
         self._theme = theme
@@ -729,16 +826,24 @@ class ListViewerPanel(tk.Frame):
                 borderwidth=1,
                 relief=tk.FLAT,
             )
-        self._listbox.configure(
-            bg=theme.console_bg,
-            fg=theme.console_fg,
-            selectbackground=theme.accent,
-            selectforeground=theme.console_fg,
-            highlightbackground=theme.panel_bg,
-            highlightcolor=theme.panel_bg,
-            relief=tk.FLAT,
-            borderwidth=1,
+        style = ttk.Style(self)
+        tree_style = "Sidebar.List.Treeview"
+        heading_style = f"{tree_style}.Heading"
+        style.configure(
+            tree_style,
+            background=theme.panel_bg,
+            fieldbackground=theme.panel_bg,
+            foreground=theme.fg,
+            rowheight=24,
+            borderwidth=0,
         )
+        style.map(
+            tree_style,
+            background=[("selected", theme.accent)],
+            foreground=[("selected", theme.console_fg)],
+        )
+        style.configure(heading_style, background=theme.panel_bg, foreground=theme.fg)
+        self._tree.configure(style=tree_style)
 
 
 class DangerPanel(tk.Frame):
@@ -799,6 +904,8 @@ class SidebarPane(tk.Frame):
     def __init__(self, master, *, config: dict) -> None:
         super().__init__(master)
         self.config_data = config
+        self.servers = normalize_servers(config)
+        self._server_lookup = server_map(self.servers)
         self._theme: ThemePalette = LIGHT_THEME
         self._build_ui()
 
@@ -812,6 +919,7 @@ class SidebarPane(tk.Frame):
         self._dead_panel = DeadPlayersPanel(
             self._notebook,
             userdata_path=self.config_data.get("userdata_db_path", "userdata_db.json"),
+            servers=self.servers,
             wait_time_seconds=self.config_data.get("wait_time_new_life_seconds"),
         )
         self._notebook.add(self._dead_panel, text="Currently Dead")
@@ -819,21 +927,32 @@ class SidebarPane(tk.Frame):
         self._counter_panel = DeathCounterPanel(
             self._notebook,
             death_counter_path=self.config_data.get("death_counter_path", "death_counter.json"),
+            servers=self.servers,
         )
         self._notebook.add(self._counter_panel, text="Death Counter")
 
         self._lists_notebook = ttk.Notebook(
             self._notebook, style="Sidebar.SubNotebook.TNotebook"
         )
+        whitelist_paths = {
+            str(server["server_id"]): server.get("path_to_whitelist", "")
+            for server in self.servers
+        }
+        banlist_paths = {
+            str(server["server_id"]): server.get("path_to_bans", "")
+            for server in self.servers
+        }
         self._whitelist_panel = ListViewerPanel(
             self._lists_notebook,
             title="Whitelist",
-            path=self.config_data.get("whitelist_path", "whitelist.txt"),
+            server_paths=whitelist_paths,
+            server_lookup=self._server_lookup,
         )
         self._banlist_panel = ListViewerPanel(
             self._lists_notebook,
             title="Banlist",
-            path=self.config_data.get("blacklist_path", "banlist.txt"),
+            server_paths=banlist_paths,
+            server_lookup=self._server_lookup,
         )
         self._lists_notebook.add(self._whitelist_panel, text="Whitelist")
         self._lists_notebook.add(self._banlist_panel, text="Banlist")
@@ -857,10 +976,22 @@ class SidebarPane(tk.Frame):
 
     def reload_paths(self, config: dict) -> None:
         self.config_data = config
+        self.servers = normalize_servers(config)
+        self._server_lookup = server_map(self.servers)
         for child in self.winfo_children():
             child.destroy()
         self._build_ui()
         self.apply_theme(self._theme)
+
+    def set_active_server(self, server_id: str | None) -> None:
+        if hasattr(self, "_dead_panel"):
+            self._dead_panel.set_active_server(server_id)
+        if hasattr(self, "_counter_panel"):
+            self._counter_panel.set_active_server(server_id)
+        if hasattr(self, "_whitelist_panel"):
+            self._whitelist_panel.set_active_server(server_id)
+        if hasattr(self, "_banlist_panel"):
+            self._banlist_panel.set_active_server(server_id)
 
     def apply_theme(self, theme: ThemePalette) -> None:
         self._theme = theme
