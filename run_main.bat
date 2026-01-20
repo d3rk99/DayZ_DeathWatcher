@@ -53,6 +53,8 @@ if errorlevel 1 (
 )
 
 :: Run the main application
+set "NEXTCORD_DISABLE_HEALTH_CHECK=1"
+set "NEXTCORD_DISABLE_HEALTHCHECK=1"
 "%VENV_DIR%\Scripts\python.exe" main.py %*
 set "EXIT_CODE=%errorlevel%"
 if not "%EXIT_CODE%"=="0" (

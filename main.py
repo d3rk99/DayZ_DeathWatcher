@@ -26,6 +26,7 @@ def _hold_console_on_crash(exc_type, exc_value, exc_tb) -> None:
 
 sys.excepthook = _hold_console_on_crash
 os.environ.setdefault("NEXTCORD_DISABLE_HEALTH_CHECK", "1")
+os.environ.setdefault("NEXTCORD_DISABLE_HEALTHCHECK", "1")
 
 import datetime
 import aiohttp
