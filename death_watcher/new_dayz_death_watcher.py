@@ -24,6 +24,8 @@ DEFAULT_CONFIG = {
     "death_event_name": "PLAYER_DEATH",
 }
 
+_CACHE_WRITE_LOCK = threading.Lock()
+
 
 def _atomic_write_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -157,12 +159,8 @@ class DayZDeathWatcher:
             self._ensure_config_exists()
         self._load_config()
         self._ensure_cache_exists()
+        self._ensure_ban_file_exists()
         self.current_cache = self._load_cache()
-
-        if not self.path_to_bans or not self.path_to_bans.exists():
-            raise FileNotFoundError(
-                f"Failed to find ban file: \"{self.path_to_bans}\""
-            )
 
     def _ensure_config_exists(self) -> None:
         if self.config_data is not None:
@@ -212,7 +210,17 @@ class DayZDeathWatcher:
         assert self.path_to_cache is not None
         self._log(f"Failed to find cache file: {self.path_to_cache}\nCreating it now.")
         self.path_to_cache.parent.mkdir(parents=True, exist_ok=True)
-        _atomic_write_text(self.path_to_cache, json.dumps(DEFAULT_CACHE_CONTENT, indent=4))
+        with _CACHE_WRITE_LOCK:
+            _atomic_write_text(self.path_to_cache, json.dumps(DEFAULT_CACHE_CONTENT, indent=4))
+
+    def _ensure_ban_file_exists(self) -> None:
+        if not self.path_to_bans:
+            raise FileNotFoundError("Missing configuration for path_to_bans.")
+        if self.path_to_bans.exists():
+            return
+        self._log(f"Failed to find ban file: {self.path_to_bans}\nCreating it now.")
+        self.path_to_bans.parent.mkdir(parents=True, exist_ok=True)
+        _atomic_write_text(self.path_to_bans, "")
 
     def _load_cache(self) -> dict:
         assert self.path_to_cache is not None
@@ -237,13 +245,14 @@ class DayZDeathWatcher:
 
     def _update_cache(self) -> None:
         assert self.path_to_cache is not None
-        if self.server_id:
-            if "servers" not in self._cache_container:
-                self._cache_container = {"servers": {}}
-            self._cache_container["servers"][self.server_id] = self.current_cache
-            _atomic_write_text(self.path_to_cache, json.dumps(self._cache_container, indent=4))
-            return
-        _atomic_write_text(self.path_to_cache, json.dumps(self.current_cache, indent=4))
+        with _CACHE_WRITE_LOCK:
+            if self.server_id:
+                if "servers" not in self._cache_container:
+                    self._cache_container = {"servers": {}}
+                self._cache_container["servers"][self.server_id] = self.current_cache
+                _atomic_write_text(self.path_to_cache, json.dumps(self._cache_container, indent=4))
+                return
+            _atomic_write_text(self.path_to_cache, json.dumps(self.current_cache, indent=4))
 
     # ------------------------------------------------------------------
     # log helpers
