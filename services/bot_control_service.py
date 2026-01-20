@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from typing import Callable, Tuple
+from typing import Callable
 
 from services import death_counter_service, userdata_service
 
@@ -38,48 +38,59 @@ def is_bot_running() -> bool:
     return _get_bot_loop() is not None
 
 
-def get_death_counter(path: str) -> Tuple[int, int, bool]:
+def get_death_counter_summary(path: str) -> dict:
     module = _get_main_module()
-    coro = getattr(module, "get_death_counter_value", None)
+    coro = getattr(module, "get_death_counter_summary", None)
     loop = _get_bot_loop()
     if coro and loop:
-        count, last_reset = _run_in_loop(coro)
-        return count, last_reset, True
-    count, last_reset = death_counter_service.get_counter(path)
-    return count, last_reset, False
+        summary = _run_in_loop(coro)
+        summary["synced"] = True
+        return summary
+    summary = death_counter_service.get_counter_summary(path)
+    summary["synced"] = False
+    return summary
 
 
-def set_death_counter(path: str, count: int) -> Tuple[int, int, bool]:
+def set_death_counter(path: str, count: int) -> dict:
     module = _get_main_module()
     coro = getattr(module, "set_death_counter_value", None)
     loop = _get_bot_loop()
     if coro and loop:
         new_count, last_reset = _run_in_loop(lambda: coro(count))
-        return new_count, last_reset, True
-    new_count, last_reset = death_counter_service.set_counter(path, count)
-    return new_count, last_reset, False
+        summary = death_counter_service.get_counter_summary(path)
+        summary.update({"count": new_count, "last_reset": last_reset, "synced": True})
+        return summary
+    summary = death_counter_service.set_counter(path, count)
+    summary["synced"] = False
+    return summary
 
 
-def adjust_death_counter(path: str, delta: int) -> Tuple[int, int, bool]:
+def adjust_death_counter(path: str, delta: int) -> dict:
     module = _get_main_module()
     coro = getattr(module, "adjust_death_counter", None)
     loop = _get_bot_loop()
     if coro and loop:
         count, last_reset = _run_in_loop(lambda: coro(delta))
-        return count, last_reset, True
-    count, last_reset = death_counter_service.adjust_counter(path, delta)
-    return count, last_reset, False
+        summary = death_counter_service.get_counter_summary(path)
+        summary.update({"count": count, "last_reset": last_reset, "synced": True})
+        return summary
+    summary = death_counter_service.adjust_counter(path, delta)
+    summary["synced"] = False
+    return summary
 
 
-def wipe_death_counter(path: str) -> Tuple[int, int, bool]:
+def wipe_death_counter(path: str) -> dict:
     module = _get_main_module()
     coro = getattr(module, "reset_death_counter", None)
     loop = _get_bot_loop()
     if coro and loop:
         count, last_reset = _run_in_loop(coro)
-        return count, last_reset, True
-    count, last_reset = death_counter_service.wipe_counter(path)
-    return count, last_reset, False
+        summary = death_counter_service.get_counter_summary(path)
+        summary.update({"count": count, "last_reset": last_reset, "synced": True})
+        return summary
+    summary = death_counter_service.wipe_counter(path)
+    summary["synced"] = False
+    return summary
 
 
 def refresh_activity() -> None:
@@ -107,6 +118,15 @@ def force_revive_all_users(path: str) -> int:
     if coro and loop:
         return _run_in_loop(coro)
     return userdata_service.force_revive_all(path)
+
+
+def clear_alive_dead_roles() -> int:
+    module = _get_main_module()
+    coro = getattr(module, "clear_alive_dead_roles", None)
+    loop = _get_bot_loop()
+    if coro and loop:
+        return _run_in_loop(coro)
+    raise RuntimeError("The Discord bot is not running.")
 
 
 def force_mark_dead(path: str, discord_id: str) -> bool:

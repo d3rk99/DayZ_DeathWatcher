@@ -3,6 +3,7 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from services.file_utils import atomic_write_text
 
 def _read_json(path: Path) -> Dict:
     if not path.exists():
@@ -24,6 +25,9 @@ def list_dead_players(
     result: List[Dict[str, str]] = []
     for discord_id, info in data.get("userdata", {}).items():
         if int(info.get("is_alive", 1)) == 0:
+            death_servers = info.get("death_server_ids")
+            if not isinstance(death_servers, list):
+                death_servers = []
             result.append(
                 {
                     "discord_id": discord_id,
@@ -34,6 +38,10 @@ def list_dead_players(
                     "revival_eta": _calculate_revive_eta(
                         info, default_wait_seconds=default_wait_seconds
                     ),
+                    "death_servers": death_servers,
+                    "last_death_server_id": info.get("last_death_server_id", ""),
+                    "active_server_id": info.get("active_server_id", ""),
+                    "home_server_id": info.get("home_server_id", ""),
                 }
             )
     return result
@@ -62,7 +70,7 @@ def _calculate_revive_eta(
 
 
 def _save_userdata(path: Path, data: Dict) -> None:
-    path.write_text(json.dumps(data, indent=4))
+    atomic_write_text(path, json.dumps(data, indent=4))
 
 
 def _modify_user(path: Path, discord_id: str, updater) -> Tuple[bool, Dict]:

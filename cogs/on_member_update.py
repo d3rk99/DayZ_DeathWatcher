@@ -7,6 +7,7 @@ from nextcord.ext import commands
 from nextcord import Webhook
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from main import *
+from services.file_utils import atomic_write_text
 
 
 
@@ -77,8 +78,9 @@ class OnMemberUpdate(commands.Cog):
             
             # store their userdata in db
             userdata_json["userdata"][str(user_id)] = userdata
-            with open(config["userdata_db_path"], "w") as json_file:
-                json.dump(userdata_json, json_file, indent = 4)
+            atomic_write_text(
+                config["userdata_db_path"], json.dumps(userdata_json, indent=4)
+            )
             
             
         except Exception as e:
