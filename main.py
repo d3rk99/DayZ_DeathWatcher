@@ -960,6 +960,38 @@ async def bulk_revive_dead_users() -> int:
     return revived
 
 
+async def clear_alive_dead_roles() -> int:
+    if not config or client is None:
+        return 0
+    guild = client.get_guild(config["guild_id"])
+    if guild is None:
+        return 0
+
+    alive_role = nextcord.utils.get(guild.roles, id=config["alive_role"])
+    dead_role = nextcord.utils.get(guild.roles, id=config["dead_role"])
+    if alive_role is None and dead_role is None:
+        return 0
+
+    updated = 0
+    for member in guild.members:
+        if member.bot:
+            continue
+        roles_to_remove = []
+        if alive_role and alive_role in member.roles:
+            roles_to_remove.append(alive_role)
+        if dead_role and dead_role in member.roles:
+            roles_to_remove.append(dead_role)
+        if not roles_to_remove:
+            continue
+        try:
+            await member.remove_roles(*roles_to_remove, reason="DeathWatcher wipe cleanup")
+            updated += 1
+        except Exception as exc:
+            print(f"[WipeRoles] Failed to update roles for {member.id}: {exc}")
+
+    return updated
+
+
 async def dump_error_discord(error_message : str, prefix : str = "Error", force_mention_tag : str = ""):
     prefix = "Error" if (prefix == "") else prefix
     channel_id = config["error_dump_channel"]

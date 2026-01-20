@@ -120,6 +120,15 @@ def force_revive_all_users(path: str) -> int:
     return userdata_service.force_revive_all(path)
 
 
+def clear_alive_dead_roles() -> int:
+    module = _get_main_module()
+    coro = getattr(module, "clear_alive_dead_roles", None)
+    loop = _get_bot_loop()
+    if coro and loop:
+        return _run_in_loop(coro)
+    raise RuntimeError("The Discord bot is not running.")
+
+
 def force_mark_dead(path: str, discord_id: str) -> bool:
     module = _get_main_module()
     coro = getattr(module, "set_user_as_dead", None)

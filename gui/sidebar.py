@@ -880,6 +880,12 @@ class DangerPanel(tk.Frame):
             pady=6,
         )
         self._wipe_button.pack(pady=20)
+        self._role_wipe_button = tk.Button(
+            self,
+            text="Remove Alive/Dead Roles",
+            command=self._confirm_role_wipe,
+        )
+        self._role_wipe_button.pack(pady=(0, 16))
 
     def _confirm_wipe(self) -> None:
         if not messagebox.askyesno(
@@ -888,9 +894,33 @@ class DangerPanel(tk.Frame):
         ):
             return
         if userdata_service.wipe_database(self.userdata_path):
-            messagebox.showinfo("Database wiped", "The userdata database has been reset.")
+            role_cleanup_message = ""
+            try:
+                removed = bot_control_service.clear_alive_dead_roles()
+                role_cleanup_message = f"\nRemoved alive/dead roles from {removed} member(s)."
+            except Exception as exc:
+                role_cleanup_message = f"\nFailed to remove alive/dead roles: {exc}"
+            messagebox.showinfo(
+                "Database wiped",
+                f"The userdata database has been reset.{role_cleanup_message}",
+            )
         else:
             messagebox.showerror("Database wipe failed", "Unable to modify the userdata file.")
+
+    def _confirm_role_wipe(self) -> None:
+        if not messagebox.askyesno(
+            "Remove Alive/Dead Roles",
+            "Remove the alive/dead roles from every member?",
+        ):
+            return
+        try:
+            removed = bot_control_service.clear_alive_dead_roles()
+            messagebox.showinfo(
+                "Role Cleanup",
+                f"Removed alive/dead roles from {removed} member(s).",
+            )
+        except Exception as exc:
+            messagebox.showerror("Role Cleanup Failed", str(exc))
 
     def apply_theme(self, theme: ThemePalette) -> None:
         self._theme = theme
@@ -898,6 +928,16 @@ class DangerPanel(tk.Frame):
         for widget in (self._message, self._description):
             widget.configure(bg=theme.panel_bg, fg=theme.fg)
         self._wipe_button.configure(highlightbackground=theme.panel_bg)
+        if hasattr(self, "_role_wipe_button"):
+            self._role_wipe_button.configure(
+                bg=theme.button_bg,
+                fg=theme.button_fg,
+                activebackground=theme.accent,
+                activeforeground=theme.console_fg,
+                highlightbackground=theme.panel_bg,
+                borderwidth=1,
+                relief=tk.FLAT,
+            )
 
 
 class SidebarPane(tk.Frame):
