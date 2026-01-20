@@ -60,16 +60,18 @@ def normalize_servers(config: Dict[str, Any]) -> List[Dict[str, Any]]:
             if not server_id:
                 continue
             normalized.append(
-                {
-                    "server_id": server_id,
-                    "display_name": entry.get("display_name") or f"Server {server_id}",
-                    "server_root_path": entry.get("server_root_path", ""),
-                    "path_to_logs_directory": entry.get("path_to_logs_directory", ""),
-                    "path_to_bans": entry.get("path_to_bans", ""),
-                    "path_to_whitelist": entry.get("path_to_whitelist", ""),
-                    "death_watcher_death_path": entry.get("death_watcher_death_path", ""),
-                    "enabled": bool(entry.get("enabled", True)),
-                }
+                apply_server_root(
+                    {
+                        "server_id": server_id,
+                        "display_name": entry.get("display_name") or f"Server {server_id}",
+                        "server_root_path": entry.get("server_root_path", ""),
+                        "path_to_logs_directory": entry.get("path_to_logs_directory", ""),
+                        "path_to_bans": entry.get("path_to_bans", ""),
+                        "path_to_whitelist": entry.get("path_to_whitelist", ""),
+                        "death_watcher_death_path": entry.get("death_watcher_death_path", ""),
+                        "enabled": bool(entry.get("enabled", True)),
+                    }
+                )
             )
         return normalized
 
