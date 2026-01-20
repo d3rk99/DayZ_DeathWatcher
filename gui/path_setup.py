@@ -140,7 +140,10 @@ class PathSetupDialog(tk.Toplevel):
             "title": f"Select {field.label}",
             "initialdir": os.path.dirname(current) if current else os.getcwd(),
         }
-        chosen = filedialog.askopenfilename(**options)
+        if field.kind == "dir":
+            chosen = filedialog.askdirectory(**options)
+        else:
+            chosen = filedialog.askopenfilename(**options)
         if chosen:
             self._entries[field.key].set(chosen)
 
