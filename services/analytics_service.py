@@ -1,9 +1,12 @@
 import csv
+import io
 import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Tuple
+
+from services.file_utils import atomic_write_text
 
 CAUSE_PATTERNS: Dict[str, List[str]] = {
     "Firearm": ["shot", "rifle", "gun", "m4"],
@@ -54,13 +57,14 @@ class AnalyticsManager:
         path_obj = Path(path)
         if fmt == "json":
             payload = [event.__dict__ for event in self._events]
-            path_obj.write_text(json.dumps(payload, indent=2))
+            atomic_write_text(path_obj, json.dumps(payload, indent=2))
         elif fmt == "csv":
-            with path_obj.open("w", newline="") as csvfile:
-                writer = csv.writer(csvfile)
-                writer.writerow(["timestamp", "cause", "raw"])
-                for event in self._events:
-                    writer.writerow([event.timestamp, event.cause, event.raw])
+            buffer = io.StringIO()
+            writer = csv.writer(buffer)
+            writer.writerow(["timestamp", "cause", "raw"])
+            for event in self._events:
+                writer.writerow([event.timestamp, event.cause, event.raw])
+            atomic_write_text(path_obj, buffer.getvalue())
         else:
             raise ValueError(f"Unsupported format: {fmt}")
 

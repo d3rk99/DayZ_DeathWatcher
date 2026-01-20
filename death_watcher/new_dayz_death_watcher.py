@@ -3,6 +3,7 @@ import os
 import threading
 import time
 import traceback
+import uuid
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple
 
@@ -24,6 +25,13 @@ DEFAULT_CONFIG = {
 }
 
 
+def _atomic_write_text(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    temp_path.write_text(text, encoding="utf-8")
+    os.replace(temp_path, path)
+
+
 class DayZDeathWatcher:
     """Utility that tails DayZ server logs for death events."""
 
@@ -32,13 +40,18 @@ class DayZDeathWatcher:
         config_path: Optional[str] = None,
         *,
         set_console_title: bool = False,
+        config_data: Optional[dict] = None,
+        server_id: Optional[str] = None,
         logger: Optional[Callable[[str], None]] = None,
     ) -> None:
         self._script_dir = Path(__file__).resolve().parent
         self.config_path = Path(config_path) if config_path else self._script_dir / "config.json"
         self.set_console_title = set_console_title
+        self.config_data = config_data
+        self.server_id = str(server_id) if server_id is not None else None
         self.players_to_ban: List[Tuple[str, float]] = []
         self.current_cache: dict = {}
+        self._cache_container: dict = {}
         self._stop_event = threading.Event()
         self._log = logger or (lambda message: print(message, flush=True))
 
@@ -140,7 +153,8 @@ class DayZDeathWatcher:
     # configuration helpers
     # ------------------------------------------------------------------
     def _prepare_files(self) -> None:
-        self._ensure_config_exists()
+        if self.config_data is None:
+            self._ensure_config_exists()
         self._load_config()
         self._ensure_cache_exists()
         self.current_cache = self._load_cache()
@@ -151,17 +165,21 @@ class DayZDeathWatcher:
             )
 
     def _ensure_config_exists(self) -> None:
+        if self.config_data is not None:
+            return
         if self.config_path.exists():
             return
 
         self._log(f"Generating default config file: ({self.config_path})")
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
-        with self.config_path.open("w", encoding="utf-8") as config_file:
-            json.dump(DEFAULT_CONFIG, config_file, indent=4)
+        _atomic_write_text(self.config_path, json.dumps(DEFAULT_CONFIG, indent=4))
 
     def _load_config(self) -> None:
-        with self.config_path.open("r", encoding="utf-8") as json_file:
-            self.config = json.load(json_file)
+        if self.config_data is not None:
+            self.config = dict(self.config_data)
+        else:
+            with self.config_path.open("r", encoding="utf-8") as json_file:
+                self.config = json.load(json_file)
 
         def resolve_path(value: str) -> Path:
             candidate = Path(value)
@@ -194,13 +212,22 @@ class DayZDeathWatcher:
         assert self.path_to_cache is not None
         self._log(f"Failed to find cache file: {self.path_to_cache}\nCreating it now.")
         self.path_to_cache.parent.mkdir(parents=True, exist_ok=True)
-        with self.path_to_cache.open("w", encoding="utf-8") as file:
-            json.dump(DEFAULT_CACHE_CONTENT, file, indent=4)
+        _atomic_write_text(self.path_to_cache, json.dumps(DEFAULT_CACHE_CONTENT, indent=4))
 
     def _load_cache(self) -> dict:
         assert self.path_to_cache is not None
         with self.path_to_cache.open("r", encoding="utf-8") as json_file:
             cache = json.load(json_file)
+        if self.server_id:
+            if "servers" not in cache:
+                cache = {"servers": {self.server_id: cache}}
+            self._cache_container = cache
+            scoped_cache = cache.get("servers", {}).get(self.server_id, {})
+            scoped_cache.setdefault("prev_log_read", {}).setdefault("line", "")
+            if scoped_cache["prev_log_read"]["line"] == "\n":
+                scoped_cache["prev_log_read"]["line"] = ""
+            scoped_cache.setdefault("log_label", "")
+            return scoped_cache
 
         cache.setdefault("prev_log_read", {}).setdefault("line", "")
         if cache["prev_log_read"]["line"] == "\n":
@@ -210,8 +237,13 @@ class DayZDeathWatcher:
 
     def _update_cache(self) -> None:
         assert self.path_to_cache is not None
-        with self.path_to_cache.open("w", encoding="utf-8") as json_file:
-            json.dump(self.current_cache, json_file, indent=4)
+        if self.server_id:
+            if "servers" not in self._cache_container:
+                self._cache_container = {"servers": {}}
+            self._cache_container["servers"][self.server_id] = self.current_cache
+            _atomic_write_text(self.path_to_cache, json.dumps(self._cache_container, indent=4))
+            return
+        _atomic_write_text(self.path_to_cache, json.dumps(self.current_cache, indent=4))
 
     # ------------------------------------------------------------------
     # log helpers
@@ -304,11 +336,16 @@ class DayZDeathWatcher:
         tries = 0
         while not success and tries < 10:
             try:
-                with self.path_to_bans.open("a+", encoding="utf-8") as file:
-                    file.seek(0)
-                    ids = [name.strip() for name in file]
-                    if player_id not in ids:
-                        file.write(f"{player_id}\n")
+                ids = []
+                if self.path_to_bans.exists():
+                    ids = [
+                        name.strip()
+                        for name in self.path_to_bans.read_text(encoding="utf-8").splitlines()
+                        if name.strip()
+                    ]
+                if player_id not in ids:
+                    ids.append(player_id)
+                    _atomic_write_text(self.path_to_bans, "\n".join(ids))
                 success = True
             except Exception as exc:
                 self._log(f"Failed to ban player: '{exc}' Try: {tries + 1}")

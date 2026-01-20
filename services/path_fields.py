@@ -18,26 +18,47 @@ class PathField:
     label: str
     must_exist: bool = True
     description: str | None = None
+    scope: str = "global"
+    kind: str = "file"
 
 
 PATH_FIELDS: Dict[str, PathField] = {
-    "whitelist_path": PathField(
-        key="whitelist_path",
+    "server_root_path": PathField(
+        key="server_root_path",
+        label="Server Root Folder",
+        must_exist=True,
+        description="Root folder that contains profiles/, ban.txt, and whitelist.txt.",
+        scope="server",
+        kind="dir",
+    ),
+    "path_to_whitelist": PathField(
+        key="path_to_whitelist",
         label="Whitelist File",
         must_exist=True,
         description="Text file that tracks members allowed on the server.",
+        scope="server",
     ),
-    "blacklist_path": PathField(
-        key="blacklist_path",
+    "path_to_bans": PathField(
+        key="path_to_bans",
         label="Banlist File",
         must_exist=True,
         description="DayZ ban file that the bot appends to when players die.",
+        scope="server",
+    ),
+    "path_to_logs_directory": PathField(
+        key="path_to_logs_directory",
+        label="Logs Directory",
+        must_exist=False,
+        description="DetailedLogs folder containing .ljson files for this server.",
+        scope="server",
+        kind="dir",
     ),
     "death_watcher_death_path": PathField(
         key="death_watcher_death_path",
-        label="DayZ Death Log",
+        label="Death Watcher Output",
         must_exist=False,
-        description="Watcher log that powers the death analytics tab.",
+        description="Watcher output file used to track DayZ death events.",
+        scope="server",
     ),
     "userdata_db_path": PathField(
         key="userdata_db_path",
@@ -60,7 +81,7 @@ PATH_FIELDS: Dict[str, PathField] = {
 }
 
 
-REQUIRED_PATH_KEYS: List[str] = ["whitelist_path", "blacklist_path"]
+REQUIRED_PATH_KEYS: List[str] = ["path_to_whitelist", "path_to_bans"]
 
 
 def find_missing_required_paths(config: Dict[str, str]) -> List[str]:
@@ -69,11 +90,31 @@ def find_missing_required_paths(config: Dict[str, str]) -> List[str]:
     import os
 
     missing: List[str] = []
+    servers = config.get("servers") or []
     for key in REQUIRED_PATH_KEYS:
-        value = str(config.get(key, "")).strip()
-        if not value:
-            missing.append(key)
+        field = PATH_FIELDS.get(key)
+        if not field:
             continue
-        if not os.path.isfile(_expand(value)):
-            missing.append(key)
+        if field.scope == "server":
+            for server in servers:
+                value = str(server.get(key, "")).strip()
+                if not value:
+                    missing.append(f"{key}:{server.get('server_id')}")
+                    continue
+                expanded = _expand(value)
+                if field.kind == "dir":
+                    exists = os.path.isdir(expanded)
+                else:
+                    exists = os.path.isfile(expanded)
+                if not exists:
+                    missing.append(f"{key}:{server.get('server_id')}")
+        else:
+            value = str(config.get(key, "")).strip()
+            if not value:
+                missing.append(key)
+                continue
+            expanded = _expand(value)
+            exists = os.path.isdir(expanded) if field.kind == "dir" else os.path.isfile(expanded)
+            if not exists:
+                missing.append(key)
     return missing

@@ -3,6 +3,8 @@ import os
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
+from services.file_utils import atomic_write_text
+
 
 DEFAULT_CACHE_CONTENT = {"prev_log_read": {"line": ""}, "log_label": ""}
 
@@ -18,14 +20,17 @@ class AliveTimeLogWatcher:
         logger: Optional[Callable[[str], None]] = None,
         event_name: str = "PLAYER_MANAGEMENT",
         sub_event: str = "disconnect",
+        server_id: Optional[str] = None,
     ) -> None:
         self.logs_directory = logs_directory
         self.cache_path = cache_path
         self.event_name = event_name
         self.sub_event = sub_event
+        self.server_id = str(server_id) if server_id is not None else None
         self._log = logger or (lambda message: print(message, flush=True))
 
         self.current_cache: Dict = {}
+        self._cache_container: Dict = {}
         self._prepare_files()
 
     def poll_disconnects(self) -> List[Dict[str, Optional[str]]]:
@@ -91,19 +96,37 @@ class AliveTimeLogWatcher:
             )
 
         if not self.cache_path.exists():
-            self.cache_path.write_text(json.dumps(DEFAULT_CACHE_CONTENT))
+            atomic_write_text(self.cache_path, json.dumps(DEFAULT_CACHE_CONTENT))
         try:
-            self.current_cache = json.loads(self.cache_path.read_text())
+            cache_data = json.loads(self.cache_path.read_text())
         except json.JSONDecodeError:
-            self.current_cache = dict(DEFAULT_CACHE_CONTENT)
+            cache_data = dict(DEFAULT_CACHE_CONTENT)
+            self.current_cache = cache_data
             self._update_cache()
+            return
 
-        if "prev_log_read" not in self.current_cache:
-            self.current_cache["prev_log_read"] = {"line": ""}
+        if self.server_id:
+            if "servers" not in cache_data:
+                cache_data = {"servers": {self.server_id: cache_data}}
+            self._cache_container = cache_data
+            self.current_cache = cache_data.get("servers", {}).get(
+                self.server_id, dict(DEFAULT_CACHE_CONTENT)
+            )
+            self.current_cache.setdefault("prev_log_read", {}).setdefault("line", "")
+        else:
+            self.current_cache = cache_data
+            if "prev_log_read" not in self.current_cache:
+                self.current_cache["prev_log_read"] = {"line": ""}
 
     def _update_cache(self) -> None:
         try:
-            self.cache_path.write_text(json.dumps(self.current_cache, indent=4))
+            if self.server_id:
+                if "servers" not in self._cache_container:
+                    self._cache_container = {"servers": {}}
+                self._cache_container["servers"][self.server_id] = self.current_cache
+                atomic_write_text(self.cache_path, json.dumps(self._cache_container, indent=4))
+            else:
+                atomic_write_text(self.cache_path, json.dumps(self.current_cache, indent=4))
         except Exception:
             self._log(f"Failed to update alive time cache at {self.cache_path}")
 

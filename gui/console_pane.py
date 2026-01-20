@@ -5,6 +5,7 @@ from tkinter import filedialog, messagebox
 from typing import List
 
 from gui.theme import LIGHT_THEME, ThemePalette
+from services.file_utils import atomic_write_text
 
 
 class ConsolePane(tk.Frame):
@@ -130,8 +131,7 @@ class ConsolePane(tk.Frame):
                 to_write = full_buffer
             else:
                 to_write = visible_text
-            with open(file_path, "w", encoding="utf-8") as file:
-                file.write(to_write)
+            atomic_write_text(file_path, to_write)
         except OSError as exc:
             messagebox.showerror("Save Failed", str(exc))
 
