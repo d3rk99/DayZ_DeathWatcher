@@ -23,6 +23,14 @@ class PathField:
 
 
 PATH_FIELDS: Dict[str, PathField] = {
+    "server_root_path": PathField(
+        key="server_root_path",
+        label="Server Root Folder",
+        must_exist=True,
+        description="Root folder that contains profiles/, ban.txt, and whitelist.txt.",
+        scope="server",
+        kind="dir",
+    ),
     "path_to_whitelist": PathField(
         key="path_to_whitelist",
         label="Whitelist File",

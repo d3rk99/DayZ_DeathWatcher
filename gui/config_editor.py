@@ -5,7 +5,7 @@ from tkinter import ttk, messagebox
 from typing import Callable, Dict, Tuple
 
 from services.config_manager import ConfigManager
-from services.server_config import get_default_server_id, normalize_servers, server_map
+from services.server_config import derive_paths_from_root, get_default_server_id, normalize_servers, server_map
 
 
 class ConfigEditor(tk.Toplevel):
@@ -53,6 +53,7 @@ class ConfigEditor(tk.Toplevel):
         self._server_combo.pack(fill=tk.X)
         self._server_combo.bind("<<ComboboxSelected>>", self._on_server_change)
 
+        self._add_entry(paths_tab, "Server Root Folder", "server_root_path", scope="server")
         self._add_entry(paths_tab, "Logs Directory", "path_to_logs_directory", scope="server")
         self._add_entry(paths_tab, "Death Watcher Output", "death_watcher_death_path", scope="server")
         self._add_entry(paths_tab, "Whitelist Path", "path_to_whitelist", scope="server")
@@ -102,6 +103,7 @@ class ConfigEditor(tk.Toplevel):
     def _save(self) -> None:
         updated = {}
         server_updates: Dict[str, str] = {}
+        root_path = ""
         for key, (var, original_type, scope) in self._entries.items():
             value = var.get()
             try:
@@ -116,8 +118,15 @@ class ConfigEditor(tk.Toplevel):
                 return
             if scope == "server":
                 server_updates[key] = casted
+                if key == "server_root_path":
+                    root_path = str(casted)
             else:
                 updated[key] = casted
+        if root_path:
+            derived = derive_paths_from_root(root_path)
+            for key, value in derived.items():
+                if not server_updates.get(key):
+                    server_updates[key] = value
         try:
             if server_updates:
                 server_id = self._server_var.get()

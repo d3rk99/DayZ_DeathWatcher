@@ -8,7 +8,7 @@ from typing import Callable, Dict, Iterable, List
 from services.bot_fields import BOT_FIELDS, BotField
 from services.config_manager import ConfigManager
 from services.path_fields import PATH_FIELDS, PathField
-from services.server_config import get_default_server_id, normalize_servers, server_map
+from services.server_config import derive_paths_from_root, get_default_server_id, normalize_servers, server_map
 
 
 class PathSetupDialog(tk.Toplevel):
@@ -147,14 +147,32 @@ class PathSetupDialog(tk.Toplevel):
     def _save(self) -> None:
         updated: Dict[str, str] = {}
         server_updates: Dict[str, str] = {}
+        root_path = ""
         errors = []
         for key, var in self._entries.items():
             value = var.get().strip()
             field = PATH_FIELDS[key]
             if field.scope == "server":
                 server_updates[key] = value
+                if key == "server_root_path":
+                    root_path = value
             else:
                 updated[key] = value
+        if root_path:
+            derived = derive_paths_from_root(root_path)
+            for key, derived_value in derived.items():
+                if not server_updates.get(key):
+                    server_updates[key] = derived_value
+                    if key in self._entries:
+                        self._entries[key].set(derived_value)
+        for key, var in self._entries.items():
+            field = PATH_FIELDS[key]
+            value = (
+                server_updates.get(key)
+                if field.scope == "server"
+                else updated.get(key, "")
+            )
+            value = str(value).strip()
             if field.must_exist:
                 if not value:
                     errors.append(f"{field.label} is required.")

@@ -78,7 +78,7 @@ All of the bot's knobs live in `config.json`:
 | --- | --- |
 | `prefix` | Legacy command prefix (the bot now primarily uses slash commands). |
 | `token` | Discord bot token used by `main.py`. Prefer storing this securely (env var or secret file). |
-| `servers` | Array of DayZ servers (1–5). Each entry requires `server_id`, `display_name`, `path_to_logs_directory`, `path_to_bans`, `path_to_whitelist`, and `enabled`. |
+| `servers` | Array of DayZ servers (1–5). Each entry supports `server_root_path` to auto-fill `path_to_logs_directory` (`profiles/DetailedLogs`), `path_to_bans` (`ban.txt`), and `path_to_whitelist` (`whitelist.txt`). |
 | `default_server_id` | Server ID used when a user has not selected an active server yet. |
 | `max_active_servers` | Limits how many enabled servers the bot will watch at runtime (use `1` for a single-server setup). |
 | `unban_scope` | Controls which server(s) are unbanned when a user joins/leaves private voice. Values: `active_server_only` (default), `all_servers`, `user_home_server`. |
@@ -154,6 +154,9 @@ admins bypass voice requirements. Keep role IDs in sync with Discord whenever yo
 - **GUI server selector**: use the dropdown in the GUI header to filter the "Currently Dead",
   "Death Counter", and list views by server. Select **All Servers** to view aggregate lists with a
   server column. The "Server Activity" log view shows one panel per enabled server (up to five).
+- **Server root shortcut**: set `server_root_path` (or use the GUI path setup) and leave the other
+  per-server paths blank; the bot will derive `profiles/DetailedLogs`, `ban.txt`, and
+  `whitelist.txt` automatically.
 
 ## Automation & CI
 The repository ships with `.github/workflows/codex.yml`, a GitHub Actions workflow that installs

@@ -11,6 +11,33 @@ def _coerce_server_id(value: Any) -> str:
     return str(value)
 
 
+def _expand(path: str) -> str:
+    import os
+
+    return os.path.abspath(os.path.expanduser(path or ""))
+
+
+def derive_paths_from_root(root_path: str) -> Dict[str, str]:
+    root = _expand(root_path)
+    if not root:
+        return {}
+    return {
+        "path_to_logs_directory": str(Path(root) / "profiles" / "DetailedLogs"),
+        "path_to_bans": str(Path(root) / "ban.txt"),
+        "path_to_whitelist": str(Path(root) / "whitelist.txt"),
+    }
+
+
+def apply_server_root(entry: Dict[str, Any]) -> Dict[str, Any]:
+    root = entry.get("server_root_path")
+    if not root:
+        return entry
+    derived = derive_paths_from_root(str(root))
+    for key, value in derived.items():
+        if not entry.get(key):
+            entry[key] = value
+    return entry
+
 def _legacy_logs_path(config: Dict[str, Any]) -> str:
     config_path = config.get("death_watcher_config_path")
     if not config_path:
@@ -36,6 +63,7 @@ def normalize_servers(config: Dict[str, Any]) -> List[Dict[str, Any]]:
                 {
                     "server_id": server_id,
                     "display_name": entry.get("display_name") or f"Server {server_id}",
+                    "server_root_path": entry.get("server_root_path", ""),
                     "path_to_logs_directory": entry.get("path_to_logs_directory", ""),
                     "path_to_bans": entry.get("path_to_bans", ""),
                     "path_to_whitelist": entry.get("path_to_whitelist", ""),
@@ -50,13 +78,14 @@ def normalize_servers(config: Dict[str, Any]) -> List[Dict[str, Any]]:
     legacy = {
         "server_id": legacy_server_id,
         "display_name": "Server 1",
+        "server_root_path": "",
         "path_to_logs_directory": _legacy_logs_path(config),
         "path_to_bans": config.get("blacklist_path", ""),
         "path_to_whitelist": config.get("whitelist_path", ""),
         "death_watcher_death_path": death_path,
         "enabled": True,
     }
-    return [legacy]
+    return [apply_server_root(legacy)]
 
 
 def ensure_server_defaults(
@@ -70,6 +99,7 @@ def ensure_server_defaults(
         server_id = _coerce_server_id(entry.get("server_id"))
         if not server_id:
             continue
+        entry = apply_server_root(dict(entry))
         death_path = entry.get("death_watcher_death_path") or default_death_path_template.format(
             server_id=server_id
         )
@@ -77,6 +107,7 @@ def ensure_server_defaults(
             {
                 "server_id": server_id,
                 "display_name": entry.get("display_name") or f"Server {server_id}",
+                "server_root_path": entry.get("server_root_path", ""),
                 "path_to_logs_directory": entry.get("path_to_logs_directory")
                 or default_logs_directory,
                 "path_to_bans": entry.get("path_to_bans", ""),

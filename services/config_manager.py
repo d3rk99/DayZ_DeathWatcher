@@ -16,6 +16,7 @@ def _default_config() -> Dict[str, Any]:
             {
                 "server_id": "1",
                 "display_name": "Server 1",
+                "server_root_path": "",
                 "path_to_logs_directory": "",
                 "path_to_bans": "",
                 "path_to_whitelist": "",

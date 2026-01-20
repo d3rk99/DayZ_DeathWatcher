@@ -5,18 +5,20 @@
         {
             "server_id": "1",
             "display_name": "Memento Mori",
-            "path_to_logs_directory": "E:/DayZ MM/servers/MementoMori/profiles/DetailedLogs",
-            "path_to_bans": "E:/DayZ MM/servers/MementoMori/ban.txt",
-            "path_to_whitelist": "../whitelist.txt",
+            "server_root_path": "E:/DayZ MM/servers/MementoMori",
+            "path_to_logs_directory": "",
+            "path_to_bans": "",
+            "path_to_whitelist": "",
             "death_watcher_death_path": "./death_watcher/deaths_1.txt",
             "enabled": true
         },
         {
             "server_id": "2",
             "display_name": "Memento Mori - Alt",
-            "path_to_logs_directory": "E:/DayZ MM/servers/MementoMoriAlt/profiles/DetailedLogs",
-            "path_to_bans": "E:/DayZ MM/servers/MementoMoriAlt/ban.txt",
-            "path_to_whitelist": "../whitelist_alt.txt",
+            "server_root_path": "E:/DayZ MM/servers/MementoMoriAlt",
+            "path_to_logs_directory": "",
+            "path_to_bans": "",
+            "path_to_whitelist": "",
             "death_watcher_death_path": "./death_watcher/deaths_2.txt",
             "enabled": true
         }
