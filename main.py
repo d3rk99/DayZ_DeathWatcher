@@ -1159,15 +1159,24 @@ def launch_gui() -> None:
 
 
 if __name__ == "__main__":
-    if "--no-gui" in sys.argv:
-        run_bot()
-    else:
+    try:
+        if "--no-gui" in sys.argv:
+            run_bot()
+        else:
+            if platform.system() == "Windows":
+                try:
+                    hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+                    if hwnd:
+                        ctypes.windll.user32.ShowWindow(hwnd, 0)
+                        ctypes.windll.kernel32.FreeConsole()
+                except Exception:
+                    pass
+            launch_gui()
+    except Exception:
+        print("Life and Death Bot stopped due to an unexpected error:")
+        print(traceback.format_exc())
         if platform.system() == "Windows":
             try:
-                hwnd = ctypes.windll.kernel32.GetConsoleWindow()
-                if hwnd:
-                    ctypes.windll.user32.ShowWindow(hwnd, 0)
-                    ctypes.windll.kernel32.FreeConsole()
-            except Exception:
+                input("Press Enter to close this window...")
+            except EOFError:
                 pass
-        launch_gui()
