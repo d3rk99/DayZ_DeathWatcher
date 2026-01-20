@@ -48,9 +48,18 @@ if errorlevel 1 (
 "%VENV_DIR%\Scripts\python.exe" -m pip install -r requirements.txt
 if errorlevel 1 (
     echo Failed to install dependencies.
+    pause
     exit /b 1
 )
 
 :: Run the main application
+set "NEXTCORD_DISABLE_HEALTH_CHECK=1"
+set "NEXTCORD_DISABLE_HEALTHCHECK=1"
 "%VENV_DIR%\Scripts\python.exe" main.py %*
-exit /b %errorlevel%
+set "EXIT_CODE=%errorlevel%"
+if not "%EXIT_CODE%"=="0" (
+    echo.
+    echo The application exited with error code %EXIT_CODE%.
+    pause
+)
+exit /b %EXIT_CODE%

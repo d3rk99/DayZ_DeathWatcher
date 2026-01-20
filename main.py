@@ -1,12 +1,40 @@
 import os
 import platform
 import sys
+import traceback
+import types
+
+
+def _wait_for_exit() -> None:
+    if platform.system() != "Windows":
+        return
+    try:
+        if sys.stdin and sys.stdin.isatty():
+            input("Press Enter to close this window...")
+            return
+    except EOFError:
+        pass
+    try:
+        os.system("pause")
+    except Exception:
+        pass
+
+
+def _hold_console_on_crash(exc_type, exc_value, exc_tb) -> None:
+    traceback.print_exception(exc_type, exc_value, exc_tb)
+    _wait_for_exit()
+
+
+sys.excepthook = _hold_console_on_crash
+os.environ.setdefault("NEXTCORD_DISABLE_HEALTH_CHECK", "1")
+os.environ.setdefault("NEXTCORD_DISABLE_HEALTHCHECK", "1")
+sys.modules.setdefault("nextcord.health_check", types.ModuleType("nextcord.health_check"))
+
 import datetime
 import aiohttp
 import asyncio
 import json
 import time
-import traceback
 import threading
 import ctypes
 from typing import Callable, List, Optional
@@ -40,7 +68,10 @@ from services.server_config import (
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(SCRIPT_DIR)
 
-os.system("title " + "Life and Death Bot")
+try:
+    os.system("title " + "Life and Death Bot")
+except Exception:
+    pass
 
 client: Optional[Bot] = None
 config: dict = {}
@@ -1157,15 +1188,20 @@ def launch_gui() -> None:
 
 
 if __name__ == "__main__":
-    if "--no-gui" in sys.argv:
-        run_bot()
-    else:
-        if platform.system() == "Windows":
-            try:
-                hwnd = ctypes.windll.kernel32.GetConsoleWindow()
-                if hwnd:
-                    ctypes.windll.user32.ShowWindow(hwnd, 0)
-                    ctypes.windll.kernel32.FreeConsole()
-            except Exception:
-                pass
-        launch_gui()
+    try:
+        if "--no-gui" in sys.argv:
+            run_bot()
+        else:
+            if platform.system() == "Windows":
+                try:
+                    hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+                    if hwnd:
+                        ctypes.windll.user32.ShowWindow(hwnd, 0)
+                        ctypes.windll.kernel32.FreeConsole()
+                except Exception:
+                    pass
+            launch_gui()
+    except Exception:
+        print("Life and Death Bot stopped due to an unexpected error:")
+        print(traceback.format_exc())
+        _wait_for_exit()
