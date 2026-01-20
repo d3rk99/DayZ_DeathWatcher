@@ -25,6 +25,7 @@ from services.path_fields import PATH_FIELDS
 from services.server_config import (
     ensure_server_defaults,
     get_default_server_id,
+    get_active_servers,
     get_enabled_servers,
     get_unban_scope,
     get_validate_scope,
@@ -77,6 +78,8 @@ def main(*, interactive: bool = True, death_log_callback: Optional[Callable[[str
         default_logs_directory="",
         default_death_path_template="./death_watcher/deaths_{server_id}.txt",
     )
+    config.setdefault("max_active_servers", 5)
+    config["active_servers"] = get_active_servers(config)
     config.setdefault("default_server_id", get_default_server_id(config, config["servers"]))
     config.setdefault("unban_scope", "active_server_only")
     config.setdefault("validate_whitelist_scope", "all_servers")
@@ -92,7 +95,7 @@ def main(*, interactive: bool = True, death_log_callback: Optional[Callable[[str
 
     # verify whitelist/ban file paths are valid per enabled server
     missing_paths: List[str] = []
-    enabled_servers = get_enabled_servers(config["servers"])
+    enabled_servers = get_enabled_servers(config["active_servers"])
     for server in enabled_servers:
         server_id = server["server_id"]
         whitelist_path = str(server.get("path_to_whitelist", ""))
@@ -189,7 +192,9 @@ def remove_steam_id_occurrences(values: List[str], steam_id: str) -> List[str]:
 
 
 def get_servers() -> List[dict]:
-    return config.get("servers", []) if config else []
+    if not config:
+        return []
+    return config.get("active_servers") or config.get("servers", [])
 
 
 def get_enabled_server_ids() -> List[str]:
@@ -1082,6 +1087,7 @@ def launch_gui() -> None:
     sys.stderr = GuiConsoleWriter(app.append_main_log, original_stderr)
 
     def bot_runner() -> None:
+        asyncio.set_event_loop(asyncio.new_event_loop())
         try:
             run_bot(interactive=False, death_log_callback=app.append_death_log)
         except MissingConfigPaths as exc:

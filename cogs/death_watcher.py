@@ -7,7 +7,7 @@ from typing import Optional
 from nextcord.ext import commands
 
 from death_watcher.new_dayz_death_watcher import DEFAULT_CONFIG, DayZDeathWatcher
-from services.server_config import ensure_server_defaults, get_enabled_servers, normalize_servers
+from services.server_config import ensure_server_defaults, get_active_servers, get_enabled_servers, normalize_servers
 
 
 class DeathWatcher(commands.Cog):
@@ -32,7 +32,7 @@ class DeathWatcher(commands.Cog):
             "path_to_cache", "./death_watcher/death_watcher_cache.json"
         )
 
-        servers = ensure_server_defaults(normalize_servers(config))
+        servers = ensure_server_defaults(get_active_servers(config))
         enabled_servers = get_enabled_servers(servers)
 
         message = "\nStarting embedded DayZ death watcher...\n"

@@ -97,6 +97,18 @@ def get_enabled_servers(servers: Iterable[Dict[str, Any]]) -> List[Dict[str, Any
     return [server for server in servers if bool(server.get("enabled", True))]
 
 
+def get_active_servers(config: Dict[str, Any]) -> List[Dict[str, Any]]:
+    servers = normalize_servers(config)
+    enabled = get_enabled_servers(servers)
+    try:
+        max_count = int(config.get("max_active_servers", len(enabled)))
+    except (TypeError, ValueError):
+        max_count = len(enabled)
+    if max_count <= 0:
+        return []
+    return enabled[:max_count]
+
+
 def server_map(servers: Iterable[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
     return {str(server.get("server_id")): server for server in servers if server.get("server_id")}
 

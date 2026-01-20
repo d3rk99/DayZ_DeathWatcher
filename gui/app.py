@@ -14,7 +14,7 @@ from gui.sidebar import SidebarPane
 from gui.theme import ThemePalette, get_theme
 from services.analytics_service import AnalyticsManager
 from services.config_manager import ConfigManager
-from services.server_config import get_enabled_servers, normalize_servers
+from services.server_config import get_active_servers, get_enabled_servers, normalize_servers
 
 
 class GuiApplication:
@@ -39,7 +39,7 @@ class GuiApplication:
         self.config_manager = ConfigManager(config_path)
         self._needs_full_setup = self.config_manager.needs_initial_setup
         self.analytics_manager = AnalyticsManager()
-        self._servers = normalize_servers(self.config_manager.data)
+        self._servers = get_active_servers(self.config_manager.data)
         self._active_server_id: Optional[str] = None
         self._server_log_queues: dict[str, queue.Queue[str]] = {}
 
@@ -141,7 +141,7 @@ class GuiApplication:
 
     def _on_config_update(self, data: dict) -> None:
         self._sidebar.reload_paths(data)
-        self._servers = normalize_servers(data)
+        self._servers = get_active_servers(data)
         self._refresh_server_selector()
         self._build_server_log_panels()
         self._ensure_initial_paths()

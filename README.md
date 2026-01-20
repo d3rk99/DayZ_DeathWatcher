@@ -80,6 +80,7 @@ All of the bot's knobs live in `config.json`:
 | `token` | Discord bot token used by `main.py`. Prefer storing this securely (env var or secret file). |
 | `servers` | Array of DayZ servers (1–5). Each entry requires `server_id`, `display_name`, `path_to_logs_directory`, `path_to_bans`, `path_to_whitelist`, and `enabled`. |
 | `default_server_id` | Server ID used when a user has not selected an active server yet. |
+| `max_active_servers` | Limits how many enabled servers the bot will watch at runtime (use `1` for a single-server setup). |
 | `unban_scope` | Controls which server(s) are unbanned when a user joins/leaves private voice. Values: `active_server_only` (default), `all_servers`, `user_home_server`. |
 | `validate_whitelist_scope` | Scope used by `/validatesteamid` when adding users to lists. Default: `all_servers`. |
 | `userdata_db_path` | Location of the JSON datastore the bot uses to correlate Discord users to Steam IDs. |

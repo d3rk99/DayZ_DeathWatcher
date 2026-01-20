@@ -8,7 +8,7 @@ from typing import Callable
 
 from gui.theme import LIGHT_THEME, ThemePalette
 from services import bot_control_service, list_service, userdata_service
-from services.server_config import normalize_servers, server_map
+from services.server_config import get_active_servers, server_map
 
 
 class DeadPlayersPanel(tk.Frame):
@@ -904,7 +904,7 @@ class SidebarPane(tk.Frame):
     def __init__(self, master, *, config: dict) -> None:
         super().__init__(master)
         self.config_data = config
-        self.servers = normalize_servers(config)
+        self.servers = get_active_servers(config)
         self._server_lookup = server_map(self.servers)
         self._theme: ThemePalette = LIGHT_THEME
         self._build_ui()
@@ -976,7 +976,7 @@ class SidebarPane(tk.Frame):
 
     def reload_paths(self, config: dict) -> None:
         self.config_data = config
-        self.servers = normalize_servers(config)
+        self.servers = get_active_servers(config)
         self._server_lookup = server_map(self.servers)
         for child in self.winfo_children():
             child.destroy()

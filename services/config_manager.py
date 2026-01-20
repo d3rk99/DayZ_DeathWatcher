@@ -24,6 +24,7 @@ def _default_config() -> Dict[str, Any]:
             }
         ],
         "default_server_id": "1",
+        "max_active_servers": 5,
         "unban_scope": "active_server_only",
         "validate_whitelist_scope": "all_servers",
         "userdata_db_path": "./userdata_db.json",

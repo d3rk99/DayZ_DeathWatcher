@@ -71,6 +71,7 @@ class ConfigEditor(tk.Toplevel):
         self._add_toggle(toggles_tab, "Watch Death Watcher", "watch_death_watcher")
         self._add_toggle(toggles_tab, "Run Death Watcher Cog", "run_death_watcher_cog")
         self._add_entry(toggles_tab, "Default Server ID", "default_server_id")
+        self._add_entry(toggles_tab, "Max Active Servers", "max_active_servers")
         self._add_entry(toggles_tab, "Unban Scope", "unban_scope")
         self._add_entry(toggles_tab, "Validate Whitelist Scope", "validate_whitelist_scope")
 

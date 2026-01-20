@@ -6,7 +6,7 @@ from nextcord import Embed, Message, TextChannel
 from nextcord.ext import commands, tasks
 
 from services.alive_time_service import AliveTimeLogWatcher
-from services.server_config import get_default_server_id, normalize_servers
+from services.server_config import get_active_servers, get_default_server_id
 from services import userdata_service
 
 
@@ -58,7 +58,7 @@ class AliveTimeTracker(commands.Cog):
         logs_directory: Optional[Path] = None
         self.search_logs_interval = 5
 
-        servers = normalize_servers(self.config)
+        servers = get_active_servers(self.config)
         default_id = get_default_server_id(self.config, servers)
         for server in servers:
             if server.get("server_id") == default_id and server.get("path_to_logs_directory"):
