@@ -1,17 +1,29 @@
 import os
 import platform
 import sys
+import traceback
+
+
+def _hold_console_on_crash(exc_type, exc_value, exc_tb) -> None:
+    traceback.print_exception(exc_type, exc_value, exc_tb)
+    if platform.system() == "Windows":
+        try:
+            input("Press Enter to close this window...")
+        except EOFError:
+            pass
+
+
+sys.excepthook = _hold_console_on_crash
+os.environ.setdefault("NEXTCORD_DISABLE_HEALTH_CHECK", "1")
+
 import datetime
 import aiohttp
 import asyncio
 import json
 import time
-import traceback
 import threading
 import ctypes
 from typing import Callable, List, Optional
-
-os.environ.setdefault("NEXTCORD_DISABLE_HEALTH_CHECK", "1")
 
 from nextcord import Interaction, SlashOption, ChannelType
 from nextcord.abc import GuildChannel
