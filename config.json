@@ -8,8 +8,7 @@
             "server_root_path": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_1",
             "path_to_logs_directory": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_1/profiles/DetailedLogs",
             "path_to_bans": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_1/ban.txt",
-            "path_to_bans": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_1/whitelist.txt",
-            "path_to_whitelist": "",
+            "path_to_whitelist": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_1/whitelist.txt",
             "death_watcher_death_path": "./death_watcher/deaths_1.txt",
             "enabled": true
         },
@@ -19,7 +18,7 @@
             "server_root_path": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_2",
             "path_to_logs_directory": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_2/profiles/DetailedLogs",
             "path_to_bans": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_2/ban.txt",
-            "path_to_bans": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_2/whitelist.txt",
+            "path_to_whitelist": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_2/whitelist.txt",
             "death_watcher_death_path": "./death_watcher/deaths_2.txt",
             "enabled": true
         },
@@ -29,30 +28,10 @@
             "server_root_path": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_3",
             "path_to_logs_directory": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_3/profiles/DetailedLogs",
             "path_to_bans": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_3/ban.txt",
-            "path_to_bans": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_3/whitelist.txt",
-            "death_watcher_death_path": "./death_watcher/deaths_1.txt",
+            "path_to_whitelist": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_3/whitelist.txt",
+            "death_watcher_death_path": "./death_watcher/deaths_3.txt",
             "enabled": true
-        },
-        {
-            "server_id": "4",
-            "display_name": "MementoMori_4",
-            "server_root_path": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_4",
-            "path_to_logs_directory": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_4/profiles/DetailedLogs",
-            "path_to_bans": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_4/ban.txt",
-            "path_to_bans": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_4/whitelist.txt",
-            "death_watcher_death_path": "./death_watcher/deaths_1.txt",
-            "enabled": true
-        },
-        {
-            "server_id": "5",
-            "display_name": "MementoMori_5",
-            "server_root_path": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_5",
-            "path_to_logs_directory": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_5/profiles/DetailedLogs",
-            "path_to_bans": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_5/ban.txt",
-            "path_to_bans": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_5/whitelist.txt",
-            "death_watcher_death_path": "./death_watcher/deaths_1.txt",
-            "enabled": true
-        },
+        }
     ],
     "default_server_id": "1",
     "max_active_servers": 3,
