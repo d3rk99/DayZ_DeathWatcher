@@ -68,7 +68,10 @@ from services.server_config import (
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(SCRIPT_DIR)
 
-os.system("title " + "Life and Death Bot")
+try:
+    os.system("title " + "Life and Death Bot")
+except Exception:
+    pass
 
 client: Optional[Bot] = None
 config: dict = {}
