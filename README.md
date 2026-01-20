@@ -102,9 +102,8 @@ root folder automatically, then prompts for Discord IDs if they are missing. Tho
 back into `config.json`, so the next launch will run normally without prompting.
 
 If a future change breaks one of the paths—for example you move the whitelist file and forget to
-update the config—the worker thread raises a `MissingConfigPaths` error. The GUI catches that,
-pauses startup, and shows the same path setup dialog so you can correct the paths inline. After you
-click **Save**, the bot restarts automatically with the new values.
+update the config—the worker thread raises a `MissingConfigPaths` error. The GUI pauses startup and
+logs the issue so you can update the server root paths in the settings.
 
 ### Supporting data files
 - `userdata_db.json` is auto-created with `{ "userdata": {} }` the first time the bot runs.

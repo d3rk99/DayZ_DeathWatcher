@@ -42,7 +42,7 @@ def _default_config() -> Dict[str, Any]:
         "death_watcher_death_path": "",
         "death_counter_path": "./death_counter.json",
         "run_death_watcher_cog": 1,
-        "death_watcher_config_path": "",
+        "death_watcher_config_path": "./death_watcher/config.json",
         "steam_ids_to_unban_path": "./steam_ids_to_unban.txt",
         "error_dump_channel": "",
         "error_dump_allow_mention": 0,

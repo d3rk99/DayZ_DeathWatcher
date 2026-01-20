@@ -9,7 +9,7 @@ from typing import Callable, Optional
 from gui.analytics import AnalyticsPane
 from gui.config_editor import ConfigEditor
 from gui.console_pane import ConsolePane
-from gui.path_setup import BotSetupDialog, PathSetupDialog, ServerRootSetupDialog
+from gui.path_setup import BotSetupDialog, ServerRootSetupDialog
 from gui.sidebar import SidebarPane
 from gui.theme import ThemePalette, get_theme
 from services.analytics_service import AnalyticsManager
@@ -33,7 +33,7 @@ class GuiApplication:
         self._theme: ThemePalette = get_theme(False)
         self._ready = False
         self._ready_callbacks: list[Callable[[], None]] = []
-        self._path_dialog: Optional[PathSetupDialog] = None
+        self._path_dialog: Optional[tk.Toplevel] = None
         self._bot_dialog: Optional[BotSetupDialog] = None
 
         self.config_manager = ConfigManager(config_path)
@@ -366,8 +366,9 @@ class GuiApplication:
         missing = find_missing_required_paths(self.config_manager.data)
         if missing:
             self._set_ready(False)
-            self._show_path_dialog(missing, require_followup=False)
-        elif self._path_dialog is None and self._bot_dialog is None:
+            return
+
+        if self._path_dialog is None and self._bot_dialog is None:
             if self._needs_full_setup:
                 self._show_bot_setup_dialog()
             else:
@@ -375,42 +376,10 @@ class GuiApplication:
 
     def require_path_setup(self, missing_keys: Optional[list[str]] = None) -> None:
         def _prompt() -> None:
-            from services.path_fields import PATH_FIELDS, find_missing_required_paths
-
-            keys = missing_keys or find_missing_required_paths(self.config_manager.data)
-            keys = [key for key in keys if key in PATH_FIELDS]
-            if not keys:
-                keys = list(PATH_FIELDS.keys())
             self._set_ready(False)
-            self._show_path_dialog(keys, require_followup=False)
+            self._open_config_editor()
 
         self.root.after(0, _prompt)
-
-    def _show_path_dialog(self, missing_keys: list[str], *, require_followup: bool = False) -> None:
-        if self._path_dialog and self._path_dialog.winfo_exists():
-            return
-
-        def _on_complete() -> None:
-            from services.path_fields import find_missing_required_paths
-
-            self._path_dialog = None
-            missing = find_missing_required_paths(self.config_manager.data)
-            if missing:
-                self._show_path_dialog(missing, require_followup=require_followup)
-            else:
-                if require_followup:
-                    self._show_bot_setup_dialog()
-                else:
-                    self._set_ready(True)
-
-        self._path_dialog = PathSetupDialog(
-            self.root,
-            self.config_manager,
-            missing_keys=missing_keys,
-            button_text="Next" if require_followup else "Save",
-            on_complete=_on_complete,
-        )
-        self._path_dialog.bind("<Destroy>", lambda _event: setattr(self, "_path_dialog", None))
 
     def _show_server_root_dialog(self) -> None:
         if self._path_dialog and self._path_dialog.winfo_exists():

@@ -54,7 +54,7 @@ class AliveTimeTracker(commands.Cog):
             self.update_leaderboard.cancel()
 
     def _configure_watcher(self) -> None:
-        death_watcher_config_path = self.config.get("death_watcher_config_path")
+        death_watcher_config_path = self.config.get("death_watcher_config_path") or "./death_watcher/config.json"
         logs_directory: Optional[Path] = None
         self.search_logs_interval = 5
 

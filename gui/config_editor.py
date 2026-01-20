@@ -55,10 +55,8 @@ class ConfigEditor(tk.Toplevel):
 
         self._add_entry(paths_tab, "Server Root Folder", "server_root_path", scope="server")
         self._add_entry(paths_tab, "Logs Directory", "path_to_logs_directory", scope="server")
-        self._add_entry(paths_tab, "Death Watcher Output", "death_watcher_death_path", scope="server")
         self._add_entry(paths_tab, "Whitelist Path", "path_to_whitelist", scope="server")
         self._add_entry(paths_tab, "Banlist Path", "path_to_bans", scope="server")
-        self._add_entry(paths_tab, "Userdata DB Path", "userdata_db_path")
 
         self._add_entry(ids_tab, "Validate Steam Channel", "validate_steam_id_channel")
         self._add_entry(ids_tab, "Error Dump Channel", "error_dump_channel")

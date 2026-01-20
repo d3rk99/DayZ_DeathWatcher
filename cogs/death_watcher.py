@@ -22,7 +22,7 @@ class DeathWatcher(commands.Cog):
         self.logger = getattr(bot, "death_watcher_logger", None)
 
         base_config = dict(DEFAULT_CONFIG)
-        config_path = config.get("death_watcher_config_path")
+        config_path = config.get("death_watcher_config_path") or "./death_watcher/config.json"
         if config_path and Path(config_path).exists():
             try:
                 base_config.update(json.loads(Path(config_path).read_text()))

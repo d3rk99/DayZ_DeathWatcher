@@ -39,7 +39,7 @@ def apply_server_root(entry: Dict[str, Any]) -> Dict[str, Any]:
     return entry
 
 def _legacy_logs_path(config: Dict[str, Any]) -> str:
-    config_path = config.get("death_watcher_config_path")
+    config_path = config.get("death_watcher_config_path") or "./death_watcher/config.json"
     if not config_path:
         return ""
     try:

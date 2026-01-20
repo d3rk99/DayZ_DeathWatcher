@@ -83,6 +83,12 @@ def main(*, interactive: bool = True, death_log_callback: Optional[Callable[[str
     config.setdefault("default_server_id", get_default_server_id(config, config["servers"]))
     config.setdefault("unban_scope", "active_server_only")
     config.setdefault("validate_whitelist_scope", "all_servers")
+    config["userdata_db_path"] = config.get("userdata_db_path") or "./userdata_db.json"
+    config["steam_ids_to_unban_path"] = config.get("steam_ids_to_unban_path") or "./steam_ids_to_unban.txt"
+    config["death_counter_path"] = config.get("death_counter_path") or "./death_counter.json"
+    config["death_watcher_config_path"] = (
+        config.get("death_watcher_config_path") or "./death_watcher/config.json"
+    )
 
     load_death_counter_state()
 
