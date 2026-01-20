@@ -11,6 +11,8 @@ import threading
 import ctypes
 from typing import Callable, List, Optional
 
+os.environ.setdefault("NEXTCORD_DISABLE_HEALTH_CHECK", "1")
+
 from nextcord import Interaction, SlashOption, ChannelType
 from nextcord.abc import GuildChannel
 from nextcord.ext import tasks, commands
