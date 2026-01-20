@@ -4,13 +4,24 @@ import sys
 import traceback
 
 
+def _wait_for_exit() -> None:
+    if platform.system() != "Windows":
+        return
+    try:
+        if sys.stdin and sys.stdin.isatty():
+            input("Press Enter to close this window...")
+            return
+    except EOFError:
+        pass
+    try:
+        os.system("pause")
+    except Exception:
+        pass
+
+
 def _hold_console_on_crash(exc_type, exc_value, exc_tb) -> None:
     traceback.print_exception(exc_type, exc_value, exc_tb)
-    if platform.system() == "Windows":
-        try:
-            input("Press Enter to close this window...")
-        except EOFError:
-            pass
+    _wait_for_exit()
 
 
 sys.excepthook = _hold_console_on_crash
@@ -1187,8 +1198,4 @@ if __name__ == "__main__":
     except Exception:
         print("Life and Death Bot stopped due to an unexpected error:")
         print(traceback.format_exc())
-        if platform.system() == "Windows":
-            try:
-                input("Press Enter to close this window...")
-            except EOFError:
-                pass
+        _wait_for_exit()
