@@ -8,6 +8,7 @@ from typing import Callable, Dict, Iterable, List
 from services.bot_fields import BOT_FIELDS, BotField
 from services.config_manager import ConfigManager
 from services.path_fields import PATH_FIELDS, PathField
+from services.server_config import derive_paths_from_root, get_default_server_id, normalize_servers, server_map
 
 
 class PathSetupDialog(tk.Toplevel):
@@ -28,15 +29,29 @@ class PathSetupDialog(tk.Toplevel):
         self.config_manager = config_manager
         self._on_complete = on_complete
         self._entries: Dict[str, tk.StringVar] = {}
-        self._missing = set(missing_keys or [])
+        self._missing = self._parse_missing(missing_keys or [])
         self._field_keys: List[str] = list(PATH_FIELDS.keys())
         self._button_text = button_text or "Save"
+        self._server_var = tk.StringVar()
+        self._servers = normalize_servers(self.config_manager.data)
+        self._server_lookup = server_map(self._servers)
 
         self.transient(master)
         self.grab_set()
         self.protocol("WM_DELETE_WINDOW", self._on_cancel)
 
         self._build_form()
+
+
+    def _parse_missing(self, keys: Iterable[str]) -> Dict[str, List[str]]:
+        parsed: Dict[str, List[str]] = {}
+        for key in keys:
+            if ":" in key:
+                base, server_id = key.split(":", 1)
+                parsed.setdefault(base, []).append(server_id)
+            else:
+                parsed.setdefault(key, [])
+        return parsed
 
     def _build_form(self) -> None:
         container = ttk.Frame(self)
@@ -55,6 +70,31 @@ class PathSetupDialog(tk.Toplevel):
         form = ttk.Frame(container)
         form.pack(fill=tk.BOTH, expand=True)
 
+        if any(field.scope == "server" for field in PATH_FIELDS.values()):
+            server_row = ttk.Frame(form)
+            server_row.pack(fill=tk.X, pady=4)
+            ttk.Label(server_row, text="Server").pack(anchor=tk.W)
+            server_ids = [server["server_id"] for server in self._servers]
+            default_id = get_default_server_id(self.config_manager.data, self._servers)
+            self._server_var.set(default_id if default_id in server_ids else (server_ids[0] if server_ids else ""))
+            server_names = [
+                f"{server['display_name']} ({server['server_id']})" for server in self._servers
+            ]
+            self._server_display = ttk.Combobox(
+                server_row,
+                values=server_names,
+                state="readonly",
+            )
+            if server_names:
+                selected_idx = 0
+                for idx, server in enumerate(self._servers):
+                    if server["server_id"] == self._server_var.get():
+                        selected_idx = idx
+                        break
+                self._server_display.current(selected_idx)
+            self._server_display.pack(fill=tk.X, pady=(2, 6))
+            self._server_display.bind("<<ComboboxSelected>>", self._on_server_change)
+
         for key in self._field_keys:
             self._add_row(form, PATH_FIELDS[key])
 
@@ -72,7 +112,13 @@ class PathSetupDialog(tk.Toplevel):
         entry_row = ttk.Frame(row)
         entry_row.pack(fill=tk.X, expand=True)
 
-        initial = str(self.config_manager.data.get(field.key, ""))
+        initial = ""
+        if field.scope == "server":
+            server_id = self._server_var.get()
+            server = self._server_lookup.get(server_id, {})
+            initial = str(server.get(field.key, ""))
+        else:
+            initial = str(self.config_manager.data.get(field.key, ""))
         var = tk.StringVar(value=initial)
         entry = ttk.Entry(entry_row, textvariable=var)
         entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -95,28 +141,62 @@ class PathSetupDialog(tk.Toplevel):
             "title": f"Select {field.label}",
             "initialdir": os.path.dirname(current) if current else os.getcwd(),
         }
-        chosen = filedialog.askopenfilename(**options)
+        if field.kind == "dir":
+            chosen = filedialog.askdirectory(**options)
+        else:
+            chosen = filedialog.askopenfilename(**options)
         if chosen:
             self._entries[field.key].set(chosen)
 
     def _save(self) -> None:
         updated: Dict[str, str] = {}
+        server_updates: Dict[str, str] = {}
+        root_path = ""
         errors = []
         for key, var in self._entries.items():
             value = var.get().strip()
-            updated[key] = value
             field = PATH_FIELDS[key]
+            if field.scope == "server":
+                server_updates[key] = value
+                if key == "server_root_path":
+                    root_path = value
+            else:
+                updated[key] = value
+        if root_path:
+            derived = derive_paths_from_root(root_path)
+            for key, derived_value in derived.items():
+                if not server_updates.get(key):
+                    server_updates[key] = derived_value
+                    if key in self._entries:
+                        self._entries[key].set(derived_value)
+        for key, var in self._entries.items():
+            field = PATH_FIELDS[key]
+            value = (
+                server_updates.get(key)
+                if field.scope == "server"
+                else updated.get(key, "")
+            )
+            value = str(value).strip()
             if field.must_exist:
                 if not value:
                     errors.append(f"{field.label} is required.")
                     continue
                 expanded = os.path.abspath(os.path.expanduser(value))
-                if not os.path.isfile(expanded):
+                exists = os.path.isdir(expanded) if field.kind == "dir" else os.path.isfile(expanded)
+                if not exists:
                     errors.append(f"Unable to find {field.label} at {value}.")
         if errors:
             messagebox.showerror("Missing information", "\n".join(errors), parent=self)
             return
         try:
+            if server_updates:
+                server_id = self._server_var.get()
+                servers = normalize_servers(self.config_manager.data)
+                for server in servers:
+                    if server["server_id"] == server_id:
+                        server.update(server_updates)
+                        break
+                updated["servers"] = servers
             self.config_manager.update(updated)
         except Exception as exc:
             messagebox.showerror("Save failed", str(exc), parent=self)
@@ -130,6 +210,19 @@ class PathSetupDialog(tk.Toplevel):
         # window to be closed if necessary.
         self.grab_release()
         self.destroy()
+
+    def _on_server_change(self, _event=None) -> None:
+        selected = self._server_display.current()
+        if selected is None or selected < 0:
+            return
+        server_id = self._servers[selected]["server_id"]
+        self._server_var.set(server_id)
+        for key, var in self._entries.items():
+            field = PATH_FIELDS[key]
+            if field.scope != "server":
+                continue
+            server = self._server_lookup.get(server_id, {})
+            var.set(str(server.get(field.key, "")))
 
 
 class BotSetupDialog(tk.Toplevel):
@@ -236,6 +329,134 @@ class BotSetupDialog(tk.Toplevel):
             messagebox.showerror("Missing information", "\n".join(errors), parent=self)
             return
 
+        try:
+            self.config_manager.update(updated)
+        except Exception as exc:
+            messagebox.showerror("Save failed", str(exc), parent=self)
+            return
+
+        if self._on_complete:
+            self._on_complete()
+        self.destroy()
+
+    def _on_cancel(self) -> None:
+        self.grab_release()
+        self.destroy()
+
+
+class ServerRootSetupDialog(tk.Toplevel):
+    """Collects DayZ server root folders on first-time setup."""
+
+    def __init__(
+        self,
+        master,
+        config_manager: ConfigManager,
+        *,
+        server_count: int = 5,
+        on_complete: Callable[[], None] | None = None,
+    ) -> None:
+        super().__init__(master)
+        self.title("Configure Server Roots")
+        self.resizable(False, False)
+        self.config_manager = config_manager
+        self._on_complete = on_complete
+        self._entries: Dict[int, tk.StringVar] = {}
+        self._server_count = max(1, int(server_count))
+
+        self.transient(master)
+        self.grab_set()
+        self.protocol("WM_DELETE_WINDOW", self._on_cancel)
+
+        self._build_form()
+
+    def _build_form(self) -> None:
+        container = ttk.Frame(self)
+        container.pack(fill=tk.BOTH, expand=True, padx=16, pady=16)
+
+        intro = (
+            "Select the root folder for up to five DayZ servers. "
+            "Leave any entry blank to disable it. The bot will automatically "
+            "derive ban.txt, whitelist.txt, and profiles/DetailedLogs."
+        )
+        ttk.Label(container, text=intro, wraplength=420, justify=tk.LEFT).pack(
+            fill=tk.X, pady=(0, 12)
+        )
+
+        form = ttk.Frame(container)
+        form.pack(fill=tk.BOTH, expand=True)
+
+        for idx in range(1, self._server_count + 1):
+            self._add_row(form, idx)
+
+        ttk.Button(container, text="Save", command=self._save).pack(pady=(16, 0))
+
+    def _add_row(self, parent, server_index: int) -> None:
+        row = ttk.Frame(parent)
+        row.pack(fill=tk.X, pady=4)
+
+        ttk.Label(row, text=f"Server {server_index} Root Folder").pack(anchor=tk.W)
+        entry_row = ttk.Frame(row)
+        entry_row.pack(fill=tk.X, expand=True)
+
+        var = tk.StringVar(value="")
+        entry = ttk.Entry(entry_row, textvariable=var)
+        entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self._entries[server_index] = var
+
+        ttk.Button(
+            entry_row,
+            text="Browse...",
+            command=lambda idx=server_index: self._browse(idx),
+        ).pack(side=tk.LEFT, padx=(6, 0))
+
+    def _browse(self, server_index: int) -> None:
+        current = self._entries[server_index].get()
+        options = {
+            "title": f"Select Server {server_index} Root Folder",
+            "initialdir": os.path.dirname(current) if current else os.getcwd(),
+        }
+        chosen = filedialog.askdirectory(**options)
+        if chosen:
+            self._entries[server_index].set(chosen)
+
+    def _save(self) -> None:
+        servers: List[Dict[str, str]] = []
+        enabled_count = 0
+        first_enabled_id: str | None = None
+        for idx in range(1, self._server_count + 1):
+            root_path = self._entries[idx].get().strip()
+            enabled = bool(root_path)
+            if enabled:
+                enabled_count += 1
+                if first_enabled_id is None:
+                    first_enabled_id = str(idx)
+            derived = derive_paths_from_root(root_path) if root_path else {}
+            servers.append(
+                {
+                    "server_id": str(idx),
+                    "display_name": f"Server {idx}",
+                    "server_root_path": root_path,
+                    "path_to_logs_directory": derived.get("path_to_logs_directory", ""),
+                    "path_to_bans": derived.get("path_to_bans", ""),
+                    "path_to_whitelist": derived.get("path_to_whitelist", ""),
+                    "death_watcher_death_path": f"./death_watcher/deaths_{idx}.txt",
+                    "enabled": enabled,
+                }
+            )
+
+        if enabled_count == 0:
+            messagebox.showerror(
+                "Missing information",
+                "Please provide at least one server root folder.",
+                parent=self,
+            )
+            return
+
+        updated = {
+            "servers": servers,
+            "max_active_servers": enabled_count,
+            "default_server_id": first_enabled_id or "1",
+        }
         try:
             self.config_manager.update(updated)
         except Exception as exc:

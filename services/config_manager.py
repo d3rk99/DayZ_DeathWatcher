@@ -3,6 +3,8 @@ import threading
 from pathlib import Path
 from typing import Any, Callable, Dict, List
 
+from services.file_utils import atomic_write_text
+
 
 def _default_config() -> Dict[str, Any]:
     """Return a baseline config structure used for first-time setups."""
@@ -10,8 +12,22 @@ def _default_config() -> Dict[str, Any]:
     return {
         "prefix": "*",
         "token": "",
-        "whitelist_path": "",
-        "blacklist_path": "",
+        "servers": [
+            {
+                "server_id": "1",
+                "display_name": "Server 1",
+                "server_root_path": "",
+                "path_to_logs_directory": "",
+                "path_to_bans": "",
+                "path_to_whitelist": "",
+                "death_watcher_death_path": "./death_watcher/deaths_1.txt",
+                "enabled": True,
+            }
+        ],
+        "default_server_id": "1",
+        "max_active_servers": 5,
+        "unban_scope": "active_server_only",
+        "validate_whitelist_scope": "all_servers",
         "userdata_db_path": "./userdata_db.json",
         "admin_role_id": 0,
         "guild_id": 0,
@@ -26,7 +42,7 @@ def _default_config() -> Dict[str, Any]:
         "death_watcher_death_path": "",
         "death_counter_path": "./death_counter.json",
         "run_death_watcher_cog": 1,
-        "death_watcher_config_path": "",
+        "death_watcher_config_path": "./death_watcher/config.json",
         "steam_ids_to_unban_path": "./steam_ids_to_unban.txt",
         "error_dump_channel": "",
         "error_dump_allow_mention": 0,
@@ -74,7 +90,7 @@ class ConfigManager:
     def update(self, new_data: Dict[str, Any]) -> None:
         with self._lock:
             self._data.update(new_data)
-            self.path.write_text(json.dumps(self._data, indent=4))
+            atomic_write_text(self.path, json.dumps(self._data, indent=4))
             self._is_new_file = False
         self._notify_listeners()
 

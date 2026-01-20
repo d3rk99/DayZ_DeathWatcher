@@ -6,8 +6,8 @@ import nextcord
 from nextcord.ext import commands
 from nextcord import Webhook
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
-from main import reset_death_counter
-import asyncio
+from main import get_server_by_id, reset_death_counter
+from services.file_utils import atomic_write_text
 
 
 class ExtraCommands(commands.Cog):
@@ -106,8 +106,9 @@ class ExtraCommands(commands.Cog):
             
             if (user_id in userdata_json["userdata"]):
                 del userdata_json["userdata"][user_id]
-                with open(config["userdata_db_path"], "w") as json_file:
-                    json.dump(userdata_json, json_file, indent = 4)
+                atomic_write_text(
+                    config["userdata_db_path"], json.dumps(userdata_json, indent=4)
+                )
                 await interaction.response.send_message(f"Successfully deleted user with ID ({user_id}) from the database.", ephemeral=True, delete_after=20)
                 print(f"Successfully deleted user with ID ({user_id}) from the database.")
             
@@ -145,6 +146,68 @@ class ExtraCommands(commands.Cog):
                 await interaction.response.send_message("Failed to reset the death counter.", ephemeral=True, delete_after=20)
             except Exception:
                 pass
+
+    @nextcord.slash_command(name="setserver", description="Set the active DayZ server for a user.")
+    @commands.has_role("Admin")
+    async def set_server(
+        self,
+        interaction,
+        server_id: str = nextcord.SlashOption(
+            name="server_id",
+            description="Server ID to set as active.",
+            required=True,
+        ),
+    ):
+        try:
+            is_admin = False
+            for role in interaction.user.roles:
+                if (role.id == config["admin_role_id"]):
+                    is_admin = True
+                    break
+
+            if (not is_admin):
+                await interaction.response.send_message(
+                    "You are not authorized to use this command.",
+                    ephemeral=True,
+                    delete_after=15,
+                )
+                return
+
+            server = get_server_by_id(server_id)
+            if not server:
+                await interaction.response.send_message(
+                    f"Server ID ({server_id}) is not configured.",
+                    ephemeral=True,
+                    delete_after=20,
+                )
+                return
+
+            with open(config["userdata_db_path"], "r") as json_file:
+                userdata_json = json.load(json_file)
+            user_entry = userdata_json["userdata"].get(str(interaction.user.id))
+            if not user_entry:
+                await interaction.response.send_message(
+                    "You are not registered yet. Use /validatesteamid first.",
+                    ephemeral=True,
+                    delete_after=20,
+                )
+                return
+
+            user_entry["active_server_id"] = str(server_id)
+            userdata_json["userdata"][str(interaction.user.id)] = user_entry
+            atomic_write_text(
+                config["userdata_db_path"], json.dumps(userdata_json, indent=4)
+            )
+
+            await interaction.response.send_message(
+                f"Active server set to {server.get('display_name')} ({server_id}).",
+                ephemeral=True,
+                delete_after=20,
+            )
+
+        except Exception as e:
+            text = f"[SetServer] \"{e}\"\n"
+            print(text)
 
     
     

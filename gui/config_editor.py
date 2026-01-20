@@ -5,6 +5,7 @@ from tkinter import ttk, messagebox
 from typing import Callable, Dict, Tuple
 
 from services.config_manager import ConfigManager
+from services.server_config import derive_paths_from_root, get_default_server_id, normalize_servers, server_map
 
 
 class ConfigEditor(tk.Toplevel):
@@ -14,7 +15,10 @@ class ConfigEditor(tk.Toplevel):
         self.geometry("520x520")
         self.config_manager = config_manager
         self.on_reload = on_reload
-        self._entries: Dict[str, Tuple[tk.Variable, type]] = {}
+        self._entries: Dict[str, Tuple[tk.Variable, type, str]] = {}
+        self._servers = normalize_servers(self.config_manager.data)
+        self._server_lookup = server_map(self._servers)
+        self._server_var = tk.StringVar()
         self._build_form()
 
     def _build_form(self) -> None:
@@ -30,10 +34,29 @@ class ConfigEditor(tk.Toplevel):
         notebook.add(timers_tab, text="Timers")
         notebook.add(toggles_tab, text="Toggles")
 
-        self._add_entry(paths_tab, "Server Log Path", "death_watcher_death_path")
-        self._add_entry(paths_tab, "Whitelist Path", "whitelist_path")
-        self._add_entry(paths_tab, "Banlist Path", "blacklist_path")
-        self._add_entry(paths_tab, "Userdata DB Path", "userdata_db_path")
+        server_row = ttk.Frame(paths_tab)
+        server_row.pack(fill=tk.X, pady=4, padx=4)
+        ttk.Label(server_row, text="Server").pack(anchor="w")
+        server_names = [
+            f"{server['display_name']} ({server['server_id']})" for server in self._servers
+        ]
+        default_id = get_default_server_id(self.config_manager.data, self._servers)
+        default_idx = 0
+        for idx, server in enumerate(self._servers):
+            if server["server_id"] == default_id:
+                default_idx = idx
+                break
+        self._server_var.set(default_id if self._servers else "")
+        self._server_combo = ttk.Combobox(server_row, values=server_names, state="readonly")
+        if server_names:
+            self._server_combo.current(default_idx)
+        self._server_combo.pack(fill=tk.X)
+        self._server_combo.bind("<<ComboboxSelected>>", self._on_server_change)
+
+        self._add_entry(paths_tab, "Server Root Folder", "server_root_path", scope="server")
+        self._add_entry(paths_tab, "Logs Directory", "path_to_logs_directory", scope="server")
+        self._add_entry(paths_tab, "Whitelist Path", "path_to_whitelist", scope="server")
+        self._add_entry(paths_tab, "Banlist Path", "path_to_bans", scope="server")
 
         self._add_entry(ids_tab, "Validate Steam Channel", "validate_steam_id_channel")
         self._add_entry(ids_tab, "Error Dump Channel", "error_dump_channel")
@@ -46,30 +69,40 @@ class ConfigEditor(tk.Toplevel):
 
         self._add_toggle(toggles_tab, "Watch Death Watcher", "watch_death_watcher")
         self._add_toggle(toggles_tab, "Run Death Watcher Cog", "run_death_watcher_cog")
+        self._add_entry(toggles_tab, "Default Server ID", "default_server_id")
+        self._add_entry(toggles_tab, "Max Active Servers", "max_active_servers")
+        self._add_entry(toggles_tab, "Unban Scope", "unban_scope")
+        self._add_entry(toggles_tab, "Validate Whitelist Scope", "validate_whitelist_scope")
 
         button = tk.Button(self, text="Save & Reload", command=self._save)
         button.pack(pady=8)
 
-    def _add_entry(self, parent, label: str, key: str) -> None:
+    def _add_entry(self, parent, label: str, key: str, *, scope: str = "global") -> None:
         frame = ttk.Frame(parent)
         frame.pack(fill=tk.X, pady=4, padx=4)
         ttk.Label(frame, text=label).pack(anchor="w")
-        value = self.config_manager.data.get(key, "")
+        if scope == "server":
+            server = self._server_lookup.get(self._server_var.get(), {})
+            value = server.get(key, "")
+        else:
+            value = self.config_manager.data.get(key, "")
         var = tk.StringVar(value=str(value))
         entry = ttk.Entry(frame, textvariable=var)
         entry.pack(fill=tk.X)
-        self._entries[key] = (var, type(value))
+        self._entries[key] = (var, type(value), scope)
 
     def _add_toggle(self, parent, label: str, key: str) -> None:
         value = int(self.config_manager.data.get(key, 0))
         var = tk.IntVar(value=value)
         cb = ttk.Checkbutton(parent, text=label, variable=var)
         cb.pack(anchor="w", padx=4, pady=4)
-        self._entries[key] = (var, int)
+        self._entries[key] = (var, int, "global")
 
     def _save(self) -> None:
         updated = {}
-        for key, (var, original_type) in self._entries.items():
+        server_updates: Dict[str, str] = {}
+        root_path = ""
+        for key, (var, original_type, scope) in self._entries.items():
             value = var.get()
             try:
                 if original_type is int:
@@ -81,11 +114,43 @@ class ConfigEditor(tk.Toplevel):
             except ValueError:
                 messagebox.showerror("Invalid value", f"Unable to cast {value!r} for {key}")
                 return
-            updated[key] = casted
+            if scope == "server":
+                server_updates[key] = casted
+                if key == "server_root_path":
+                    root_path = str(casted)
+            else:
+                updated[key] = casted
+        if root_path:
+            derived = derive_paths_from_root(root_path)
+            for key, value in derived.items():
+                if not server_updates.get(key):
+                    server_updates[key] = value
         try:
+            if server_updates:
+                server_id = self._server_var.get()
+                servers = normalize_servers(self.config_manager.data)
+                for server in servers:
+                    if server["server_id"] == server_id:
+                        server.update(server_updates)
+                        break
+                updated["servers"] = servers
             self.config_manager.update(updated)
             self.on_reload(self.config_manager.data)
             messagebox.showinfo("Config", "Configuration updated successfully.")
             self.destroy()
         except Exception as exc:
             messagebox.showerror("Save failed", str(exc))
+
+    def _on_server_change(self, _event=None) -> None:
+        if not hasattr(self, "_server_combo"):
+            return
+        idx = self._server_combo.current()
+        if idx < 0 or idx >= len(self._servers):
+            return
+        selected = self._servers[idx]["server_id"]
+        self._server_var.set(selected)
+        server = self._server_lookup.get(selected, {})
+        for key, (var, _original_type, scope) in self._entries.items():
+            if scope != "server":
+                continue
+            var.set(str(server.get(key, "")))
