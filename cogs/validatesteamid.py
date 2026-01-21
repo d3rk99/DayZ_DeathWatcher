@@ -73,7 +73,7 @@ class ValidateSteamId(commands.Cog):
             # check if steam id is already registered
             steam_ids = []
             for key in keys:
-                existing_steam_id = userdata_json["userdata"][key]["steam_id"]
+                existing_steam_id = userdata_json["userdata"][key].get("steam64", "")
                 steam_ids.append(existing_steam_id)
             
             if (steam_id in steam_ids):
@@ -84,8 +84,8 @@ class ValidateSteamId(commands.Cog):
             guid = GUID.guid_for_steamid64(steam_id)
 
             for existing_id, existing_user in userdata_json["userdata"].items():
-                if str(existing_user.get("steam_id")) == steam_id or str(existing_user.get("steam64")) == steam_id:
-                    if int(existing_user.get("is_alive", 1)) == 0 or bool(existing_user.get("isDead", False)):
+                if str(existing_user.get("steam64")) == steam_id:
+                    if int(existing_user.get("is_alive", 1)) == 0:
                         embedVar = nextcord.Embed(
                             title=f"Steam ID is already marked dead! ({steam_id})",
                             color=0xFF0000,
@@ -97,15 +97,9 @@ class ValidateSteamId(commands.Cog):
             if (str(user_id) in keys):
                 userdata = userdata_json["userdata"][str(user_id)]
 
-                if not userdata.get("active_server_id"):
-                    userdata["active_server_id"] = get_default_server_id_value()
-                
-                userdata["steam_id"] = str(steam_id)
                 userdata["steam64"] = str(steam_id)
                 userdata["guid"] = str(guid)
-                userdata["validated"] = True
                 userdata["discordId"] = str(user_id)
-                userdata.setdefault("isDead", False)
                 userdata.setdefault("deadUntil", None)
                 userdata.setdefault("lastAliveSec", None)
                 userdata.setdefault("lastDeathAt", None)
@@ -129,25 +123,19 @@ class ValidateSteamId(commands.Cog):
                 return
             
             # store discord user's data
-            default_server_id = get_default_server_id_value()
             new_userdata = {
                 'username' : author.name,
-                'steam_id' : str(steam_id),
                 'steam64' : str(steam_id),
                 'guid' : str(guid),
                 'is_alive' : 1,
-                'isDead' : False,
                 'time_of_death' : 0,
                 'deadUntil': None,
                 'lastAliveSec': None,
                 'lastDeathAt': None,
                 'inCorrectVC': False,
-                'validated': True,
                 'discordId': str(user_id),
                 'can_revive' : 0,
                 'is_admin' : 0,
-                'active_server_id': default_server_id,
-                'home_server_id': "",
             }
 
             try:

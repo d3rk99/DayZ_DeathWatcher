@@ -27,14 +27,11 @@ def compute_global_lists(userdata: Dict) -> Tuple[List[str], List[str]]:
     banlist: List[str] = []
     users = userdata.get("userdata", {}) if isinstance(userdata, dict) else {}
     for entry in users.values():
-        steam64 = _normalize_steam64(entry.get("steam64") or entry.get("steam_id"))
+        steam64 = _normalize_steam64(entry.get("steam64"))
         if not steam64:
             continue
-        validated = bool(entry.get("validated", False))
-        if not validated:
-            continue
         whitelist.append(steam64)
-        is_dead = bool(entry.get("isDead", False))
+        is_dead = int(entry.get("is_alive", 1)) == 0
         in_correct_vc = bool(entry.get("inCorrectVC", False))
         if is_dead or not in_correct_vc:
             banlist.append(steam64)

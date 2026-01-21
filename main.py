@@ -226,15 +226,16 @@ def normalize_userdata_fields(user_id: str, userdata: dict) -> bool:
     if steam64 and userdata.get("steam64") != steam64:
         userdata["steam64"] = steam64
         updated = True
+    if "steam_id" in userdata:
+        userdata.pop("steam_id", None)
+        updated = True
     if userdata.get("discordId") != str(user_id):
         userdata["discordId"] = str(user_id)
         updated = True
-    if "validated" not in userdata:
-        userdata["validated"] = bool(steam64)
-        updated = True
-    if "isDead" not in userdata:
-        userdata["isDead"] = int(userdata.get("is_alive", 1)) == 0
-        updated = True
+    for key in ("validated", "isDead", "active_server_id", "home_server_id"):
+        if key in userdata:
+            userdata.pop(key, None)
+            updated = True
     if "deadUntil" not in userdata:
         userdata["deadUntil"] = None
         updated = True
@@ -251,13 +252,10 @@ def normalize_userdata_fields(user_id: str, userdata: dict) -> bool:
 
 
 def is_user_dead(userdata: dict) -> bool:
-    if "isDead" in userdata:
-        return bool(userdata.get("isDead"))
     return int(userdata.get("is_alive", 1)) == 0
 
 
 def set_user_dead_state(userdata: dict, *, dead: bool) -> None:
-    userdata["isDead"] = bool(dead)
     userdata["is_alive"] = 0 if dead else 1
 
 
@@ -265,7 +263,7 @@ def find_user_by_steam64(userdata_json: dict, steam64: str) -> Optional[str]:
     if not steam64:
         return None
     for user_id, userdata in userdata_json.get("userdata", {}).items():
-        if str(userdata.get("steam64") or userdata.get("steam_id", "")) == steam64:
+        if str(userdata.get("steam64", "")) == steam64:
             return str(user_id)
     return None
 
@@ -610,15 +608,7 @@ async def vc_check():
                 continue
             
             is_admin = int(userdata.get("is_admin", 0))
-            default_server_id = get_default_server_id_value()
-            enabled_ids = get_enabled_server_ids()
-            if not userdata.get("active_server_id") or str(userdata.get("active_server_id")) not in enabled_ids:
-                userdata["active_server_id"] = default_server_id
-                userdata_updated = True
-            if "home_server_id" not in userdata:
-                userdata["home_server_id"] = ""
-                userdata_updated = True
-            steam_id = str(userdata.get("steam64") or userdata.get("steam_id", "")).strip()
+            steam_id = str(userdata.get("steam64", "")).strip()
 
             try:
                 category_id = int(member.voice.channel.category_id)
@@ -787,7 +777,7 @@ async def watch_for_users_to_unban():
                     
                 print(f"Attempting to unban steam id: {steam_id}\nSteam ids: {steam_ids}")
                 for user_id, userdata in userdata_json["userdata"].items():
-                    if (str(steam_id) in str(userdata["steam_id"])):
+                    if (str(steam_id) in str(userdata.get("steam64", ""))):
                         await unban_user(user_id)
                         break
     

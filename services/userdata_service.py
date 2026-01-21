@@ -24,9 +24,7 @@ def list_dead_players(
     data = load_userdata(path)
     result: List[Dict[str, str]] = []
     for discord_id, info in data.get("userdata", {}).items():
-        is_dead = bool(info.get("isDead", False))
-        if not is_dead and int(info.get("is_alive", 1)) == 0:
-            is_dead = True
+        is_dead = int(info.get("is_alive", 1)) == 0
         if is_dead:
             death_servers = info.get("death_server_ids")
             if not isinstance(death_servers, list):
@@ -35,7 +33,7 @@ def list_dead_players(
                 {
                     "discord_id": discord_id,
                     "discord_name": info.get("username", "Unknown"),
-                    "steam64": info.get("steam64") or info.get("steam_id", ""),
+                    "steam64": info.get("steam64", ""),
                     "time_of_death": info.get("lastDeathAt") or info.get("time_of_death", 0),
                     "alive_status": "Dead" if is_dead else "Alive",
                     "revival_eta": _calculate_revive_eta(
@@ -43,9 +41,6 @@ def list_dead_players(
                     ),
                     "death_servers": death_servers,
                     "last_death_server_id": info.get("last_death_server_id", ""),
-                    "active_server_id": info.get("active_server_id", ""),
-                    "home_server_id": info.get("home_server_id", ""),
-                    "validated": info.get("validated", False),
                     "deadUntil": info.get("deadUntil"),
                     "inCorrectVC": info.get("inCorrectVC", False),
                     "lastAliveSec": info.get("lastAliveSec"),
@@ -101,9 +96,8 @@ def _modify_user(path: Path, discord_id: str, updater) -> Tuple[bool, Dict]:
 def force_revive(path: str, discord_id: str) -> bool:
     def updater(user: Dict) -> bool:
         changed = False
-        if bool(user.get("isDead", False)) or int(user.get("is_alive", 1)) != 1:
+        if int(user.get("is_alive", 1)) != 1:
             user["is_alive"] = 1
-            user["isDead"] = False
             user["deadUntil"] = None
             changed = True
         if user.get("time_of_death"):
@@ -125,9 +119,8 @@ def force_revive_all(path: str) -> int:
     revived = 0
     for discord_id, user in data.get("userdata", {}).items():
         changed = False
-        if bool(user.get("isDead", False)) or int(user.get("is_alive", 1)) != 1:
+        if int(user.get("is_alive", 1)) != 1:
             user["is_alive"] = 1
-            user["isDead"] = False
             user["deadUntil"] = None
             changed = True
         if user.get("time_of_death"):
@@ -149,7 +142,6 @@ def force_revive_all(path: str) -> int:
 def force_mark_dead(path: str, discord_id: str) -> bool:
     def updater(user: Dict) -> bool:
         user["is_alive"] = 0
-        user["isDead"] = True
         user["time_of_death"] = int(time.time())
         user["deadUntil"] = None
         return True
@@ -172,7 +164,7 @@ def remove_user(path: str, discord_id: str) -> bool:
 def _match_user_by_identifier(data: Dict, steam_id: Optional[str], guid: Optional[str]):
     userdata = data.get("userdata", {})
     for discord_id, user in userdata.items():
-        if steam_id and str(user.get("steam_id")) == str(steam_id):
+        if steam_id and str(user.get("steam64")) == str(steam_id):
             return discord_id, user
         if guid and user.get("guid") == guid:
             return discord_id, user
@@ -222,7 +214,7 @@ def get_alive_time_leaderboard(path: str, top_n: int = 10) -> List[Dict[str, str
             {
                 "discord_id": discord_id,
                 "username": user.get("username", "Unknown"),
-                "steam_id": user.get("steam_id", ""),
+                "steam_id": user.get("steam64", ""),
                 "alive_time_seconds": duration,
                 "is_alive": int(user.get("is_alive", 1)),
             }
@@ -253,7 +245,7 @@ def list_admins(path: str) -> List[Dict[str, str]]:
             {
                 "discord_id": discord_id,
                 "username": info.get("username", "Unknown"),
-                "steam_id": info.get("steam_id", ""),
+                "steam_id": info.get("steam64", ""),
             }
         )
     admins.sort(key=lambda entry: entry.get("username", "").lower())
@@ -270,7 +262,7 @@ def list_all_users(path: str) -> List[Dict[str, str]]:
             {
                 "discord_id": discord_id,
                 "username": info.get("username", "Unknown"),
-                "steam_id": info.get("steam_id", ""),
+                "steam_id": info.get("steam64", ""),
                 "is_admin": info.get("is_admin", 0),
             }
         )

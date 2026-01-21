@@ -588,7 +588,7 @@ class AdminManagerPanel(tk.Frame):
                 "",
                 tk.END,
                 iid=entry["discord_id"],
-                values=(entry["username"], entry["discord_id"], entry["steam_id"]),
+                values=(entry["username"], entry["discord_id"], entry.get("steam_id", "")),
             )
         count = len(admins)
         if count:
