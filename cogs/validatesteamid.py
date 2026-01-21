@@ -5,6 +5,7 @@ from email.mime import audio
 import nextcord
 from nextcord.ext import commands
 from nextcord import Webhook
+from dayz_dev_tools import guid as GUID
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from main import *
 from services.file_utils import atomic_write_text
