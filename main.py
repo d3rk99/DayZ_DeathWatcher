@@ -803,7 +803,11 @@ async def handle_death_event(
     if not steam64:
         return
     try:
-        with open(config["userdata_db_path"], "r") as json_file:
+        userdata_path = config.get("userdata_db_path")
+        if not userdata_path:
+            print("[HandleDeathEvent] Missing userdata_db_path in config; skipping death event.")
+            return
+        with open(userdata_path, "r") as json_file:
             userdata_json = json.load(json_file)
         user_id = find_user_by_steam64(userdata_json, steam64)
         if not user_id:
