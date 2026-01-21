@@ -117,7 +117,7 @@ class ValidateSteamId(commands.Cog):
                 atomic_write_text(
                     config["userdata_db_path"], json.dumps(userdata_json, indent=4)
                 )
-                render_global_sync()
+                render_global_sync(userdata_json=userdata_json)
                 print (f"Updated Steam ID ({steam_id}) for discord user: {userdata['username']}!")
                 embedVar = nextcord.Embed(title=f"Updated your Steam ID ({steam_id})!", color=0x00FF00)
                 await interaction.response.send_message(embed = embedVar)
@@ -161,7 +161,7 @@ class ValidateSteamId(commands.Cog):
             if ((not alive_role in author.roles) and (not dead_role in author.roles)):
                 await interaction.user.add_roles(alive_role)
 
-            render_global_sync()
+            render_global_sync(userdata_json=userdata_json)
             print (f"Registered Steam ID ({steam_id}) for discord user: {new_userdata['username']}!")
             embedVar = nextcord.Embed(title=f"Registered your Steam ID ({steam_id})!", color=0x00FF00)
             await interaction.response.send_message(embed = embedVar)
