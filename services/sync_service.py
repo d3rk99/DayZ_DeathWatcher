@@ -49,14 +49,17 @@ def _merge_preserve_order(existing: List[str], new_items: List[str]) -> List[str
     return merged
 
 
-def _write_sync_outputs(sync_dir: Path, whitelist: List[str], banlist: List[str]) -> None:
+def _write_sync_outputs(sync_dir: Path, whitelist: List[str], banlist: List[str]) -> Tuple[List[str], List[str]]:
     sync_dir.mkdir(parents=True, exist_ok=True)
     whitelist_path = sync_dir / "whitelist.txt"
     ban_path = sync_dir / "ban.txt"
     existing_whitelist = read_lines(whitelist_path)
     existing_banlist = read_lines(ban_path)
-    atomic_write_lines(whitelist_path, _merge_preserve_order(existing_whitelist, whitelist))
-    atomic_write_lines(ban_path, _merge_preserve_order(existing_banlist, banlist))
+    merged_whitelist = _merge_preserve_order(existing_whitelist, whitelist)
+    merged_banlist = _merge_preserve_order(existing_banlist, banlist)
+    atomic_write_lines(whitelist_path, merged_whitelist)
+    atomic_write_lines(ban_path, merged_banlist)
+    return merged_whitelist, merged_banlist
 
 
 def _copy_to_servers(
@@ -85,6 +88,8 @@ def sync_global_lists(config: Dict, *, userdata: Dict) -> Dict:
     sync_dir = Path(sync_dir_value)
 
     whitelist, banlist = compute_global_lists(userdata)
+    merged_whitelist: List[str] = []
+    merged_banlist: List[str] = []
     payload: Dict[str, object] = {
         "last_sync_time": int(time.time()),
         "whitelist_count": len(whitelist),
@@ -94,8 +99,10 @@ def sync_global_lists(config: Dict, *, userdata: Dict) -> Dict:
     }
 
     try:
-        _write_sync_outputs(sync_dir, whitelist, banlist)
-        _copy_to_servers(config.get("servers", []), whitelist, banlist)
+        merged_whitelist, merged_banlist = _write_sync_outputs(sync_dir, whitelist, banlist)
+        _copy_to_servers(config.get("servers", []), merged_whitelist, merged_banlist)
+        payload["whitelist_count"] = len(merged_whitelist)
+        payload["ban_count"] = len(merged_banlist)
     except Exception as exc:  # pragma: no cover - runtime safety
         payload["last_sync_result"] = "failed"
         payload["last_error"] = str(exc)
