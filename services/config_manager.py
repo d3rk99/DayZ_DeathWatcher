@@ -33,6 +33,11 @@ def _default_config() -> Dict[str, Any]:
         "enable_death_scanning": True,
         "archive_old_ljson": False,
         "search_logs_interval": 2,
+        "death_exceptions": {
+            "ignore_suicide_at_origin": True,
+            "origin_coords": {"x": 0, "y": 0, "z": 0},
+            "origin_tolerance": 0,
+        },
         "userdata_db_path": "./userdata_db.json",
         "admin_role_id": 0,
         "guild_id": 0,

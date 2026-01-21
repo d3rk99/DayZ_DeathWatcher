@@ -87,6 +87,14 @@ def main(*, interactive: bool = True, death_log_callback: Optional[Callable[[str
     config.setdefault("enable_death_scanning", True)
     config.setdefault("archive_old_ljson", False)
     config.setdefault("search_logs_interval", 2)
+    config.setdefault(
+        "death_exceptions",
+        {
+            "ignore_suicide_at_origin": True,
+            "origin_coords": {"x": 0, "y": 0, "z": 0},
+            "origin_tolerance": 0,
+        },
+    )
     config["userdata_db_path"] = config.get("userdata_db_path") or "./userdata_db.json"
     config["steam_ids_to_unban_path"] = config.get("steam_ids_to_unban_path") or "./steam_ids_to_unban.txt"
     config["death_counter_path"] = config.get("death_counter_path") or "./death_counter.json"

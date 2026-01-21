@@ -61,6 +61,7 @@ class DeathWatcher(commands.Cog):
                 "search_logs_interval", config_data.get("search_logs_interval", 1)
             )
             config_data["archive_old_ljson"] = int(config.get("archive_old_ljson", 0))
+            config_data["death_exceptions"] = config.get("death_exceptions", {})
 
             def _make_logger(sid: str):
                 def _log(message: str) -> None:

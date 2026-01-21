@@ -91,6 +91,7 @@ All of the bot's knobs live in `config.json`:
 | `enable_death_scanning` | Global toggle for Detailed Logs scanning. |
 | `archive_old_ljson` | If enabled, moves older `.ljson` logs into an `archive/` folder when a new file appears. |
 | `search_logs_interval` | Seconds between Detailed Logs scans. |
+| `death_exceptions` | Controls which death logs should be ignored (for example maplink transfer suicides at origin). |
 | `userdata_db_path` | Location of the JSON datastore the bot uses to correlate Discord users to Steam IDs. |
 | `admin_role_id` | Discord role ID allowed to run admin-only slash commands. |
 | `guild_id` | Discord server that the bot should operate in. |
@@ -149,6 +150,7 @@ python new_dayz_death_watcher.py
 ```
 Adjust `death_watcher/config.json` if your log folder lives elsewhere. For multi-server setups, the
 Discord bot embeds multiple watcher threads using the server definitions from `config.json`.
+Use the `death_exceptions` block to ignore transfer-related suicide deaths at origin coordinates.
 
 ## Slash commands & roles
 - `/validatesteamid <steam_id>` – validates that a Steam64 ID is unique, writes it to the whitelist

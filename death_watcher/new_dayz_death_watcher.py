@@ -18,6 +18,11 @@ DEFAULT_CONFIG = {
     "verbose_logs": 1,
     "death_event_name": "PLAYER_DEATH",
     "archive_old_ljson": 0,
+    "death_exceptions": {
+        "ignore_suicide_at_origin": True,
+        "origin_coords": {"x": 0, "y": 0, "z": 0},
+        "origin_tolerance": 0,
+    },
 }
 
 
@@ -61,6 +66,7 @@ class DayZDeathWatcher:
         self.search_logs_interval: float = 1.0
         self.verbose_logs: bool = False
         self.archive_old_ljson: bool = False
+        self.death_exceptions: dict = {}
 
     # ------------------------------------------------------------------
     # public api
@@ -118,6 +124,8 @@ class DayZDeathWatcher:
                 if not parsed_log:
                     continue
                 if not self._is_death_log(parsed_log):
+                    continue
+                if self._should_ignore_death(parsed_log):
                     continue
 
                 steam_id = self._get_steam_id(parsed_log)
@@ -194,6 +202,7 @@ class DayZDeathWatcher:
                 self.config.get("death_event_name", "PLAYER_DEATH")
             )
             self.archive_old_ljson = bool(int(self.config.get("archive_old_ljson", 0)))
+            self.death_exceptions = dict(self.config.get("death_exceptions", {}))
         except KeyError as exc:
             raise RuntimeError(f"Missing config entry: {exc}")
 
@@ -319,6 +328,43 @@ class DayZDeathWatcher:
         if steam_id.isdigit() and len(steam_id) == 17:
             return steam_id
         return ""
+
+    def _should_ignore_death(self, log_entry: dict) -> bool:
+        if not self.death_exceptions:
+            return False
+        if not bool(self.death_exceptions.get("ignore_suicide_at_origin", False)):
+            return False
+        if log_entry.get("sub_event") != "suicide":
+            return False
+        data = log_entry.get("data", {})
+        if data.get("source") != "self" or data.get("killer") != "self":
+            return False
+        player = log_entry.get("player", {})
+        position = player.get("position", {})
+        if not isinstance(position, dict):
+            return False
+        origin = self.death_exceptions.get("origin_coords", {"x": 0, "y": 0, "z": 0})
+        tolerance = float(self.death_exceptions.get("origin_tolerance", 0) or 0)
+        try:
+            dx = float(position.get("x", 0)) - float(origin.get("x", 0))
+            dy = float(position.get("y", 0)) - float(origin.get("y", 0))
+            dz = float(position.get("z", 0)) - float(origin.get("z", 0))
+        except (TypeError, ValueError):
+            return False
+        at_origin = False
+        if tolerance > 0:
+            at_origin = (dx * dx + dy * dy + dz * dz) ** 0.5 <= tolerance
+        else:
+            at_origin = dx == 0 and dy == 0 and dz == 0
+        if not at_origin:
+            return False
+        if self.verbose_logs:
+            steam_id = self._get_steam_id(log_entry)
+            self._log(
+                "Ignored transfer death at origin for steam64="
+                f"{steam_id} coords=({position.get('x')}, {position.get('y')}, {position.get('z')})"
+            )
+        return True
 
     @staticmethod
     def _get_lifetime_seconds(log_entry: dict) -> Optional[int]:

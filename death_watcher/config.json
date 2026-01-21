@@ -4,5 +4,10 @@
   "search_logs_interval": 1,
   "verbose_logs": 1,
   "death_event_name": "PLAYER_DEATH",
-  "archive_old_ljson": 0
+  "archive_old_ljson": 0,
+  "death_exceptions": {
+    "ignore_suicide_at_origin": true,
+    "origin_coords": {"x": 0, "y": 0, "z": 0},
+    "origin_tolerance": 0
+  }
 }
