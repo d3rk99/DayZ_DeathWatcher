@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
 
-from services.file_utils import atomic_write_lines, atomic_write_text
+from services.file_utils import atomic_write_lines, atomic_write_text, read_lines
 from services.server_config import get_enabled_servers
 
 
@@ -38,10 +38,25 @@ def compute_global_lists(userdata: Dict) -> Tuple[List[str], List[str]]:
     return _unique_sorted(whitelist), _unique_sorted(banlist)
 
 
+def _merge_preserve_order(existing: List[str], new_items: List[str]) -> List[str]:
+    seen = set(existing)
+    merged = list(existing)
+    for item in new_items:
+        if item in seen:
+            continue
+        merged.append(item)
+        seen.add(item)
+    return merged
+
+
 def _write_sync_outputs(sync_dir: Path, whitelist: List[str], banlist: List[str]) -> None:
     sync_dir.mkdir(parents=True, exist_ok=True)
-    atomic_write_lines(sync_dir / "whitelist.txt", whitelist)
-    atomic_write_lines(sync_dir / "ban.txt", banlist)
+    whitelist_path = sync_dir / "whitelist.txt"
+    ban_path = sync_dir / "ban.txt"
+    existing_whitelist = read_lines(whitelist_path)
+    existing_banlist = read_lines(ban_path)
+    atomic_write_lines(whitelist_path, _merge_preserve_order(existing_whitelist, whitelist))
+    atomic_write_lines(ban_path, _merge_preserve_order(existing_banlist, banlist))
 
 
 def _copy_to_servers(
