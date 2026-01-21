@@ -15,7 +15,7 @@ class ConfigEditor(tk.Toplevel):
         self.geometry("520x520")
         self.config_manager = config_manager
         self.on_reload = on_reload
-        self._entries: Dict[str, Tuple[tk.Variable, type, str]] = {}
+        self._entries: Dict[str, Tuple[tk.Variable, type, str, str]] = {}
         self._servers = normalize_servers(self.config_manager.data)
         self._server_lookup = server_map(self._servers)
         self._server_var = tk.StringVar()
@@ -29,10 +29,16 @@ class ConfigEditor(tk.Toplevel):
         ids_tab = ttk.Frame(notebook)
         timers_tab = ttk.Frame(notebook)
         toggles_tab = ttk.Frame(notebook)
+        sync_tab = ttk.Frame(notebook)
+        logs_tab = ttk.Frame(notebook)
+        errors_tab = ttk.Frame(notebook)
         notebook.add(paths_tab, text="Paths")
         notebook.add(ids_tab, text="IDs")
         notebook.add(timers_tab, text="Timers")
         notebook.add(toggles_tab, text="Toggles")
+        notebook.add(sync_tab, text="Sync")
+        notebook.add(logs_tab, text="Logs")
+        notebook.add(errors_tab, text="Errors")
 
         server_row = ttk.Frame(paths_tab)
         server_row.pack(fill=tk.X, pady=4, padx=4)
@@ -57,9 +63,10 @@ class ConfigEditor(tk.Toplevel):
         self._add_entry(paths_tab, "Logs Directory", "path_to_logs_directory", scope="server")
         self._add_entry(paths_tab, "Whitelist Path", "path_to_whitelist", scope="server")
         self._add_entry(paths_tab, "Banlist Path", "path_to_bans", scope="server")
+        self._add_toggle(paths_tab, "Server Enabled", "enabled", scope="server")
+        self._add_toggle(paths_tab, "Enable Death Scanning", "enable_death_scanning", scope="server")
 
         self._add_entry(ids_tab, "Validate Steam Channel", "validate_steam_id_channel")
-        self._add_entry(ids_tab, "Error Dump Channel", "error_dump_channel")
         self._add_entry(ids_tab, "Guild ID", "guild_id")
         self._add_entry(ids_tab, "Join VC ID", "join_vc_id")
         self._add_entry(ids_tab, "Join VC Category", "join_vc_category_id")
@@ -69,10 +76,23 @@ class ConfigEditor(tk.Toplevel):
 
         self._add_toggle(toggles_tab, "Watch Death Watcher", "watch_death_watcher")
         self._add_toggle(toggles_tab, "Run Death Watcher Cog", "run_death_watcher_cog")
+        self._add_toggle(toggles_tab, "Enable Death Scanning", "enable_death_scanning")
+        self._add_toggle(toggles_tab, "Archive Old LJSON", "archive_old_ljson")
         self._add_entry(toggles_tab, "Default Server ID", "default_server_id")
         self._add_entry(toggles_tab, "Max Active Servers", "max_active_servers")
         self._add_entry(toggles_tab, "Unban Scope", "unban_scope")
         self._add_entry(toggles_tab, "Validate Whitelist Scope", "validate_whitelist_scope")
+
+        self._add_entry(sync_tab, "Sync Output Directory", "path_to_sync_dir")
+
+        self._add_entry(logs_tab, "Logs Scan Interval (seconds)", "search_logs_interval")
+        self._add_entry(logs_tab, "Death Watcher Cache Path", "death_watcher_cache_path")
+
+        self._add_entry(errors_tab, "Error Dump Channel ID", "error_dump_channel_id")
+        self._add_toggle(errors_tab, "Allow Error Mentions", "error_dump_allow_mention")
+        self._add_entry(errors_tab, "Error Mention Tag", "error_dump_mention_tag")
+        self._add_entry(errors_tab, "Error Rate Limit (seconds)", "error_dump_rate_limit_seconds")
+        self._add_toggle(errors_tab, "Include Traceback", "error_dump_include_traceback")
 
         button = tk.Button(self, text="Save & Reload", command=self._save)
         button.pack(pady=8)
@@ -89,20 +109,26 @@ class ConfigEditor(tk.Toplevel):
         var = tk.StringVar(value=str(value))
         entry = ttk.Entry(frame, textvariable=var)
         entry.pack(fill=tk.X)
-        self._entries[key] = (var, type(value), scope)
+        entry_key = f"{scope}:{key}"
+        self._entries[entry_key] = (var, type(value), scope, key)
 
-    def _add_toggle(self, parent, label: str, key: str) -> None:
-        value = int(self.config_manager.data.get(key, 0))
+    def _add_toggle(self, parent, label: str, key: str, *, scope: str = "global") -> None:
+        if scope == "server":
+            server = self._server_lookup.get(self._server_var.get(), {})
+            value = int(server.get(key, 0))
+        else:
+            value = int(self.config_manager.data.get(key, 0))
         var = tk.IntVar(value=value)
         cb = ttk.Checkbutton(parent, text=label, variable=var)
         cb.pack(anchor="w", padx=4, pady=4)
-        self._entries[key] = (var, int, "global")
+        entry_key = f"{scope}:{key}"
+        self._entries[entry_key] = (var, int, scope, key)
 
     def _save(self) -> None:
         updated = {}
         server_updates: Dict[str, str] = {}
         root_path = ""
-        for key, (var, original_type, scope) in self._entries.items():
+        for _entry_id, (var, original_type, scope, key) in self._entries.items():
             value = var.get()
             try:
                 if original_type is int:
@@ -150,7 +176,13 @@ class ConfigEditor(tk.Toplevel):
         selected = self._servers[idx]["server_id"]
         self._server_var.set(selected)
         server = self._server_lookup.get(selected, {})
-        for key, (var, _original_type, scope) in self._entries.items():
+        for _entry_id, (var, original_type, scope, key) in self._entries.items():
             if scope != "server":
                 continue
-            var.set(str(server.get(key, "")))
+            value = server.get(key, "")
+            if original_type is int:
+                try:
+                    value = int(value)
+                except (TypeError, ValueError):
+                    value = 0
+            var.set(value)

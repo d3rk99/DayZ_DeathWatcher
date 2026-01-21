@@ -56,26 +56,7 @@ class OnMemberJoin(commands.Cog):
         
         
     async def dump_error_discord(self, error_message : str, prefix : str = "Error", force_mention_tag : str = ""):
-        prefix = "Error" if (prefix == "") else prefix
-        channel_id = config["error_dump_channel"]
-        if (channel_id != "-1"):
-            channel = self.client.get_channel(int(channel_id))
-            if (channel == None):
-                print(f"Error: [OnMemberJoin] Failed to find error_dump_channel with id: {channel_id}")
-                return
-            
-            mention = ""
-            if (force_mention_tag != ""):
-                if (force_mention_tag == "everyone" or force_mention_tag == "here"):
-                    mention = force_mention_tag
-                else:
-                    mention = await self.get_user_id_from_name(force_mention_tag)
-            if (mention == "" and str(config["error_dump_allow_mention"]) != "0"):
-                mention = config["error_dump_mention_tag"]
-                if (mention != "" and mention != "everyone" and mention != "here"):
-                    mention = await self.get_user_id_from_name(mention)
-            mention = (f"@{mention} " if (mention == "everyone" or mention == "here") else f"<@{mention}> ") if (mention != "") else ""
-            await channel.send(f"{mention}**{prefix}**\n{error_message}")
+        await dump_error_discord(error_message, prefix, force_mention_tag)
         
         
         

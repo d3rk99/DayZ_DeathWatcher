@@ -34,15 +34,15 @@ PATH_FIELDS: Dict[str, PathField] = {
     "path_to_whitelist": PathField(
         key="path_to_whitelist",
         label="Whitelist File",
-        must_exist=True,
+        must_exist=False,
         description="Text file that tracks members allowed on the server.",
         scope="server",
     ),
     "path_to_bans": PathField(
         key="path_to_bans",
         label="Banlist File",
-        must_exist=True,
-        description="DayZ ban file that the bot appends to when players die.",
+        must_exist=False,
+        description="DayZ ban file that the bot syncs from global output.",
         scope="server",
     ),
     "path_to_logs_directory": PathField(
@@ -78,10 +78,16 @@ PATH_FIELDS: Dict[str, PathField] = {
         must_exist=False,
         description="JSON storage for the GUI death counter widget.",
     ),
+    "path_to_sync_dir": PathField(
+        key="path_to_sync_dir",
+        label="Global Sync Folder",
+        must_exist=False,
+        description="Folder that receives the global ban.txt and whitelist.txt output.",
+        kind="dir",
+    ),
 }
 
-
-REQUIRED_PATH_KEYS: List[str] = ["path_to_whitelist", "path_to_bans"]
+REQUIRED_PATH_KEYS: List[str] = ["path_to_whitelist", "path_to_bans", "path_to_sync_dir"]
 
 
 def find_missing_required_paths(config: Dict[str, str]) -> List[str]:
@@ -109,6 +115,8 @@ def find_missing_required_paths(config: Dict[str, str]) -> List[str]:
                 if not value:
                     missing.append(f"{key}:{server.get('server_id')}")
                     continue
+                if not field.must_exist:
+                    continue
                 expanded = _expand(value)
                 if field.kind == "dir":
                     exists = os.path.isdir(expanded)
@@ -120,6 +128,8 @@ def find_missing_required_paths(config: Dict[str, str]) -> List[str]:
             value = str(config.get(key, "")).strip()
             if not value:
                 missing.append(key)
+                continue
+            if not field.must_exist:
                 continue
             expanded = _expand(value)
             exists = os.path.isdir(expanded) if field.kind == "dir" else os.path.isfile(expanded)

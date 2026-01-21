@@ -140,4 +140,9 @@ def force_mark_dead(path: str, discord_id: str) -> bool:
 
 
 def remove_user_from_database(path: str, discord_id: str) -> bool:
+    module = _get_main_module()
+    coro = getattr(module, "remove_user_and_sync", None)
+    loop = _get_bot_loop()
+    if coro and loop:
+        return _run_in_loop(lambda: coro(discord_id))
     return userdata_service.remove_user(path, discord_id)

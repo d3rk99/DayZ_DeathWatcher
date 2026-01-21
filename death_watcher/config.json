@@ -1,9 +1,13 @@
 {
-  "path_to_logs_directory" : "E:/DayZ MM/servers/MementoMori/profiles/DetailedLogs",
-  "path_to_bans" : "./deaths.txt",
-  "path_to_cache" : "./death_watcher_cache.json",
-  "ban_delay" : 5,
-  "search_logs_interval" : 1,
-  "verbose_logs" : 1,
-  "death_event_name" : "PLAYER_DEATH"
+  "path_to_logs_directory": "E:/DayZ MM/servers/MementoMori/profiles/DetailedLogs",
+  "path_to_cache": "./death_watcher_cache.json",
+  "search_logs_interval": 1,
+  "verbose_logs": 1,
+  "death_event_name": "PLAYER_DEATH",
+  "archive_old_ljson": 0,
+  "death_exceptions": {
+    "ignore_suicide_at_origin": true,
+    "origin_coords": {"x": 0, "y": 0, "z": 0},
+    "origin_tolerance": 0
+  }
 }

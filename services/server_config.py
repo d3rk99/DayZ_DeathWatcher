@@ -69,6 +69,7 @@ def normalize_servers(config: Dict[str, Any]) -> List[Dict[str, Any]]:
                         "path_to_bans": entry.get("path_to_bans", ""),
                         "path_to_whitelist": entry.get("path_to_whitelist", ""),
                         "death_watcher_death_path": entry.get("death_watcher_death_path", ""),
+                        "enable_death_scanning": entry.get("enable_death_scanning"),
                         "enabled": bool(entry.get("enabled", True)),
                     }
                 )
@@ -85,6 +86,7 @@ def normalize_servers(config: Dict[str, Any]) -> List[Dict[str, Any]]:
         "path_to_bans": config.get("blacklist_path", ""),
         "path_to_whitelist": config.get("whitelist_path", ""),
         "death_watcher_death_path": death_path,
+        "enable_death_scanning": config.get("enable_death_scanning"),
         "enabled": True,
     }
     return [apply_server_root(legacy)]
@@ -115,6 +117,7 @@ def ensure_server_defaults(
                 "path_to_bans": entry.get("path_to_bans", ""),
                 "path_to_whitelist": entry.get("path_to_whitelist", ""),
                 "death_watcher_death_path": death_path,
+                "enable_death_scanning": entry.get("enable_death_scanning"),
                 "enabled": bool(entry.get("enabled", True)),
             }
         )
