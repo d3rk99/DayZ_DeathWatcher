@@ -18,9 +18,8 @@ from nextcord.ext.commands import Bot
 from nextcord.member import Member
 import nextcord
 from nextcord import Webhook
-from dayz_dev_tools import guid as GUID
-from services import userdata_service
-from services.file_utils import atomic_write_lines, atomic_write_text, read_lines
+from services import userdata_service, sync_service
+from services.file_utils import atomic_write_text, read_lines
 from services.path_fields import PATH_FIELDS
 from services.server_config import (
     ensure_server_defaults,
@@ -47,6 +46,7 @@ config: dict = {}
 death_counter_state: dict = {"count": 0, "last_reset": int(time.time())}
 death_counter_lock: Optional[asyncio.Lock] = None
 death_counter_observers: list[Callable[[int, int], None]] = []
+last_error_dump_at: float = 0.0
 
 
 class MissingConfigPaths(Exception):
@@ -83,12 +83,27 @@ def main(*, interactive: bool = True, death_log_callback: Optional[Callable[[str
     config.setdefault("default_server_id", get_default_server_id(config, config["servers"]))
     config.setdefault("unban_scope", "active_server_only")
     config.setdefault("validate_whitelist_scope", "all_servers")
+    config.setdefault("path_to_sync_dir", "./sync")
+    config.setdefault("enable_death_scanning", True)
+    config.setdefault("archive_old_ljson", False)
+    config.setdefault("search_logs_interval", 2)
     config["userdata_db_path"] = config.get("userdata_db_path") or "./userdata_db.json"
     config["steam_ids_to_unban_path"] = config.get("steam_ids_to_unban_path") or "./steam_ids_to_unban.txt"
     config["death_counter_path"] = config.get("death_counter_path") or "./death_counter.json"
     config["death_watcher_config_path"] = (
         config.get("death_watcher_config_path") or "./death_watcher/config.json"
     )
+    config["death_watcher_cache_path"] = (
+        config.get("death_watcher_cache_path") or "./death_watcher/death_watcher_cache.json"
+    )
+    config.setdefault(
+        "error_dump_channel_id",
+        config.get("error_dump_channel", ""),
+    )
+    config.setdefault("error_dump_allow_mention", 0)
+    config.setdefault("error_dump_mention_tag", "")
+    config.setdefault("error_dump_rate_limit_seconds", 60)
+    config.setdefault("error_dump_include_traceback", True)
 
     load_death_counter_state()
 
@@ -98,6 +113,8 @@ def main(*, interactive: bool = True, death_log_callback: Optional[Callable[[str
         atomic_write_text(
             config["userdata_db_path"], json.dumps({"userdata": {}, "season_deaths": []})
         )
+    else:
+        normalize_userdata_db()
 
     # verify whitelist/ban file paths are valid per enabled server
     missing_paths: List[str] = []
@@ -106,10 +123,21 @@ def main(*, interactive: bool = True, death_log_callback: Optional[Callable[[str
         server_id = server["server_id"]
         whitelist_path = str(server.get("path_to_whitelist", ""))
         ban_path = str(server.get("path_to_bans", ""))
-        if not whitelist_path or not os.path.isfile(whitelist_path):
+        if not whitelist_path:
             missing_paths.append(f"path_to_whitelist:{server_id}")
-        if not ban_path or not os.path.isfile(ban_path):
+        if not ban_path:
             missing_paths.append(f"path_to_bans:{server_id}")
+
+        if whitelist_path and not os.path.isfile(whitelist_path):
+            atomic_write_text(whitelist_path, "")
+        if ban_path and not os.path.isfile(ban_path):
+            atomic_write_text(ban_path, "")
+
+    sync_dir = str(config.get("path_to_sync_dir", "")).strip()
+    if not sync_dir:
+        missing_paths.append("path_to_sync_dir")
+    elif not os.path.isdir(sync_dir):
+        os.makedirs(sync_dir, exist_ok=True)
 
     if missing_paths:
         raise MissingConfigPaths(missing_paths)
@@ -117,6 +145,11 @@ def main(*, interactive: bool = True, death_log_callback: Optional[Callable[[str
     if (not os.path.isfile(config["steam_ids_to_unban_path"])):
         print(f"Steam ids to unban file ({config['steam_ids_to_unban_path']}) not found. Creating it now.")
         atomic_write_text(config["steam_ids_to_unban_path"], "")
+
+    try:
+        render_global_sync()
+    except Exception as exc:
+        print(f"Failed to render initial global sync: {exc}")
     
     intents = nextcord.Intents.all()
 
@@ -130,26 +163,8 @@ def main(*, interactive: bool = True, death_log_callback: Optional[Callable[[str
     
     load_cogs()
     
-    watch_death_watcher_bans = int(config["watch_death_watcher"]) > 0
-    if watch_death_watcher_bans:
-        for server in enabled_servers:
-            death_path = str(server.get("death_watcher_death_path", "")).strip()
-            if not death_path:
-                death_path = f"./death_watcher/deaths_{server['server_id']}.txt"
-                server["death_watcher_death_path"] = death_path
-            if not os.path.isfile(death_path):
-                print(
-                    f"Death watcher deaths file missing for server {server['server_id']}. "
-                    f"Creating it now: ({death_path})"
-                )
-                atomic_write_text(death_path, "")
-    
     vc_check.start()
     check_if_users_can_revive.start()
-    
-    if (watch_death_watcher_bans):
-        print("\nWatching for new death watcher deaths")
-        watch_for_new_deaths.start()
     print("Watching for users to unban")
     watch_for_users_to_unban.start()
     
@@ -195,6 +210,80 @@ def sanitize_steam_id_list(values: List[str]) -> List[str]:
 def remove_steam_id_occurrences(values: List[str], steam_id: str) -> List[str]:
     target = str(steam_id)
     return [value for value in values if value != target]
+
+
+def normalize_userdata_fields(user_id: str, userdata: dict) -> bool:
+    updated = False
+    steam64 = str(userdata.get("steam64") or userdata.get("steam_id") or "").strip()
+    if steam64 and userdata.get("steam64") != steam64:
+        userdata["steam64"] = steam64
+        updated = True
+    if userdata.get("discordId") != str(user_id):
+        userdata["discordId"] = str(user_id)
+        updated = True
+    if "validated" not in userdata:
+        userdata["validated"] = bool(steam64)
+        updated = True
+    if "isDead" not in userdata:
+        userdata["isDead"] = int(userdata.get("is_alive", 1)) == 0
+        updated = True
+    if "deadUntil" not in userdata:
+        userdata["deadUntil"] = None
+        updated = True
+    if "lastAliveSec" not in userdata:
+        userdata["lastAliveSec"] = None
+        updated = True
+    if "lastDeathAt" not in userdata:
+        userdata["lastDeathAt"] = None
+        updated = True
+    if "inCorrectVC" not in userdata:
+        userdata["inCorrectVC"] = False
+        updated = True
+    return updated
+
+
+def is_user_dead(userdata: dict) -> bool:
+    if "isDead" in userdata:
+        return bool(userdata.get("isDead"))
+    return int(userdata.get("is_alive", 1)) == 0
+
+
+def set_user_dead_state(userdata: dict, *, dead: bool) -> None:
+    userdata["isDead"] = bool(dead)
+    userdata["is_alive"] = 0 if dead else 1
+
+
+def find_user_by_steam64(userdata_json: dict, steam64: str) -> Optional[str]:
+    if not steam64:
+        return None
+    for user_id, userdata in userdata_json.get("userdata", {}).items():
+        if str(userdata.get("steam64") or userdata.get("steam_id", "")) == steam64:
+            return str(user_id)
+    return None
+
+
+def render_global_sync(*, userdata_json: Optional[dict] = None) -> Optional[dict]:
+    if not config:
+        return None
+    if userdata_json is None:
+        with open(config["userdata_db_path"], "r") as json_file:
+            userdata_json = json.load(json_file)
+    return sync_service.sync_global_lists(config, userdata=userdata_json)
+
+
+def normalize_userdata_db() -> None:
+    if not config:
+        return
+    updated = False
+    with open(config["userdata_db_path"], "r") as json_file:
+        userdata_json = json.load(json_file)
+    for user_id, userdata in userdata_json.get("userdata", {}).items():
+        if normalize_userdata_fields(user_id, userdata):
+            updated = True
+    if updated:
+        atomic_write_text(
+            config["userdata_db_path"], json.dumps(userdata_json, indent=4)
+        )
 
 
 def get_servers() -> List[dict]:
@@ -357,6 +446,21 @@ def _build_activity_message(*, count: int, last_reset: Optional[int]) -> str:
     return deaths
 
 
+def _parse_log_timestamp(ts_value: Optional[str]) -> int:
+    if not ts_value:
+        return int(time.time())
+    ts_text = str(ts_value).strip()
+    if not ts_text:
+        return int(time.time())
+    try:
+        if ts_text.endswith("Z"):
+            ts_text = ts_text[:-1]
+        parsed = datetime.datetime.fromisoformat(ts_text)
+        return int(parsed.timestamp())
+    except ValueError:
+        return int(time.time())
+
+
 async def increment_death_counter(server_id: Optional[str] = None) -> None:
     await adjust_death_counter(delta=1, server_id=server_id)
 
@@ -455,24 +559,7 @@ async def vc_check():
             userdata_json = json.load(json_file)
 
         enabled_servers = get_enabled_servers(get_servers())
-        server_state: dict[str, dict] = {}
-        for server in enabled_servers:
-            server_id = str(server["server_id"])
-            whitelist_path = server.get("path_to_whitelist", "")
-            blacklist_path = server.get("path_to_bans", "")
-            whitelist_raw = read_lines(whitelist_path)
-            blacklist_raw = read_lines(blacklist_path)
-            whitelist_list = sanitize_steam_id_list(whitelist_raw)
-            blacklist_list = sanitize_steam_id_list(blacklist_raw)
-            server_state[server_id] = {
-                "whitelist_path": whitelist_path,
-                "blacklist_path": blacklist_path,
-                "whitelist_list": whitelist_list,
-                "blacklist_list": blacklist_list,
-                "whitelist_updated": len(whitelist_list) != len(whitelist_raw),
-                "blacklist_updated": len(blacklist_list) != len(blacklist_raw),
-            }
-        
+
         
         try:
             join_vc_category = nextcord.utils.get(guild.categories, id=config["join_vc_category_id"])
@@ -503,6 +590,8 @@ async def vc_check():
         
         userdata_updated = False
         for user_id, userdata in userdata_json["userdata"].items():
+            if normalize_userdata_fields(user_id, userdata):
+                userdata_updated = True
 
             try:
                 member = guild.get_member(int(user_id))
@@ -512,7 +601,7 @@ async def vc_check():
             if (member != None and (member.bot or (int(userdata["is_alive"]) == 0 and int(userdata["is_admin"]) == 0))):
                 continue
             
-            is_admin = int(userdata["is_admin"])
+            is_admin = int(userdata.get("is_admin", 0))
             default_server_id = get_default_server_id_value()
             enabled_ids = get_enabled_server_ids()
             if not userdata.get("active_server_id") or str(userdata.get("active_server_id")) not in enabled_ids:
@@ -521,69 +610,35 @@ async def vc_check():
             if "home_server_id" not in userdata:
                 userdata["home_server_id"] = ""
                 userdata_updated = True
-            steam_id = str(userdata.get("steam_id", "")).strip()
-            if not steam_id:
-                continue
+            steam_id = str(userdata.get("steam64") or userdata.get("steam_id", "")).strip()
 
             try:
                 category_id = int(member.voice.channel.category_id)
+                channel_name = str(member.voice.channel.name)
             except:
                 category_id = 0
+                channel_name = ""
 
             if (is_admin != 0):
-                for server_id, state in server_state.items():
-                    if steam_id in state["blacklist_list"]:
-                        print(
-                            f"[Server {server_id}] Removed admin's ({userdata['username']}) "
-                            f"Steam ID from blacklist ({steam_id})"
-                        )
-                        state["blacklist_list"] = remove_steam_id_occurrences(
-                            state["blacklist_list"], steam_id
-                        )
-                        state["blacklist_updated"] = True
+                if userdata.get("inCorrectVC") is not True:
+                    userdata["inCorrectVC"] = True
+                    userdata_updated = True
                 continue
 
-            scope_servers = resolve_user_scope_servers(userdata)
-            if (member != None and category_id == int(config["join_vc_category_id"])):
-                for server_id in scope_servers:
-                    state = server_state.get(server_id)
-                    if not state:
-                        continue
-                    if steam_id in state["blacklist_list"]:
-                        print(
-                            f"[Server {server_id}] User ({userdata['username']}) joined channel. "
-                            f"Removing Steam ID from blacklist ({steam_id})"
-                        )
-                        state["blacklist_list"] = remove_steam_id_occurrences(
-                            state["blacklist_list"], steam_id
-                        )
-                        state["blacklist_updated"] = True
-            elif member == None or category_id != int(config["join_vc_category_id"]):
-                for server_id in scope_servers:
-                    state = server_state.get(server_id)
-                    if not state:
-                        continue
-                    if steam_id not in state["blacklist_list"]:
-                        print(
-                            f"[Server {server_id}] User ({userdata['username']}) left channel. "
-                            f"Adding Steam ID to blacklist ({steam_id})"
-                        )
-                        state["blacklist_list"] = remove_steam_id_occurrences(
-                            state["blacklist_list"], steam_id
-                        )
-                        state["blacklist_list"].append(steam_id)
-                        state["blacklist_updated"] = True
+            in_correct_vc = (
+                member is not None
+                and category_id == int(config["join_vc_category_id"])
+                and channel_name == str(member.id)
+            )
+            if userdata.get("inCorrectVC") != in_correct_vc:
+                userdata["inCorrectVC"] = in_correct_vc
+                userdata_updated = True
 
         if userdata_updated:
             atomic_write_text(
                 config["userdata_db_path"], json.dumps(userdata_json, indent=4)
             )
-
-        for server_id, state in server_state.items():
-            if state["whitelist_updated"]:
-                atomic_write_lines(state["whitelist_path"], state["whitelist_list"])
-            if state["blacklist_updated"]:
-                atomic_write_lines(state["blacklist_path"], state["blacklist_list"])
+            render_global_sync(userdata_json=userdata_json)
     
     except Exception as e:
         text = f"[VcCheck] \"{e}\"\nIt is advised to restart this script."
@@ -616,23 +671,31 @@ async def check_if_users_can_revive():
             #if (userdata["can_revive"] == 1):
                 #continue
             
-            if userdata["is_alive"] == 1:
+            if not is_user_dead(userdata):
                 continue
             
             member = guild.get_member(int(user_id))
             if (member == None or member.bot):
                 continue
             
-            time_since_death = int(time.time()) - int(userdata["time_of_death"])
-            if (time_since_death > float(config["wait_time_new_life_seconds"])):
-                print(f"[MarkUserCanRevive] User ({user_id}) has been dead for {config['wait_time_new_life_seconds']/60} minutes. Reviving player.")
+            time_of_death = int(userdata.get("lastDeathAt") or userdata.get("time_of_death") or 0)
+            wait_seconds = float(config["wait_time_new_life_seconds"])
+            if userdata.get("deadUntil"):
+                try:
+                    wait_seconds = max(0.0, float(userdata["deadUntil"]) - time_of_death)
+                except (TypeError, ValueError):
+                    wait_seconds = float(config["wait_time_new_life_seconds"])
+            time_since_death = int(time.time()) - time_of_death
+            if time_since_death > wait_seconds:
+                print(f"[MarkUserCanRevive] User ({user_id}) has been dead for {wait_seconds/60} minutes. Reviving player.")
                 #print(f"[MarkUserCanRevive] User ({user_id}) can now revive. Assigning them their role.")
                 #userdata["can_revive"] = 1
                 await unban_user(member.id)
-                userdata["is_alive"] = 1
+                set_user_dead_state(userdata, dead=False)
+                userdata["deadUntil"] = None
                 updated_users += 1
                 try:
-                    await member.send(f"It has been {config['wait_time_new_life_seconds']/60} minutes since your last death. You have been revived.")
+                    await member.send(f"It has been {wait_seconds/60} minutes since your last death. You have been revived.")
                 except Exception as e:
                     text = f"[MarkUserCanRevive] Failed to send revive dm to user: {member.id}"
                     print(text)
@@ -732,7 +795,45 @@ async def watch_for_users_to_unban():
         await dump_error_discord(text, "Unexpected error")
 
 
-async def set_user_as_dead(user_id, *, server_id: Optional[str] = None):
+async def handle_death_event(
+    steam64: str,
+    *,
+    server_id: Optional[str] = None,
+    alive_sec: Optional[int] = None,
+    log_ts: Optional[str] = None,
+) -> None:
+    if not steam64:
+        return
+    try:
+        with open(config["userdata_db_path"], "r") as json_file:
+            userdata_json = json.load(json_file)
+        user_id = find_user_by_steam64(userdata_json, steam64)
+        if not user_id:
+            print(f"[Server {server_id}] Death detected for unregistered steam64: {steam64}")
+            return
+        userdata = userdata_json["userdata"].get(user_id, {})
+        if is_user_dead(userdata):
+            return
+        death_ts = _parse_log_timestamp(log_ts)
+        await set_user_as_dead(
+            user_id,
+            server_id=server_id,
+            alive_sec=alive_sec,
+            death_timestamp=death_ts,
+        )
+    except Exception as e:
+        text = f"[HandleDeathEvent] \"{e}\"\nIt is advised to restart this script."
+        print(text)
+        await dump_error_discord(text, "Unexpected error")
+
+
+async def set_user_as_dead(
+    user_id,
+    *,
+    server_id: Optional[str] = None,
+    alive_sec: Optional[int] = None,
+    death_timestamp: Optional[int] = None,
+):
     
     try:
     
@@ -743,6 +844,9 @@ async def set_user_as_dead(user_id, *, server_id: Optional[str] = None):
             userdata_json = json.load(json_file)
         userdata = userdata_json["userdata"][user_id]
         season_deaths = userdata_json["season_deaths"]
+
+        if normalize_userdata_fields(user_id, userdata):
+            userdata_json["userdata"][user_id] = userdata
         
         if (int(userdata["is_admin"]) == 1):
             text = f"[SetUserAsDead] An admin died. What a loser. User: {userdata['username']}"
@@ -752,8 +856,14 @@ async def set_user_as_dead(user_id, *, server_id: Optional[str] = None):
         
         server_label = f"Server {server_id}" if server_id else "Unknown server"
         print(f"[{server_label}] Found new death. User: {userdata['username']}")
-        userdata["is_alive"] = 0
-        userdata["time_of_death"] = int(time.time())
+        set_user_dead_state(userdata, dead=True)
+        death_timestamp = int(death_timestamp or time.time())
+        userdata["time_of_death"] = death_timestamp
+        userdata["lastDeathAt"] = death_timestamp
+        if alive_sec is not None:
+            userdata["lastAliveSec"] = int(alive_sec)
+        userdata["inCorrectVC"] = False
+        userdata["deadUntil"] = death_timestamp + int(config.get("wait_time_new_life_seconds", 0))
         userdata["can_revive"] = 0
         if server_id:
             server_id = str(server_id)
@@ -771,23 +881,7 @@ async def set_user_as_dead(user_id, *, server_id: Optional[str] = None):
         atomic_write_text(
             config["userdata_db_path"], json.dumps(userdata_json, indent=4)
         )
-        
-        scope_servers = resolve_user_scope_servers(userdata)
-        if server_id:
-            if server_id not in scope_servers:
-                scope_servers.append(server_id)
-        for scoped_server_id in scope_servers:
-            server = get_server_by_id(scoped_server_id)
-            if not server:
-                continue
-            blacklist_path = server.get("path_to_bans", "")
-            blacklist_list_raw = read_lines(blacklist_path)
-            blacklist_list = sanitize_steam_id_list(blacklist_list_raw)
-            blacklist_list = remove_steam_id_occurrences(
-                blacklist_list, userdata["steam_id"]
-            )
-            blacklist_list.append(str(userdata["steam_id"]))
-            atomic_write_lines(blacklist_path, blacklist_list)
+        render_global_sync(userdata_json=userdata_json)
         
         # update discord roles
         member = guild.get_member(int(user_id))
@@ -843,15 +937,16 @@ async def unban_user(user_id, *, scope_override: Optional[str] = None):
             await dump_error_discord(text, "Warning")
             return
         
-        if (userdata["is_alive"] != 0):
+        if not is_user_dead(userdata):
             text = f"[UnbanUser] User with id: {user_id} is not marked as dead!"
             print(text)
             await dump_error_discord(text, "Warning")
             return
         
         # set death status to alive and update db
-        userdata["is_alive"] = 1
+        set_user_dead_state(userdata, dead=False)
         userdata["time_of_death"] = 0
+        userdata["deadUntil"] = None
         userdata["can_revive"] = 0
         
         # remove from season deaths if user_id is in there
@@ -862,57 +957,7 @@ async def unban_user(user_id, *, scope_override: Optional[str] = None):
             config["userdata_db_path"], json.dumps(userdata_json, indent=4)
         )
 
-        scope_servers = resolve_user_scope_servers(
-            userdata, scope=scope_override or get_unban_scope(config)
-        )
-
-        # remove from death list
-        for scoped_server_id in scope_servers:
-            server = get_server_by_id(scoped_server_id)
-            if not server:
-                continue
-            death_path = server.get("death_watcher_death_path", "")
-            if not death_path:
-                continue
-            success = False
-            tries = 0
-            while not success and tries < 10:
-                try:
-                    deaths_list = read_lines(death_path)
-                    if str(userdata["steam_id"]) in deaths_list:
-                        deaths_list.remove(str(userdata["steam_id"]))
-                    atomic_write_lines(death_path, deaths_list)
-                    success = True
-                except Exception as e:
-                    print(
-                        "[UnbanUser] Attempt "
-                        f"{tries + 1} - Failed to open deaths list file: {death_path} '{e}'"
-                    )
-                    tries += 1
-                    time.sleep(0.25)
-
-            if not success:
-                print(f"Could not write user id: {user_id} to ban list after 10 tries.")
-                await dump_error_discord(
-                    f"Error unbanning user: `{user_id}`\nFailed to add user id to the ban list. "
-                    "(likely file permission error?)",
-                    "Unexpected error",
-                )
-                return
-
-        # update user's roles + remove from blacklist(s)
-        for scoped_server_id in scope_servers:
-            server = get_server_by_id(scoped_server_id)
-            if not server:
-                continue
-            blacklist_path = server.get("path_to_bans", "")
-            blacklist_list_raw = read_lines(blacklist_path)
-            blacklist_list = sanitize_steam_id_list(blacklist_list_raw)
-            updated_blacklist = remove_steam_id_occurrences(
-                blacklist_list, userdata["steam_id"]
-            )
-            if len(updated_blacklist) != len(blacklist_list):
-                atomic_write_lines(blacklist_path, updated_blacklist)
+        render_global_sync(userdata_json=userdata_json)
 
         guild = client.get_guild(config["guild_id"])
         member = guild.get_member(int(user_id))
@@ -966,6 +1011,26 @@ async def bulk_revive_dead_users() -> int:
     return revived
 
 
+async def remove_user_and_sync(discord_id: str) -> bool:
+    try:
+        with open(config["userdata_db_path"], "r") as json_file:
+            userdata_json = json.load(json_file)
+        if discord_id not in userdata_json.get("userdata", {}):
+            return False
+        userdata_json["userdata"].pop(discord_id, None)
+        season_deaths = userdata_json.get("season_deaths")
+        if isinstance(season_deaths, list) and discord_id in season_deaths:
+            season_deaths.remove(discord_id)
+        atomic_write_text(
+            config["userdata_db_path"], json.dumps(userdata_json, indent=4)
+        )
+        render_global_sync(userdata_json=userdata_json)
+        return True
+    except Exception as exc:
+        print(f"[RemoveUser] Failed to remove {discord_id}: {exc}")
+        return False
+
+
 async def clear_alive_dead_roles() -> int:
     if not config or client is None:
         return 0
@@ -999,26 +1064,41 @@ async def clear_alive_dead_roles() -> int:
 
 
 async def dump_error_discord(error_message : str, prefix : str = "Error", force_mention_tag : str = ""):
+    global last_error_dump_at
     prefix = "Error" if (prefix == "") else prefix
-    channel_id = config["error_dump_channel"]
-    if (channel_id != "-1"):
-        channel = client.get_channel(int(channel_id))
-        if (channel == None):
-            print(f"Error: [Main] Failed to find error_dump_channel with id: {channel_id}")
-            return
-        
-        mention = ""
-        if (force_mention_tag != ""):
-            if (force_mention_tag == "everyone" or force_mention_tag == "here"):
-                mention = force_mention_tag
-            else:
-                mention = await get_user_id_from_name(force_mention_tag)
-        if (mention == "" and str(config["error_dump_allow_mention"]) != "0"):
-            mention = config["error_dump_mention_tag"]
-            if (mention != "" and mention != "everyone" and mention != "here"):
-                mention = await get_user_id_from_name(mention)
-        mention = (f"@{mention} " if (mention == "everyone" or mention == "here") else f"<@{mention}> ") if (mention != "") else ""
-        await channel.send(f"{mention}**{prefix}**\n{error_message}")
+    channel_id = str(config.get("error_dump_channel_id") or config.get("error_dump_channel") or "")
+    if not channel_id or channel_id == "-1":
+        return
+    now = time.time()
+    try:
+        rate_limit_seconds = float(config.get("error_dump_rate_limit_seconds", 0))
+    except (TypeError, ValueError):
+        rate_limit_seconds = 0
+    if rate_limit_seconds > 0 and now - last_error_dump_at < rate_limit_seconds:
+        return
+
+    channel = client.get_channel(int(channel_id))
+    if (channel == None):
+        print(f"Error: [Main] Failed to find error_dump_channel with id: {channel_id}")
+        return
+
+    include_traceback = bool(int(config.get("error_dump_include_traceback", True)))
+    if not include_traceback and "Traceback" in error_message:
+        error_message = error_message.split("Traceback", 1)[0].strip()
+
+    mention = ""
+    if (force_mention_tag != ""):
+        if (force_mention_tag == "everyone" or force_mention_tag == "here"):
+            mention = force_mention_tag
+        else:
+            mention = await get_user_id_from_name(force_mention_tag)
+    if (mention == "" and str(config["error_dump_allow_mention"]) != "0"):
+        mention = config["error_dump_mention_tag"]
+        if (mention != "" and mention != "everyone" and mention != "here"):
+            mention = await get_user_id_from_name(mention)
+    mention = (f"@{mention} " if (mention == "everyone" or mention == "here") else f"<@{mention}> ") if (mention != "") else ""
+    await channel.send(f"{mention}**{prefix}**\n{error_message}")
+    last_error_dump_at = now
     
     
     

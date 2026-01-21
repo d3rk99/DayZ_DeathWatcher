@@ -84,7 +84,7 @@ BOT_FIELDS: Sequence[BotField] = (
         description="Optional role that shortens revive timers.",
     ),
     BotField(
-        key="error_dump_channel",
+        key="error_dump_channel_id",
         label="Error Dump Channel ID",
         field_type=str,
         description="Channel that receives unexpected errors from the bot.",
@@ -100,6 +100,18 @@ BOT_FIELDS: Sequence[BotField] = (
         label="Error Mention Tag",
         field_type=str,
         description="Username, user ID, or @everyone/@here to notify on errors.",
+    ),
+    BotField(
+        key="error_dump_rate_limit_seconds",
+        label="Error Dump Rate Limit (seconds)",
+        field_type=int,
+        description="Minimum delay between Discord error reports.",
+    ),
+    BotField(
+        key="error_dump_include_traceback",
+        label="Include Tracebacks",
+        field_type=bool,
+        description="Include full traceback text in error reports.",
     ),
 )
 

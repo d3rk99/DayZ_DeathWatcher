@@ -1,3 +1,4 @@
+import asyncio
 import json
 import threading
 import traceback
@@ -7,7 +8,8 @@ from typing import Optional
 from nextcord.ext import commands
 
 from death_watcher.new_dayz_death_watcher import DEFAULT_CONFIG, DayZDeathWatcher
-from services.server_config import ensure_server_defaults, get_active_servers, get_enabled_servers, normalize_servers
+from main import handle_death_event
+from services.server_config import ensure_server_defaults, get_active_servers, get_enabled_servers
 
 
 class DeathWatcher(commands.Cog):
@@ -34,6 +36,7 @@ class DeathWatcher(commands.Cog):
 
         servers = ensure_server_defaults(get_active_servers(config))
         enabled_servers = get_enabled_servers(servers)
+        enable_death_scanning = bool(config.get("enable_death_scanning", True))
 
         message = "\nStarting embedded DayZ death watcher...\n"
         if self.logger:
@@ -41,15 +44,23 @@ class DeathWatcher(commands.Cog):
         else:
             print(message)
 
+        if not enable_death_scanning:
+            return
+
         for server in enabled_servers:
             server_id = str(server["server_id"])
+            if server.get("enable_death_scanning") is False:
+                continue
             config_data = dict(base_config)
             config_data["path_to_logs_directory"] = server.get("path_to_logs_directory") or config_data.get(
                 "path_to_logs_directory", ""
             )
-            config_data["path_to_bans"] = server.get("death_watcher_death_path")
             config_data["path_to_cache"] = cache_path
             config_data.setdefault("death_event_name", base_config.get("death_event_name", "PLAYER_DEATH"))
+            config_data["search_logs_interval"] = config.get(
+                "search_logs_interval", config_data.get("search_logs_interval", 1)
+            )
+            config_data["archive_old_ljson"] = int(config.get("archive_old_ljson", 0))
 
             def _make_logger(sid: str):
                 def _log(message: str) -> None:
@@ -63,10 +74,22 @@ class DeathWatcher(commands.Cog):
                         print(formatted)
                 return _log
 
+            def _on_death(steam64: str, alive_sec: Optional[int], log_ts: Optional[str]) -> None:
+                if not steam64:
+                    return
+                coro = handle_death_event(
+                    steam64,
+                    server_id=server_id,
+                    alive_sec=alive_sec,
+                    log_ts=log_ts,
+                )
+                asyncio.run_coroutine_threadsafe(coro, self.bot.loop)
+
             watcher = DayZDeathWatcher(
                 config_data=config_data,
                 server_id=server_id,
                 logger=_make_logger(server_id),
+                on_death=_on_death,
             )
             self.watchers.append(watcher)
             thread = threading.Thread(target=lambda w=watcher: self._run_watcher(w), daemon=True)

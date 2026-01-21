@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import datetime
+import os
 import time
 import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import Callable
 
 from gui.theme import LIGHT_THEME, ThemePalette
-from services import bot_control_service, list_service, userdata_service
+from services import bot_control_service, list_service, sync_service, userdata_service
+from services import log_status_service
 from services.server_config import get_active_servers, server_map
 
 
@@ -737,11 +739,13 @@ class ListViewerPanel(tk.Frame):
         title: str,
         server_paths: dict[str, str],
         server_lookup: dict[str, dict],
+        allow_filter: bool = True,
     ) -> None:
         super().__init__(master)
         self.title = title
         self.server_paths = server_paths
         self.server_lookup = server_lookup
+        self.allow_filter = allow_filter
         self._active_server_id: str | None = None
         self._theme: ThemePalette = LIGHT_THEME
         self._label = tk.Label(self, text=title, font=("Segoe UI", 11, "bold"))
@@ -771,7 +775,7 @@ class ListViewerPanel(tk.Frame):
 
     def reload(self) -> None:
         self._tree.delete(*self._tree.get_children())
-        if self._active_server_id:
+        if self._active_server_id and self.allow_filter:
             path = self.server_paths.get(self._active_server_id, "")
             for entry in list_service.load_list(path):
                 server_label = self._server_label(self._active_server_id)
@@ -787,20 +791,26 @@ class ListViewerPanel(tk.Frame):
         return server.get("display_name") or server_id
 
     def _open(self) -> None:
-        if not self._active_server_id:
-            messagebox.showinfo("Open File", "Select a single server to open its list file.")
-            return
-        path = self.server_paths.get(self._active_server_id, "")
+        if not self.allow_filter:
+            path = next(iter(self.server_paths.values()), "")
+        else:
+            if not self._active_server_id:
+                messagebox.showinfo("Open File", "Select a single server to open its list file.")
+                return
+            path = self.server_paths.get(self._active_server_id, "")
         try:
             list_service.open_in_system_editor(path)
         except Exception as exc:
             messagebox.showerror("Open File", str(exc))
 
     def _force_sync(self) -> None:
-        if not self._active_server_id:
-            messagebox.showinfo("Force Sync", "Select a single server to sync its list file.")
-            return
-        path = self.server_paths.get(self._active_server_id, "")
+        if not self.allow_filter:
+            path = next(iter(self.server_paths.values()), "")
+        else:
+            if not self._active_server_id:
+                messagebox.showinfo("Force Sync", "Select a single server to sync its list file.")
+                return
+            path = self.server_paths.get(self._active_server_id, "")
         try:
             list_service.force_sync(path)
             self.reload()
@@ -808,6 +818,8 @@ class ListViewerPanel(tk.Frame):
             messagebox.showerror("Force Sync", str(exc))
 
     def set_active_server(self, server_id: str | None) -> None:
+        if not self.allow_filter:
+            return
         self._active_server_id = server_id
         self.reload()
 
@@ -835,6 +847,268 @@ class ListViewerPanel(tk.Frame):
             fieldbackground=theme.panel_bg,
             foreground=theme.fg,
             rowheight=24,
+            borderwidth=0,
+        )
+        style.map(
+            tree_style,
+            background=[("selected", theme.accent)],
+            foreground=[("selected", theme.console_fg)],
+        )
+        style.configure(heading_style, background=theme.panel_bg, foreground=theme.fg)
+        self._tree.configure(style=tree_style)
+
+
+class GlobalSyncPanel(tk.Frame):
+    def __init__(
+        self,
+        master,
+        *,
+        sync_dir: str,
+        servers: list[dict],
+        refresh_interval: int = 5_000,
+    ) -> None:
+        super().__init__(master)
+        self.sync_dir = sync_dir
+        self.servers = servers
+        self._server_lookup = server_map(servers)
+        self.refresh_interval = refresh_interval
+        self._theme: ThemePalette = LIGHT_THEME
+        self._whitelist_var = tk.StringVar(value="0")
+        self._ban_var = tk.StringVar(value="0")
+        self._status_var = tk.StringVar(value="")
+        self._path_var = tk.StringVar(value=sync_dir or "")
+        self._build_ui()
+        self._poll()
+
+    def _build_ui(self) -> None:
+        title = tk.Label(self, text="Global Sync", font=("Segoe UI", 12, "bold"))
+        title.pack(anchor="w", padx=10, pady=(10, 4))
+        self._title = title
+
+        row = tk.Frame(self)
+        row.pack(fill=tk.X, padx=10, pady=(0, 4))
+        tk.Label(row, text="Whitelist:").pack(side=tk.LEFT)
+        tk.Label(row, textvariable=self._whitelist_var).pack(side=tk.LEFT, padx=(6, 16))
+        tk.Label(row, text="Ban:").pack(side=tk.LEFT)
+        tk.Label(row, textvariable=self._ban_var).pack(side=tk.LEFT, padx=(6, 0))
+
+        tk.Label(self, textvariable=self._status_var, wraplength=260, justify=tk.LEFT).pack(
+            fill=tk.X, padx=10, pady=(0, 4)
+        )
+
+        path_row = tk.Frame(self)
+        path_row.pack(fill=tk.X, padx=10, pady=(0, 8))
+        tk.Label(path_row, text="Sync Dir:").pack(side=tk.LEFT)
+        tk.Label(path_row, textvariable=self._path_var, wraplength=180, justify=tk.LEFT).pack(
+            side=tk.LEFT, padx=(6, 0)
+        )
+        open_btn = tk.Button(path_row, text="Open", command=self._open_folder)
+        open_btn.pack(side=tk.RIGHT)
+        self._open_button = open_btn
+
+        self._dest_tree = ttk.Treeview(
+            self,
+            columns=("server", "whitelist", "ban", "updated"),
+            show="headings",
+            height=6,
+        )
+        self._dest_tree.heading("server", text="Server")
+        self._dest_tree.heading("whitelist", text="Whitelist")
+        self._dest_tree.heading("ban", text="Ban")
+        self._dest_tree.heading("updated", text="Last Write")
+        self._dest_tree.column("server", width=120, anchor=tk.CENTER)
+        self._dest_tree.column("whitelist", width=80, anchor=tk.CENTER)
+        self._dest_tree.column("ban", width=80, anchor=tk.CENTER)
+        self._dest_tree.column("updated", width=120, anchor=tk.CENTER)
+        self._dest_tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
+
+    def _open_folder(self) -> None:
+        if not self.sync_dir:
+            messagebox.showinfo("Open Folder", "Sync directory is not configured.")
+            return
+        try:
+            list_service.open_in_system_editor(self.sync_dir)
+        except Exception as exc:
+            messagebox.showerror("Open Folder", str(exc))
+
+    def refresh(self) -> None:
+        status = sync_service.load_sync_status(self.sync_dir)
+        whitelist = list_service.load_list(os.path.join(self.sync_dir, "whitelist.txt"))
+        banlist = list_service.load_list(os.path.join(self.sync_dir, "ban.txt"))
+        self._whitelist_var.set(str(status.get("whitelist_count", len(whitelist))))
+        self._ban_var.set(str(status.get("ban_count", len(banlist))))
+
+        result = status.get("last_sync_result", "unknown")
+        last_sync = status.get("last_sync_time")
+        if last_sync:
+            try:
+                last_sync_text = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(int(last_sync)))
+            except (ValueError, OSError):
+                last_sync_text = "Unknown"
+        else:
+            last_sync_text = "Never"
+        error_note = status.get("last_error")
+        if error_note and result != "success":
+            self._status_var.set(f"Last sync: {last_sync_text} ({result}) - {error_note}")
+        else:
+            self._status_var.set(f"Last sync: {last_sync_text} ({result})")
+        self._path_var.set(self.sync_dir or "")
+
+        self._dest_tree.delete(*self._dest_tree.get_children())
+        for server in self.servers:
+            server_id = str(server["server_id"])
+            label = self._server_lookup.get(server_id, {}).get("display_name") or server_id
+            whitelist_path = server.get("path_to_whitelist", "")
+            ban_path = server.get("path_to_bans", "")
+            whitelist_status = "missing"
+            ban_status = "missing"
+            last_update_ts = 0.0
+            if whitelist_path and os.path.exists(whitelist_path):
+                whitelist_status = "ok"
+                last_update_ts = max(last_update_ts, os.path.getmtime(whitelist_path))
+            if ban_path and os.path.exists(ban_path):
+                ban_status = "ok"
+                last_update_ts = max(last_update_ts, os.path.getmtime(ban_path))
+            self._dest_tree.insert(
+                "",
+                tk.END,
+                values=(label, whitelist_status, ban_status, self._format_mtime(last_update_ts)),
+            )
+
+    def _format_mtime(self, timestamp_or_path) -> str:
+        try:
+            if isinstance(timestamp_or_path, (int, float)):
+                ts = float(timestamp_or_path)
+            else:
+                ts = os.path.getmtime(timestamp_or_path)
+            if ts <= 0:
+                return ""
+            return time.strftime("%H:%M:%S", time.localtime(ts))
+        except OSError:
+            return ""
+
+    def _poll(self) -> None:
+        if not self.winfo_exists():
+            return
+        self.refresh()
+        self.after(self.refresh_interval, self._poll)
+
+    def apply_theme(self, theme: ThemePalette) -> None:
+        self._theme = theme
+        self.configure(bg=theme.panel_bg)
+        for widget in (self._title,):
+            widget.configure(bg=theme.panel_bg, fg=theme.fg)
+        for label in self.winfo_children():
+            if isinstance(label, tk.Label):
+                label.configure(bg=theme.panel_bg, fg=theme.fg)
+        if hasattr(self, "_open_button"):
+            self._open_button.configure(
+                bg=theme.button_bg,
+                fg=theme.button_fg,
+                activebackground=theme.accent,
+                activeforeground=theme.console_fg,
+                highlightbackground=theme.panel_bg,
+                borderwidth=1,
+                relief=tk.FLAT,
+            )
+        style = ttk.Style(self)
+        tree_style = "Sidebar.Sync.Treeview"
+        heading_style = f"{tree_style}.Heading"
+        style.configure(
+            tree_style,
+            background=theme.panel_bg,
+            fieldbackground=theme.panel_bg,
+            foreground=theme.fg,
+            rowheight=22,
+            borderwidth=0,
+        )
+        style.map(
+            tree_style,
+            background=[("selected", theme.accent)],
+            foreground=[("selected", theme.console_fg)],
+        )
+        style.configure(heading_style, background=theme.panel_bg, foreground=theme.fg)
+        self._dest_tree.configure(style=tree_style)
+
+
+class ServerStatusPanel(tk.Frame):
+    def __init__(
+        self,
+        master,
+        *,
+        cache_path: str,
+        servers: list[dict],
+        refresh_interval: int = 5_000,
+    ) -> None:
+        super().__init__(master)
+        self.cache_path = cache_path
+        self.servers = servers
+        self._server_lookup = server_map(servers)
+        self.refresh_interval = refresh_interval
+        self._theme: ThemePalette = LIGHT_THEME
+        self._build_ui()
+        self._poll()
+
+    def _build_ui(self) -> None:
+        title = tk.Label(self, text="Servers", font=("Segoe UI", 12, "bold"))
+        title.pack(anchor="w", padx=10, pady=(10, 4))
+        self._title = title
+
+        self._tree = ttk.Treeview(
+            self,
+            columns=("server", "enabled", "file", "offset", "ts", "error"),
+            show="headings",
+            height=8,
+        )
+        for key, text, width in (
+            ("server", "Server", 120),
+            ("enabled", "Enabled", 70),
+            ("file", "LJSON File", 160),
+            ("offset", "Cursor", 70),
+            ("ts", "Last TS", 140),
+            ("error", "Last Error", 180),
+        ):
+            self._tree.heading(key, text=text)
+            self._tree.column(key, width=width, anchor=tk.CENTER)
+        self._tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
+
+    def refresh(self) -> None:
+        self._tree.delete(*self._tree.get_children())
+        status_map = log_status_service.load_log_status(self.cache_path)
+        for server in self.servers:
+            server_id = str(server["server_id"])
+            label = self._server_lookup.get(server_id, {}).get("display_name") or server_id
+            enabled = "yes" if server.get("enabled", True) else "no"
+            status = status_map.get(server_id, {})
+            current_file = os.path.basename(status.get("current_file", "")) if status else ""
+            offset = status.get("offset", 0)
+            last_ts = status.get("last_ts", "")
+            last_error = status.get("last_error", "")
+            self._tree.insert(
+                "",
+                tk.END,
+                values=(label, enabled, current_file, offset, last_ts, last_error),
+            )
+
+    def _poll(self) -> None:
+        if not self.winfo_exists():
+            return
+        self.refresh()
+        self.after(self.refresh_interval, self._poll)
+
+    def apply_theme(self, theme: ThemePalette) -> None:
+        self._theme = theme
+        self.configure(bg=theme.panel_bg)
+        self._title.configure(bg=theme.panel_bg, fg=theme.fg)
+        style = ttk.Style(self)
+        tree_style = "Sidebar.Server.Treeview"
+        heading_style = f"{tree_style}.Heading"
+        style.configure(
+            tree_style,
+            background=theme.panel_bg,
+            fieldbackground=theme.panel_bg,
+            foreground=theme.fg,
+            rowheight=22,
             borderwidth=0,
         )
         style.map(
@@ -971,28 +1245,41 @@ class SidebarPane(tk.Frame):
         )
         self._notebook.add(self._counter_panel, text="Death Counter")
 
+        self._servers_panel = ServerStatusPanel(
+            self._notebook,
+            cache_path=self.config_data.get(
+                "death_watcher_cache_path", "./death_watcher/death_watcher_cache.json"
+            ),
+            servers=self.servers,
+        )
+        self._notebook.add(self._servers_panel, text="Servers")
+
+        self._sync_panel = GlobalSyncPanel(
+            self._notebook,
+            sync_dir=self.config_data.get("path_to_sync_dir", ""),
+            servers=self.servers,
+        )
+        self._notebook.add(self._sync_panel, text="Global Sync")
+
         self._lists_notebook = ttk.Notebook(
             self._notebook, style="Sidebar.SubNotebook.TNotebook"
         )
-        whitelist_paths = {
-            str(server["server_id"]): server.get("path_to_whitelist", "")
-            for server in self.servers
-        }
-        banlist_paths = {
-            str(server["server_id"]): server.get("path_to_bans", "")
-            for server in self.servers
-        }
+        sync_dir = self.config_data.get("path_to_sync_dir", "")
+        whitelist_paths = {"global": os.path.join(sync_dir, "whitelist.txt")}
+        banlist_paths = {"global": os.path.join(sync_dir, "ban.txt")}
         self._whitelist_panel = ListViewerPanel(
             self._lists_notebook,
             title="Whitelist",
             server_paths=whitelist_paths,
             server_lookup=self._server_lookup,
+            allow_filter=False,
         )
         self._banlist_panel = ListViewerPanel(
             self._lists_notebook,
             title="Banlist",
             server_paths=banlist_paths,
             server_lookup=self._server_lookup,
+            allow_filter=False,
         )
         self._lists_notebook.add(self._whitelist_panel, text="Whitelist")
         self._lists_notebook.add(self._banlist_panel, text="Banlist")
@@ -1090,6 +1377,10 @@ class SidebarPane(tk.Frame):
             self._dead_panel.apply_theme(theme)
         if hasattr(self, "_counter_panel"):
             self._counter_panel.apply_theme(theme)
+        if hasattr(self, "_servers_panel"):
+            self._servers_panel.apply_theme(theme)
+        if hasattr(self, "_sync_panel"):
+            self._sync_panel.apply_theme(theme)
         if hasattr(self, "_whitelist_panel"):
             self._whitelist_panel.apply_theme(theme)
         if hasattr(self, "_banlist_panel"):

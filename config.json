@@ -9,7 +9,7 @@
             "path_to_logs_directory": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_1/profiles/DetailedLogs",
             "path_to_bans": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_1/ban.txt",
             "path_to_whitelist": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_1/whitelist.txt",
-            "death_watcher_death_path": "./death_watcher/deaths_1.txt",
+            "enable_death_scanning": true,
             "enabled": true
         },
         {
@@ -19,7 +19,7 @@
             "path_to_logs_directory": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_2/profiles/DetailedLogs",
             "path_to_bans": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_2/ban.txt",
             "path_to_whitelist": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_2/whitelist.txt",
-            "death_watcher_death_path": "./death_watcher/deaths_2.txt",
+            "enable_death_scanning": true,
             "enabled": true
         },
         {
@@ -29,14 +29,18 @@
             "path_to_logs_directory": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_3/profiles/DetailedLogs",
             "path_to_bans": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_3/ban.txt",
             "path_to_whitelist": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/MementoMori_3/whitelist.txt",
-            "death_watcher_death_path": "./death_watcher/deaths_3.txt",
+            "enable_death_scanning": true,
             "enabled": true
         }
     ],
+    "path_to_sync_dir": "C:/Program Files (x86)/CFTools Software GmbH/Architect/Agent/deployments/Sync",
     "default_server_id": "1",
     "max_active_servers": 3,
     "unban_scope": "active_server_only",
     "validate_whitelist_scope": "all_servers",
+    "enable_death_scanning": true,
+    "archive_old_ljson": false,
+    "search_logs_interval": 2,
     "userdata_db_path": "./userdata_db.json",
     "admin_role_id": 1297719163682291784,
     "guild_id": 749808733780967496,
@@ -51,10 +55,13 @@
     "death_counter_path": "./death_counter.json",
     "run_death_watcher_cog": 1,
     "death_watcher_config_path": "./death_watcher/config.json",
+    "death_watcher_cache_path": "./death_watcher/death_watcher_cache.json",
     "steam_ids_to_unban_path": "./steam_ids_to_unban.txt",
-    "error_dump_channel": "1008220971985018980",
+    "error_dump_channel_id": "1008220971985018980",
     "error_dump_allow_mention": 1,
     "error_dump_mention_tag": "@Derk",
+    "error_dump_rate_limit_seconds": 60,
+    "error_dump_include_traceback": true,
     "alive_leaderboard_channel_id": 1451431355803111444,
     "alive_leaderboard_update_seconds": 300,
     "alive_log_cache_path": "./death_watcher/alive_time_cache.json",
