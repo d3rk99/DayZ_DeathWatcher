@@ -7,6 +7,8 @@ import uuid
 from pathlib import Path
 from typing import Callable, List, Optional
 
+_CACHE_LOCK = threading.Lock()
+
 DEFAULT_CACHE_CONTENT = {
     "servers": {}
 }
@@ -213,7 +215,7 @@ class DayZDeathWatcher:
         assert self.path_to_cache is not None
         self._log(f"Failed to find cache file: {self.path_to_cache}\nCreating it now.")
         self.path_to_cache.parent.mkdir(parents=True, exist_ok=True)
-        _atomic_write_text(self.path_to_cache, json.dumps(DEFAULT_CACHE_CONTENT, indent=4))
+        self._write_cache(json.dumps(DEFAULT_CACHE_CONTENT, indent=4))
 
     def _load_cache(self) -> dict:
         assert self.path_to_cache is not None
@@ -234,7 +236,12 @@ class DayZDeathWatcher:
         assert self.path_to_cache is not None
         server_key = self.server_id or "default"
         self._cache_container.setdefault("servers", {})[server_key] = self.current_cache
-        _atomic_write_text(self.path_to_cache, json.dumps(self._cache_container, indent=4))
+        self._write_cache(json.dumps(self._cache_container, indent=4))
+
+    def _write_cache(self, payload: str) -> None:
+        assert self.path_to_cache is not None
+        with _CACHE_LOCK:
+            _atomic_write_text(self.path_to_cache, payload)
 
     def _update_error(self, message: str) -> None:
         self.current_cache["last_error"] = message

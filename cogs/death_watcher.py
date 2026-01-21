@@ -33,6 +33,8 @@ class DeathWatcher(commands.Cog):
         cache_path = config.get("death_watcher_cache_path") or base_config.get(
             "path_to_cache", "./death_watcher/death_watcher_cache.json"
         )
+        if cache_path:
+            cache_path = str(Path(cache_path).resolve())
 
         servers = ensure_server_defaults(get_active_servers(config))
         enabled_servers = get_enabled_servers(servers)
